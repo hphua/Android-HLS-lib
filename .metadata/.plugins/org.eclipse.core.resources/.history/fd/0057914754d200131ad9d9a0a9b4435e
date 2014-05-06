@@ -1,0 +1,42 @@
+/*
+ * HLSMediaSourceAdapter.h
+ *
+ *  Created on: May 2, 2014
+ *      Author: Mark
+ */
+
+#ifndef HLSMEDIASOURCEADAPTER_H_
+#define HLSMEDIASOURCEADAPTER_H_
+
+#include <android/native_window.h>
+#include <../android-source/frameworks/av/include/media/stagefright/MediaSource.h>
+#include <../android-source/frameworks/av/include/media/stagefright/OMXCodec.h>
+#include <../android-source/frameworks/av/include/media/stagefright/OMXClient.h>
+
+
+struct HLSMediaSourceAdapter : public android::MediaSource, public android::MediaBufferObserver
+{
+	HLSMediaSourceAdapter();
+
+	virtual status_t start(MetaData * params = NULL);
+    virtual status_t stop();
+
+    virtual sp<MetaData> getFormat();
+
+    virtual status_t read(
+            MediaBuffer **buffer, const ReadOptions *options = NULL);
+
+    virtual status_t pause();
+
+    // from MediaBufferObserver
+    virtual void signalBufferReturned(MediaBuffer *buffer);
+
+protected:
+	virtual ~HLSMediaSourceAdapter();
+
+private:
+
+};
+
+
+#endif /* HLSMEDIASOURCEADAPTER_H_ */

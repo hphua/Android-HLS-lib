@@ -1,0 +1,27 @@
+/*
+ * HLSPlayer.cpp
+ *
+ *  Created on: May 5, 2014
+ *      Author: Mark
+ */
+
+#include "HLSPlayer.h"
+#include "debug.h"
+#include "constants.h"
+#include <android/log.h>
+#include <android/native_window_jni.h>
+
+#define CLASS_NAME APP_NAME"::HLSPlayer"
+
+HLSPlayer::HLSPlayer() : mExtractorFlags(0),
+mHeight(0), mWidth(0), mBitrate(0), mActiveAudioTrackIndex(-1),
+mVideoBuffer(NULL), mWindow(NULL), mSurface(NULL), mRenderedFrameCount(0),
+mAudioPlayer(NULL), mAudioSink(NULL), mTimeSource(NULL),
+mDurationUs(0), mOffloadAudio(false), mStatus(HLSDecoder::STOPPED),
+mAudioTrack(NULL), mVideoTrack(NULL)
+{
+	status_t status = mClient.connect();
+	LOGINFO(METHOD, "OMXClient::Connect return %d", status);
+	mAudioTrack = new HLSMediaSourceAdapter();
+	mVideoTrack = new HLSMediaSourceAdapter();
+}

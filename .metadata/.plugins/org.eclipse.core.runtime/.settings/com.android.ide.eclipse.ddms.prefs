@@ -1,0 +1,11 @@
+ddms.logcat.auotmonitor.level=error
+ddms.logcat.automonitor.userprompt=true
+eclipse.preferences.version=1
+logcat.view.colsize.Application=211
+logcat.view.colsize.Level=49
+logcat.view.colsize.PID=58
+logcat.view.colsize.TID=58
+logcat.view.colsize.Tag=398
+logcat.view.colsize.Text=824
+logcat.view.colsize.Time=176
+logcat.view.filters.list=name\: 'HLSPlayerSDK', tag\: 'HLSPlayerSDK*', text\: '', pid\: '', app\: '', level\: 'verbose', name\: 'VideoPlayer', tag\: '', text\: '', pid\: '', app\: 'com.example.videoplayer', level\: 'verbose', name\: 'HLSDecoder\:\:Play', tag\: 'HLSPlayerSDK\:\:HLSDecoder\:\:Play()', text\: '', pid\: '', app\: '', level\: 'verbose', name\: 'HLSMediaSourceAdapter', tag\: 'HLSMediaSourceAdapter', text\: '', pid\: '', app\: '', level\: 'verbose', 

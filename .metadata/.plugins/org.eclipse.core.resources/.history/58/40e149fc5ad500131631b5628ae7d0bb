@@ -1,0 +1,60 @@
+/*
+ * HLSMediaSourceAdapter.h
+ *
+ *  Created on: May 2, 2014
+ *      Author: Mark
+ */
+
+#ifndef HLSMEDIASOURCEADAPTER_H_
+#define HLSMEDIASOURCEADAPTER_H_
+
+
+#include <../android-source/frameworks/av/include/media/stagefright/MediaSource.h>
+#include <../android-source/frameworks/av/include/media/stagefright/OMXCodec.h>
+#include <../android-source/frameworks/av/include/media/stagefright/OMXClient.h>
+#include <../android-source/frameworks/av/include/media/stagefright/MediaBuffer.h>
+#include <../android-source/frameworks/av/include/media/stagefright/MetaData.h>
+
+#include <list>
+
+struct HLSMediaSourceAdapter : public android::MediaSource, public android::MediaBufferObserver
+{
+	HLSMediaSourceAdapter();
+
+	void append(android::sp<android::MediaSource> source);
+
+	virtual android::status_t start(android::MetaData * params = NULL);
+    virtual android::status_t stop();
+
+    virtual android::sp<android::MetaData> getFormat();
+
+    virtual android::status_t read(
+    		android::MediaBuffer **buffer, const ReadOptions *options = NULL);
+
+    virtual android::status_t pause();
+
+    // from MediaBufferObserver
+    virtual void signalBufferReturned(android::MediaBuffer *buffer);
+
+    void setIsAudio(bool val);
+
+    size_t getWidth();
+    size_t getHeight();
+    size_t getCropWidth();
+    size_t getCropHeight();
+
+
+protected:
+	virtual ~HLSMediaSourceAdapter();
+
+private:
+	std::list<android::sp<android::MediaSource> > mSources;
+	android::sp<android::MediaSource> mCurrentSource;
+
+	android::sp<android::MetaData> mStartMetadata;
+	bool mIsAudio;
+
+};
+
+
+#endif /* HLSMEDIASOURCEADAPTER_H_ */

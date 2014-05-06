@@ -1,0 +1,104 @@
+/*
+ * HLSPlayer.h
+ *
+ *  Created on: May 5, 2014
+ *      Author: Mark
+ */
+
+#ifndef HLSPLAYER_H_
+#define HLSPLAYER_H_
+
+
+#include <jni.h>
+
+#include <../android-source/frameworks/av/include/media/stagefright/OMXClient.h>
+#include <../android-source/frameworks/av/include/media/stagefright/MediaBuffer.h>
+#include <../android-source/frameworks/av/include/media/stagefright/MediaSource.h>
+#include <../android-source/frameworks/av/include/media/stagefright/MediaExtractor.h>
+#include <../android-source/frameworks/av/include/media/stagefright/MetaData.h>
+#include <../android-source/frameworks/av/include/media/stagefright/DataSource.h>
+#include <../android-source/frameworks/av/include/media/stagefright/FileSource.h>
+#include <../android-source/frameworks/av/include/media/stagefright/OMXCodec.h>
+#include <../android-source/frameworks/av/include/media/stagefright/TimeSource.h>
+
+#include <../android-source/frameworks/av/include/media/stagefright/AudioPlayer.h>
+#include <../android-source/frameworks/av/include/media/MediaPlayerInterface.h>
+
+
+
+#include <android/native_window.h>
+#include <android/window.h>
+
+#include <list>
+
+class HLSMediaSourceAdapter;
+class HLSSegment;
+
+class HLSPlayer
+{
+public:
+	enum
+	{
+		STOPPED,
+		PAUSED,
+		PLAYING,
+		SEEKING
+	};
+
+	HLSPlayer();
+	~HLSPlayer();
+
+	void Close(JNIEnv* env);
+
+	void SetSurface(JNIEnv* env, jobject surface);
+	android::status_t FeedSegment(const char* path);
+
+	bool Play();
+	int Update();
+
+private:
+	android::status_t PostSegment(HLSSegment* s);
+	void SetStatus(int status);
+	void SetNativeWindow(ANativeWindow* window);
+	bool InitAudio();
+	bool CreateAudioPlayer();
+	bool CreateVideoPlayer();
+	bool RenderBuffer(android::MediaBuffer* buffer);
+	void LogStatus();
+
+	std::list<HLSSegment* > mSegments;
+
+	int mRenderedFrameCount;
+	ANativeWindow* mWindow;
+
+	jobject mSurface;
+
+	int mStatus;
+
+	android::OMXClient mClient;
+	android::sp<android::MediaSource> mVideoTrack;
+	android::sp<android::MediaSource> mAudioTrack;
+
+	android::sp<android::DataSource> mFileSource;
+	android::sp<android::MediaExtractor> mExtractor;
+
+	android::AudioPlayer* mAudioPlayer;
+	android::sp<android::MediaPlayerBase::AudioSink> mAudioSink;
+	android::TimeSource* mTimeSource;
+	bool mOffloadAudio;
+	int64_t mDurationUs;
+
+	android::MediaBuffer* mVideoBuffer;
+
+	int64_t mBitrate;
+	int32_t mWidth;
+	int32_t mHeight;
+	int32_t mActiveAudioTrackIndex;
+	uint32_t mExtractorFlags;
+
+
+};
+
+
+
+#endif /* HLSPLAYER_H_ */

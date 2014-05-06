@@ -1,0 +1,215 @@
+/*
+ * HLSPlayer.cpp
+ *
+ *  Created on: May 5, 2014
+ *      Author: Mark
+ */
+
+#include "HLSPlayer.h"
+#include "debug.h"
+#include "constants.h"
+#include <android/log.h>
+#include <android/native_window_jni.h>
+#include <../android-source/frameworks/av/include/media/stagefright/MediaDefs.h>
+#include <../android-source/frameworks/native/include/ui/GraphicBuffer.h>
+#include <../android-source/frameworks/av/include/media/stagefright/ColorConverter.h>
+#include <../android-source/frameworks/av/include/media/stagefright/Utils.h>
+
+#include "HLSSegment.h"
+
+
+using namespace android;
+
+#define CLASS_NAME APP_NAME"::HLSPlayer"
+
+
+#define METHOD CLASS_NAME"::HLSPlayer()"
+HLSPlayer::HLSPlayer() : mExtractorFlags(0),
+mHeight(0), mWidth(0), mBitrate(0), mActiveAudioTrackIndex(-1),
+mVideoBuffer(NULL), mWindow(NULL), mSurface(NULL), mRenderedFrameCount(0),
+mAudioPlayer(NULL), mAudioSink(NULL), mTimeSource(NULL),
+mDurationUs(0), mOffloadAudio(false), mStatus(HLSDecoder::STOPPED),
+mAudioTrack(NULL), mVideoTrack(NULL)
+{
+	status_t status = mClient.connect();
+	LOGINFO(METHOD, "OMXClient::Connect return %d", status);
+	mAudioTrack = new HLSMediaSourceAdapter();
+	mVideoTrack = new HLSMediaSourceAdapter();
+}
+
+#define METHOD CLASS_NAME"::~HLSPlayer()"
+HLSPlayer::~HLSPlayer()
+{
+
+}
+
+#define METHOD CLASS_NAME"::Close()"
+void HLSPlayer::Close(JNIEnv* env)
+{
+	LOGINFO(METHOD, "Entered");
+	if (mWindow)
+	{
+		ANativeWindow_release(mWindow);
+		mWindow = NULL;
+	}
+	if (mSurface)
+	{
+		(*env).DeleteGlobalRef(mSurface);
+		mSurface = NULL;
+	}
+	if (mAudioPlayer)
+	{
+		// do something!
+	}
+	if (mTimeSource)
+	{
+		// do something!
+	}
+}
+
+
+///
+/// Set Surface. Takes a java surface object
+///
+#define METHOD CLASS_NAME"::SetSurface()"
+void HLSPlayer::SetSurface(JNIEnv* env, jobject surface)
+{
+	LOGINFO(METHOD, "Entered");
+
+	mSurface = (jobject)env->NewGlobalRef(surface);
+
+	ANativeWindow* window = ANativeWindow_fromSurface(env, mSurface);
+
+	LOGINFO(METHOD, "Java_com_kaltura_hlsplayersdk_PlayerView_SetSurface() - window = %0x", window);
+	LOGINFO(METHOD, "window->flags = %0x", window->flags);
+	LOGINFO(METHOD, "window->swapInterfal Min: %d Max: %d", window->minSwapInterval, window->maxSwapInterval);
+	LOGINFO(METHOD, "window->dpi  x:%f y:%f", window->xdpi, window->ydpi);
+
+	if (window)
+	{
+		SetNativeWindow(window);
+	}
+}
+
+
+
+#define METHOD CLASS_NAME"::SetNativeWindow()"
+void HLSPlayer::SetNativeWindow(ANativeWindow* window)
+{
+	LOGINFO(METHOD, "window = %0x", window);
+	if (mWindow)
+	{
+		LOGINFO(METHOD, "::mWindow is already set to %0x", window);
+		// Umm - resetting?
+		ANativeWindow_release(mWindow);
+	}
+	mWindow = window;
+}
+
+
+#define METHOD CLASS_NAME"::FeedSegment()"
+status_t HLSDecoder::FeedSegment(const char* path)
+{
+
+	// Make a data source from the file
+	LOGINFO(METHOD, "path = '%s'", path);
+	sp<DataSource> dataSource = new FileSource(path);
+
+	status_t err = dataSource->initCheck();
+	if (err != OK) return err;
+
+	HLSSegment* s = new HLSSegment();
+	if (s)
+	{
+		if (s->SetDataSource(dataSource))
+		{
+			mSegments.push_back(s);
+			return OK;
+		}
+		else
+		{
+			delete s;
+			s = NULL;
+		}
+		return UNKNOWN_ERROR;
+	}
+	return NO_MEMORY;
+}
+
+#define METHOD CLASS_NAME"::PostSegment()"
+status_t HLSPlayer::PostSegment(HLSSegment* s)
+{
+	LOGINFO(METHOD, "Entered");
+	if (!s) return BAD_VALUE;
+
+	sp<MediaSource> omxSource = OMXCodec::Create(mClient.interface(), s->GetVideoTrack()->getFormat(), false, s->GetVideoTrack(), NULL, 0, NULL /*nativeWindow*/);
+	LOGINFO(METHOD, "OMXCodec::Create() (video) returned %0x", omxSource.get());
+	((HLSMediaSourceAdapter*)mVideoTrack.get())->append(omxSource);
+
+	audio_stream_type_t streamType = AUDIO_STREAM_MUSIC;
+	if (mAudioSink != NULL)
+	{
+		streamType = mAudioSink->getAudioStreamType();
+	}
+
+	mOffloadAudio = canOffloadStream(s->GetAudioTrack()->getFormat(), (s->GetVideoTrack() != NULL), false /*streaming http */, streamType);
+	LOGINFO(METHOD, "mOffloadAudio == %s", mOffloadAudio ? "true" : "false");
+
+	sp<MediaSource> omxAudioSource = OMXCodec::Create(mClient.interface(), s->GetAudioTrack()->getFormat(), false, s->GetAudioTrack());
+	LOGINFO(METHOD, "OMXCodec::Create() (audio) returned %0x", omxAudioSource.get());
+
+
+	if (mOffloadAudio)
+	{
+		LOGINFO(METHOD, "Bypass OMX (offload) Line: %d", __LINE__);
+		((HLSMediaSourceAdapter*)mAudioTrack.get())->append(s->GetAudioTrack());
+	}
+	else
+	{
+		LOGINFO(METHOD, "Not Bypassing OMX Line: %d", __LINE__);
+		((HLSMediaSourceAdapter*)mAudioTrack.get())->append(omxAudioSource);
+	}
+	return OK;
+
+
+}
+
+bool HLSPlayer::CreateAudioPlayer()
+{
+
+}
+
+
+//
+//  Play()
+//
+//		Tells the player to play the current stream. Requires that
+//		segments have already been fed to the player.
+//
+#define METHOD CLASS_NAME"::Play()"
+bool HLSPlayer::Play()
+{
+	LOGINFO(METHOD, "Entered");
+	if (!mWindow) { LOGINFO(METHOD, "mWindow is NULL"); return false; }
+	sp<ANativeWindow> nativeWindow = NULL;
+	nativeWindow = mWindow;
+	LOGINFO(METHOD, "%d", __LINE__);
+
+	status_t err = mVideoTrack->start();
+	if (err == OK)
+	{
+		err = mAudioTrack->start();
+		if (err == OK)
+		{
+
+
+		}
+	}
+
+
+	return PlayNextSegment();
+}
+
+
+
+

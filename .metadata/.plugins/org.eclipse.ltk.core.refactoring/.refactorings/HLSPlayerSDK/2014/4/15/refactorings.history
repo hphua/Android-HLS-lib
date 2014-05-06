@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<session version="1.0">&#x0A;<refactoring comment="Rename resource &apos;HLSPlayerSDK/jni/HLSDecoder&apos; to &apos;HLSDecoder.h&apos;" description="Rename resource &apos;HLSDecoder&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="jni/HLSDecoder" name="HLSDecoder.h" stamp="1397077412974" updateReferences="true"/>&#x0A;<refactoring comment="Rename resource &apos;HLSPlayerSDK/jni/HLSPlayerSDK.cpp&apos; to &apos;HLSPlayerSDKa.cpp&apos;" description="Rename resource &apos;HLSPlayerSDK.cpp&apos;" flags="7" id="org.eclipse.ltk.core.refactoring.rename.resource" input="jni/HLSPlayerSDK.cpp" name="HLSPlayerSDKa.cpp" stamp="1397250470079" updateReferences="true"/>
+</session>
