@@ -58,8 +58,8 @@ status_t HLSMediaSourceAdapter::start(android::MetaData * params /* = NULL */)
 	}
 	if (mCurrentSource == NULL && mSources.size() == 0)
 	{
-		LOGINFO(METHOD, "We don't seem to have any sources set, yet!");
-		return INVALID_OPERATION;
+		LOGINFO(METHOD, "We don't seem to have any more sources");
+		return ERROR_END_OF_STREAM;
 	}
 	if (mCurrentSource == NULL)
 	{

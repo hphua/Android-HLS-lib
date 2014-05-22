@@ -1,10 +1,14 @@
 package com.kaltura.hlsplayersdk;
 
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.Timer;
 
 import com.kaltura.hlsplayersdk.events.OnPlayerStateChangeListener;
 import com.kaltura.hlsplayersdk.events.OnPlayheadUpdateListener;
 import com.kaltura.hlsplayersdk.events.OnProgressListener;
+import com.kaltura.hlsplayersdk.manifest.ManifestParser;
+import com.kaltura.hlsplayersdk.manifest.events.OnParseCompleteListener;
 
 import android.content.Context;
 import android.media.MediaPlayer.OnErrorListener;
@@ -16,7 +20,7 @@ import android.view.SurfaceView;
 import android.widget.MediaController.MediaPlayerControl;
 import android.widget.VideoView;
 
-public class PlayerView extends SurfaceView implements VideoPlayerInterface, MediaPlayerControl
+public class PlayerView extends SurfaceView implements VideoPlayerInterface, MediaPlayerControl, OnParseCompleteListener, URLLoader.DownloadEventListener 
 {
 	// Native Methods
 	private native void InitNativeDecoder();
@@ -24,9 +28,13 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 	private native void PlayFile();
 	private native void SetSurface(Surface surface);
 	private native void NextFrame();
+	private native void FeedSegment(String url);
 	
 	private int frameDelay = 10;
 
+	// This is our root manifest
+	private ManifestParser mManifest = null;
+	
 	
 	private Handler handler = new Handler();
 	private Runnable runnable = new Runnable()
@@ -38,6 +46,7 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 			postDelayed(runnable, frameDelay);
 		}
 	};
+	
 	
 	
 	// Class Methods
@@ -160,11 +169,35 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 		//super.seekTo(msec);
 	}
 
+	URLLoader manifestLoader;
 	@Override
 	public void setVideoUrl(String url) {
-		// TODO Auto-generated method stub
+		Log.i("PlayerView.setVideoUrl", url);
+		
+		manifestLoader = new URLLoader(this, null);
+		manifestLoader.get(url);
+	}
+	
+	@Override
+	public void onParserComplete(ManifestParser parser)
+	{
+		parser.dumpToLog();
+	}
+	
+	@Override
+	public void onDownloadComplete(URLLoader loader, String response)
+	{
+		mManifest = new ManifestParser();
+		mManifest.setOnParseCompleteListener(this);
+		mManifest.parse(response, loader.getRequestURI().toString());
+	}
+	
+	@Override
+	public void onDownloadFailed(URLLoader loader, String response)
+	{
 		
 	}
+	
 
 	@Override
 	public void registerPlayerStateChange(OnPlayerStateChangeListener listener) {

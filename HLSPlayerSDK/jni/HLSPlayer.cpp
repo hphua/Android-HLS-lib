@@ -115,7 +115,7 @@ status_t HLSPlayer::FeedSegment(const char* path)
 
 	// Make a data source from the file
 	LOGINFO(METHOD, "path = '%s'", path);
-	sp<DataSource> dataSource = new FileSource(path);
+	sp<DataSource> dataSource = DataSource::CreateFromURI(path); //new FileSource(path);
 
 	status_t err = dataSource->initCheck();
 	if (err != OK) return err;
@@ -282,6 +282,7 @@ int HLSPlayer::Update()
 			case ERROR_END_OF_STREAM:
 				SetStatus(STOPPED);
 				//PlayNextSegment();
+				return -1;
 				break;
 			default:
 				SetStatus(STOPPED);

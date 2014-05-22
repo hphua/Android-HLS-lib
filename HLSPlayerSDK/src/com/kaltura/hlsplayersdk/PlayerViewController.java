@@ -225,6 +225,12 @@ public class PlayerViewController extends RelativeLayout {
     public void setKDPAttribute(String hostName, String propName, String value) {
         notifyHLSPlayer("setKDPAttribute", new String[] { hostName, propName, value });
     }
+    
+    public void setVideoUrl(String url)
+    {
+    	Log.i("PlayerViewController.setVideoUrl", url);
+    	mPlayerView.setVideoUrl(url);
+    }
 
     public void asyncEvaluate(String expression, HLSPlayerEventListener listener) {
         String callbackName = listener.getCallbackName();
@@ -232,7 +238,9 @@ public class PlayerViewController extends RelativeLayout {
         notifyHLSPlayer("asyncEvaluate", new String[] { expression, callbackName });
     }
     
+    
     private void notifyHLSPlayer(final String action, final String[] eventValues) {
+    	
 //        mActivity.runOnUiThread(new Runnable() {
 //            @Override
 //            public void run() {
