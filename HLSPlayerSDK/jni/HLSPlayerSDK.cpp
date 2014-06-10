@@ -30,8 +30,10 @@ extern "C"
 	#define METHOD CLASS_NAME"::Java_com_kaltura_hlsplayersdk_PlayerView_InitNativeDecoder()"
 	void Java_com_kaltura_hlsplayersdk_PlayerView_InitNativeDecoder(JNIEnv * env, jobject jcaller)
 	{
+		JavaVM* jvm = NULL;
+		env->GetJavaVM(&jvm);
 		if (gHLSPlayerSDK == NULL)
-			gHLSPlayerSDK = new HLSPlayerSDK();
+			gHLSPlayerSDK = new HLSPlayerSDK(jvm);
 		if (gHLSPlayerSDK && gHLSPlayerSDK->GetPlayer() == NULL) gHLSPlayerSDK->CreateDecoder();
 	}
 
@@ -109,7 +111,7 @@ extern "C"
 }
 
 #define METHOD CLASS_NAME"::HLSPlayerSDK()"
-HLSPlayerSDK::HLSPlayerSDK() : mPlayer(NULL)
+HLSPlayerSDK::HLSPlayerSDK(JavaVM* jvm) : mPlayer(NULL), mJvm(jvm)
 {
 
 }
@@ -136,7 +138,7 @@ bool HLSPlayerSDK::CreateDecoder()
 {
 	if (!mPlayer)
 	{
-		mPlayer = new HLSPlayer();
+		mPlayer = new HLSPlayer(mJvm);
 	}
 
 	return mPlayer != NULL;
@@ -160,8 +162,8 @@ void HLSPlayerSDK::PlayFile()
 	LOGINFO(METHOD, "::PlayFile()");
 	if (!mPlayer && !CreateDecoder()) return;
 
-	mPlayer->FeedSegment("/storage/emulated/0/Movies/segment1_0_av.ts");
-	mPlayer->FeedSegment("/storage/emulated/0/Movies/segment2_0_av.ts");
+	//	mPlayer->FeedSegment("/storage/emulated/0/Movies/segment1_0_av.ts");
+	//	mPlayer->FeedSegment("/storage/emulated/0/Movies/segment2_0_av.ts");
 	//mPlayer->FeedSegment("/storage/emulated/0/Movies/segment3_0_av.ts");
 	//mPlayer->FeedSegment("/storage/emulated/0/Movies/segment4_0_av.ts");
 	//mPlayer->FeedSegment("/storage/emulated/0/Movies/segment5_0_av.ts");

@@ -45,7 +45,7 @@ public:
 		SEEKING
 	};
 
-	HLSPlayer();
+	HLSPlayer(JavaVM* jvm);
 	~HLSPlayer();
 
 	void Close(JNIEnv* env);
@@ -55,6 +55,8 @@ public:
 
 	bool Play();
 	int Update();
+
+	void SetJavaVM(JavaVM* jvm);
 
 private:
 	android::status_t PostSegment(HLSSegment* s);
@@ -66,10 +68,16 @@ private:
 	bool RenderBuffer(android::MediaBuffer* buffer);
 	void LogStatus();
 
+	void RequestNextSegment();
+
 	std::list<HLSSegment* > mSegments;
 
 	int mRenderedFrameCount;
 	ANativeWindow* mWindow;
+
+	JavaVM* mJvm;
+	jmethodID mNextSegmentMethodID;
+	jclass mPlayerViewClass;
 
 	jobject mSurface;
 
@@ -95,6 +103,10 @@ private:
 	int32_t mHeight;
 	int32_t mActiveAudioTrackIndex;
 	uint32_t mExtractorFlags;
+
+	int64_t mLastVideoTimeUs;
+	int64_t mSegmentTimeOffset;
+	int64_t mVideoFrameDelta;
 
 
 };

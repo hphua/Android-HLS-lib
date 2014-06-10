@@ -43,11 +43,18 @@ struct HLSMediaSourceAdapter : public android::MediaSource, public android::Medi
     size_t getCropWidth();
     size_t getCropHeight();
 
+    int getSegmentCount();
+
+    void setNeedMoreSegmentsCallback(void (*needMoreSegments)());
+
+
+
 
 protected:
 	virtual ~HLSMediaSourceAdapter();
 
 private:
+	void (*mNeedMoreSegments)();
 	std::list<android::sp<android::MediaSource> > mSources;
 	android::sp<android::MediaSource> mCurrentSource;
 

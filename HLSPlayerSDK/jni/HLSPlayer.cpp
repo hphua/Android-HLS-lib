@@ -15,6 +15,7 @@
 #include <../android-source/frameworks/av/include/media/stagefright/ColorConverter.h>
 #include <../android-source/frameworks/av/include/media/stagefright/Utils.h>
 
+
 #include "HLSSegment.h"
 #include "HLSMediaSourceAdapter.h"
 
@@ -23,14 +24,14 @@ using namespace android;
 
 #define CLASS_NAME APP_NAME"::HLSPlayer"
 
-
 #define METHOD CLASS_NAME"::HLSPlayer()"
-HLSPlayer::HLSPlayer() : mExtractorFlags(0),
+HLSPlayer::HLSPlayer(JavaVM* jvm) : mExtractorFlags(0),
 mHeight(0), mWidth(0), mBitrate(0), mActiveAudioTrackIndex(-1),
 mVideoBuffer(NULL), mWindow(NULL), mSurface(NULL), mRenderedFrameCount(0),
 mAudioPlayer(NULL), mAudioSink(NULL), mTimeSource(NULL),
 mDurationUs(0), mOffloadAudio(false), mStatus(HLSPlayer::STOPPED),
-mAudioTrack(NULL), mVideoTrack(NULL)
+mAudioTrack(NULL), mVideoTrack(NULL), mJvm(jvm), mPlayerViewClass(NULL),
+mNextSegmentMethodID(NULL), mSegmentTimeOffset(0), mVideoFrameDelta(0), mLastVideoTimeUs(0)
 {
 	status_t status = mClient.connect();
 	LOGINFO(METHOD, "OMXClient::Connect return %d", status);
@@ -48,6 +49,11 @@ HLSPlayer::~HLSPlayer()
 #define METHOD CLASS_NAME"::Close()"
 void HLSPlayer::Close(JNIEnv* env)
 {
+	if (mPlayerViewClass)
+	{
+		env->DeleteGlobalRef(mPlayerViewClass);
+		mPlayerViewClass = NULL;
+	}
 	LOGINFO(METHOD, "Entered");
 	if (mWindow)
 	{
@@ -256,18 +262,23 @@ int HLSPlayer::Update()
 		LogStatus();
 		return -1;
 	}
-	if (mVideoBuffer != NULL)
-	{
-		mVideoBuffer->release();
-		mVideoBuffer = NULL;
-	}
+//	if (mVideoBuffer != NULL)
+//	{
+//		mVideoBuffer->release();
+//		mVideoBuffer = NULL;
+//	}
 	MediaSource::ReadOptions options;
 	bool rval = -1;
 	for (;;)
 	{
-		LOGINFO(METHOD, "mVideoBuffer = %0x", mVideoBuffer);
+		//LOGINFO(METHOD, "mVideoBuffer = %0x", mVideoBuffer);
 		RUNDEBUG(mVideoTrack->getFormat()->dumpToLog());
-		status_t err = mVideoTrack->read(&mVideoBuffer, &options);
+		status_t err = OK;
+		if (mVideoBuffer == NULL)
+		{
+			LOGINFO(METHOD, "Reading video buffer");
+			err = mVideoTrack->read(&mVideoBuffer, &options);
+		}
 		if (err != OK)
 		{
 			LOGINFO(METHOD, "err=%s,%0x  Line: %d", strerror(-err), -err, __LINE__);
@@ -294,20 +305,63 @@ int HLSPlayer::Update()
 
 		if (mVideoBuffer->range_length() != 0)
 		{
-			// We appear to have a valid buffer?!
-			if (RenderBuffer(mVideoBuffer))
+			int64_t timeUs;
+			bool rval = mVideoBuffer->meta_data()->findInt64(kKeyTime, &timeUs);
+			if (!rval)
 			{
-				++mRenderedFrameCount;
-				rval = mRenderedFrameCount;
-				LOGINFO(METHOD, "mRenderedFrameCount = %d", mRenderedFrameCount);
+				LOGINFO(METHOD, "Frame did not have time value: STOPPING");
+				SetStatus(STOPPED);
+				return -1;
+			}
+
+			if (timeUs == 0)
+			{
+				// This looks like we're on a new segment
+				mSegmentTimeOffset = mLastVideoTimeUs + mVideoFrameDelta; // setting the offset. The first time through, these should all be 0
+			}
+
+			int64_t curTimeUs = timeUs + mSegmentTimeOffset;
+			if (mVideoFrameDelta == 0) mVideoFrameDelta = curTimeUs - mLastVideoTimeUs;
+
+			int64_t audioTime = mTimeSource->getRealTimeUs();
+			int64_t delta = audioTime - curTimeUs;
+
+			LOGINFO(METHOD, "audioTime = %lld | videoTime = %lld | diff = %lld | reportedVideoTime = %lld", audioTime, curTimeUs, delta, timeUs);
+
+			mLastVideoTimeUs = curTimeUs;
+			if (delta < -10000) // video is running ahead
+			{
+				LOGINFO(METHOD, "Video is running ahead - waiting til next time");
+				break; // skip out - don't render it yet
+			}
+			else if (delta > 40000) // video is running behind
+			{
+				LOGINFO(METHOD, "Video is running behind - skipping frame");
+				// Do we need to catch up?
+				mVideoBuffer->release();
+				mVideoBuffer = NULL;
+				continue;
 			}
 			else
 			{
-				LOGINFO(METHOD, "Render Buffer returned false: STOPPING");
-				SetStatus(STOPPED);
-				rval=-1;
+
+				// We appear to have a valid buffer?! and we're in time!
+				if (RenderBuffer(mVideoBuffer))
+				{
+					++mRenderedFrameCount;
+					rval = mRenderedFrameCount;
+					LOGINFO(METHOD, "mRenderedFrameCount = %d", mRenderedFrameCount);
+					break;
+				}
+				else
+				{
+					LOGINFO(METHOD, "Render Buffer returned false: STOPPING");
+					SetStatus(STOPPED);
+					rval=-1;
+					break;
+				}
+
 			}
-			break;
 		}
 
 		LOGINFO(METHOD, "Found empty buffer%d", __LINE__);
@@ -315,6 +369,13 @@ int HLSPlayer::Update()
 		mVideoBuffer->release();
 		mVideoBuffer = NULL;
 
+	}
+
+	if (mVideoTrack != NULL)
+	{
+		int segCount = ((HLSMediaSourceAdapter*) mVideoTrack.get())->getSegmentCount();
+		if (segCount < 2)
+			RequestNextSegment();
 	}
 
 
@@ -338,15 +399,15 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 	int colf = 0;
 	bool res = mVideoTrack->getFormat()->findInt32(kKeyColorFormat, &colf);
 	LOGINFO(METHOD, "Found Frame Color Format: %s", res ? "true" : "false" );
-	RUNDEBUG(mVideoTrack->getFormat()->dumpToLog());
+	//RUNDEBUG(mVideoTrack->getFormat()->dumpToLog());
 	ColorConverter cc((OMX_COLOR_FORMATTYPE)colf, OMX_COLOR_Format16bitRGB565); // Should be getting these from the formats, probably
 	LOGINFO(METHOD, "ColorConversion from %d is valid: %s", colf, cc.isValid() ? "true" : "false" );
     int64_t timeUs;
     if (buffer->meta_data()->findInt64(kKeyTime, &timeUs))
     {
-    	LOGINFO(METHOD, "%d", __LINE__);
+    	//LOGINFO(METHOD, "%d", __LINE__);
 		native_window_set_buffers_timestamp(mWindow, timeUs * 1000);
-		LOGINFO(METHOD, "%d", __LINE__);
+		//LOGINFO(METHOD, "%d", __LINE__);
 		//status_t err = mWindow->queueBuffer(mWindow, buffer->graphicBuffer().get(), -1);
 
 
@@ -373,18 +434,18 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 		}
 
 
-		LOGINFO(METHOD, "%d", __LINE__);
+		//LOGINFO(METHOD, "%d", __LINE__);
 		//if (err != 0) {
 		//	ALOGE("queueBuffer failed with error %s (%d)", strerror(-err),
 		//			-err);
 		//	return false;
 		//}
-		LOGINFO(METHOD, "%d", __LINE__);
+		//LOGINFO(METHOD, "%d", __LINE__);
 
 		sp<MetaData> metaData = buffer->meta_data();
-		LOGINFO(METHOD, "%d", __LINE__);
+		//LOGINFO(METHOD, "%d", __LINE__);
 		metaData->setInt32(kKeyRendered, 1);
-		LOGINFO(METHOD, "%d", __LINE__);
+		//LOGINFO(METHOD, "%d", __LINE__);
 		return true;
     }
     return false;
@@ -402,5 +463,43 @@ void HLSPlayer::SetStatus(int status)
 void HLSPlayer::LogStatus()
 {
 	LOGINFO(METHOD, "Status = %d", mStatus);
+}
+
+#define METHOD CLASS_NAME"::RequestNextSegment()"
+void HLSPlayer::RequestNextSegment()
+{
+	LOGINFO(METHOD, "Requesting new segment");
+	JNIEnv* env = NULL;
+	mJvm->AttachCurrentThread(&env, NULL);
+
+	if (mPlayerViewClass == NULL)
+	{
+		jclass c = env->FindClass("com/kaltura/hlsplayersdk/PlayerView");
+		if ( env->ExceptionCheck() || c == NULL) {
+			LOGINFO(METHOD, "Could not find class com/kaltura/hlsplayersdk/PlayerView" );
+			mPlayerViewClass = NULL;
+			return;
+		}
+
+		mPlayerViewClass = (jclass)env->NewGlobalRef((jobject)c);
+
+	}
+
+	if (mNextSegmentMethodID == NULL)
+	{
+		mNextSegmentMethodID = env->GetStaticMethodID(mPlayerViewClass, "requestNextSegment", "()V" );
+		if (env->ExceptionCheck())
+		{
+			mNextSegmentMethodID = NULL;
+			LOGINFO(METHOD, "Could not find method com/kaltura/hlsplayersdk/PlayerView.requestNextSegment()" );
+			return;
+		}
+	}
+
+	env->CallStaticVoidMethod(mPlayerViewClass, mNextSegmentMethodID);
+	if (env->ExceptionCheck())
+	{
+		LOGINFO(METHOD, "Call to method  com/kaltura/hlsplayersdk/PlayerView.requestNextSegment() FAILED" );
+	}
 }
 

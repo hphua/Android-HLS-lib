@@ -8,6 +8,7 @@ import com.kaltura.hlsplayersdk.events.OnPlayerStateChangeListener;
 import com.kaltura.hlsplayersdk.events.OnPlayheadUpdateListener;
 import com.kaltura.hlsplayersdk.events.OnProgressListener;
 import com.kaltura.hlsplayersdk.manifest.ManifestParser;
+import com.kaltura.hlsplayersdk.manifest.ManifestSegment;
 import com.kaltura.hlsplayersdk.manifest.events.OnParseCompleteListener;
 
 import android.content.Context;
@@ -30,10 +31,24 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 	private native void NextFrame();
 	private native void FeedSegment(String url);
 	
+	private static PlayerView currentPlayerView = null;
+	
+	public static void requestNextSegment()
+	{
+		if (currentPlayerView != null)
+		{
+			ManifestSegment seg = currentPlayerView.getStreamHandler().getNextFile(0);
+			currentPlayerView.FeedSegment(seg.uri);
+		}
+	}
+	
 	private int frameDelay = 10;
 
 	// This is our root manifest
 	private ManifestParser mManifest = null;
+	
+	private URLLoader manifestLoader;
+	private StreamHandler mStreamHandler = null;
 	
 	
 	private Handler handler = new Handler();
@@ -47,7 +62,42 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 		}
 	};
 	
+	// setVideoUrl()
+	// Sets the video URL and initiates the download of the manifest
+	@Override
+	public void setVideoUrl(String url) {
+		Log.i("PlayerView.setVideoUrl", url);
+		
+		manifestLoader = new URLLoader(this, null);
+		manifestLoader.get(url);
+	}
 	
+	
+	// Called when the manifest parser is complete. Once this is done, play can actually start
+	@Override
+	public void onParserComplete(ManifestParser parser)
+	{
+		mStreamHandler = new StreamHandler(parser);
+		//mStreamHandler.initialize(parser);
+		ManifestSegment seg = getStreamHandler().getFileForTime(0, 0);
+		currentPlayerView.FeedSegment(seg.uri);
+		play();
+		//parser.dumpToLog();
+	}
+	
+	@Override
+	public void onDownloadComplete(URLLoader loader, String response)
+	{
+		mManifest = new ManifestParser();
+		mManifest.setOnParseCompleteListener(this);
+		mManifest.parse(response, loader.getRequestURI().toString());
+	}
+	
+	@Override
+	public void onDownloadFailed(URLLoader loader, String response)
+	{
+		
+	}
 	
 	// Class Methods
 	public PlayerView(Context context)
@@ -63,6 +113,7 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 		{
 			
 		}
+		currentPlayerView = this;
 	}
 	
 	@Override
@@ -169,34 +220,11 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 		//super.seekTo(msec);
 	}
 
-	URLLoader manifestLoader;
-	@Override
-	public void setVideoUrl(String url) {
-		Log.i("PlayerView.setVideoUrl", url);
-		
-		manifestLoader = new URLLoader(this, null);
-		manifestLoader.get(url);
-	}
-	
-	@Override
-	public void onParserComplete(ManifestParser parser)
+	public StreamHandler getStreamHandler()
 	{
-		parser.dumpToLog();
+		return mStreamHandler;
 	}
-	
-	@Override
-	public void onDownloadComplete(URLLoader loader, String response)
-	{
-		mManifest = new ManifestParser();
-		mManifest.setOnParseCompleteListener(this);
-		mManifest.parse(response, loader.getRequestURI().toString());
-	}
-	
-	@Override
-	public void onDownloadFailed(URLLoader loader, String response)
-	{
-		
-	}
+
 	
 
 	@Override
@@ -228,6 +256,8 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 		// TODO Auto-generated method stub
 		
 	}
+	
+	
 	
 
 }

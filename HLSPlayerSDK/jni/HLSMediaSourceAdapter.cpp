@@ -17,7 +17,8 @@ using namespace std;
 using namespace android;
 
 #define METHOD CLASS_NAME"::HLSMediaSourceAdapter()"
-HLSMediaSourceAdapter::HLSMediaSourceAdapter() : mCurrentSource(NULL), mStartMetadata(NULL), mIsAudio(false)
+HLSMediaSourceAdapter::HLSMediaSourceAdapter() : mCurrentSource(NULL), mStartMetadata(NULL), mIsAudio(false),
+												 mNeedMoreSegments(NULL), mWidth(0), mHeight(0), mCropWidth(0), mCropHeight(0)
 {
 	LOGINFO(METHOD, "%s Entered", mIsAudio?"AUDIO":"VIDEO");
 }
@@ -35,6 +36,18 @@ HLSMediaSourceAdapter::~HLSMediaSourceAdapter()
 	}
 }
 
+#define METHOD CLASS_NAME"::setIsAudio()"
+int HLSMediaSourceAdapter::getSegmentCount()
+{
+	return mSources.size();
+}
+
+void HLSMediaSourceAdapter::setNeedMoreSegmentsCallback(void (*needMoreSegments)())
+{
+	mNeedMoreSegments = needMoreSegments;
+}
+
+#define METHOD CLASS_NAME"::setIsAudio()"
 void HLSMediaSourceAdapter::setIsAudio(bool val)
 {
 	mIsAudio = val;

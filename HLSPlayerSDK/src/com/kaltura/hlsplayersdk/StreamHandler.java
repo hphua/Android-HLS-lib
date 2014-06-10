@@ -33,7 +33,10 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 	private long mTimerDelay = 10000;
 	// private M2TSFileHandler fileHandler;
 	
-	//public StreamHandler(MediaResourceBase )
+	public StreamHandler(ManifestParser parser)
+	{
+		manifest = parser;
+	}
 	
 	private TimerTask reloadTimerComplete = new TimerTask()
 	{
@@ -154,7 +157,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 			}
 
 		}
-		dispatchDVRStreamInfo();
+		//TODO: dispatchDVRStreamInfo();
 		reloadingManifest = null; // don't want to hang on to it
 		startReloadTimer();
 		

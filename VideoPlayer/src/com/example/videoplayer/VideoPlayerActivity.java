@@ -26,14 +26,14 @@ public class VideoPlayerActivity extends ActionBarActivity {
         setContentView(R.layout.activity_video_player);
         
       
-        Uri uri=Uri.parse("http://www.ebookfrenzy.com/android_book/movie.mp4");
+        //Uri uri=Uri.parse("http://www.ebookfrenzy.com/android_book/movie.mp4");
         
         
         try
         {
         	
         	playerView = (PlayerViewController)findViewById(R.id.custom_player);
-        	playerView.addComponents("/storage/emulated/0/Movies/segment1_0_av.ts", this);
+        	playerView.addComponents("", this);
 
         }
         catch (Exception e)
@@ -60,7 +60,9 @@ public class VideoPlayerActivity extends ActionBarActivity {
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
         if (id == R.id.action_settings) {
-        	playerView.play();
+        	playerView.setVideoUrl("http://www.kaltura.com/p/0/playManifest/entryId/1_0i2t7w0i/format/applehttp");
+        	//playerView.setVideoUrl("http://kalturavod-vh.akamaihd.net/i/p/1281471/sp/128147100/serveFlavor/entryId/1_0i2t7w0i/v/1/flavorId/1_rncam6d3/index_0_av.m3u8");
+        	//playerView.play();
             return true;
         }
         return super.onOptionsItemSelected(item);
