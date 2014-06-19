@@ -4,5 +4,9 @@
     <string name="app_name">Kaltura VideoPlayer</string>
     <string name="hello_world">Hello world!</string>
     <string name="action_settings">Play Video</string>
+    <string name="abc_dvr">ABC DVR</string>
+    <string name="seekFwd">Seek Fwd</string>
+    <string name="seekBackward">Seek Backward</string>
+    <string name="testURL">Test URL</string>
 
 </resources>

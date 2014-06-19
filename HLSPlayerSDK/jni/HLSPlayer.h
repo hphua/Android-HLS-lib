@@ -51,10 +51,12 @@ public:
 	void Close(JNIEnv* env);
 
 	void SetSurface(JNIEnv* env, jobject surface);
-	android::status_t FeedSegment(const char* path);
+	android::status_t FeedSegment(const char* path, int32_t quality, double time );
 
 	bool Play();
 	int Update();
+
+	void Seek(double time);
 
 	void SetJavaVM(JavaVM* jvm);
 
@@ -69,14 +71,17 @@ private:
 	void LogStatus();
 
 	void RequestNextSegment();
+	void RequestSegmentForTime(double time);
 
 	std::list<HLSSegment* > mSegments;
+
 
 	int mRenderedFrameCount;
 	ANativeWindow* mWindow;
 
 	JavaVM* mJvm;
 	jmethodID mNextSegmentMethodID;
+	jmethodID mSegmentForTimeMethodID;
 	jclass mPlayerViewClass;
 
 	jobject mSurface;

@@ -18,7 +18,7 @@
 class HLSSegment
 {
 public:
-	HLSSegment();
+	HLSSegment(int32_t quality, double time);
 	~HLSSegment();
 
 	bool SetDataSource(android::sp<android::DataSource> dataSource);
@@ -28,8 +28,12 @@ public:
 
 	int32_t GetWidth();
 	int32_t GetHeight();
+	int32_t GetQuality();
+	double GetStartTime();
 
 	int64_t GetBitrate();
+
+
 
 private:
 
@@ -42,6 +46,8 @@ private:
 	int32_t mWidth;
 	int32_t mHeight;
 	int32_t mActiveAudioTrackIndex;
+	int32_t mQuality;
+	double mStartTime;
 	android::sp<android::DataSource> mFileSource;
 	android::sp<android::MediaExtractor> mExtractor;
 	android::sp<android::MediaSource> mAudioTrack;

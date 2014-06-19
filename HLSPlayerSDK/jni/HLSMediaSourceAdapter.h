@@ -47,6 +47,8 @@ struct HLSMediaSourceAdapter : public android::MediaSource, public android::Medi
 
     void setNeedMoreSegmentsCallback(void (*needMoreSegments)());
 
+    void clear();
+
 
 
 
@@ -65,6 +67,12 @@ private:
 	int32_t mHeight;
 	int32_t mCropWidth;
 	int32_t mCropHeight;
+
+	int64_t mFrameTimeDelta;
+	int64_t mLastFrameTime;
+	int64_t mTimestampOffset;
+	int64_t mLastTimestamp;
+
 
 };
 

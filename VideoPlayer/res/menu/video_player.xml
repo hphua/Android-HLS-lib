@@ -7,6 +7,11 @@
         android:id="@+id/action_settings"
         android:orderInCategory="100"
         android:title="@string/action_settings"
-        app:showAsAction="never"/>
+        app:showAsAction="never">
+    </item>
+    <item android:id="@+id/abc_dvr_item" android:title="@string/abc_dvr"></item>
+    <item android:id="@+id/seekFwd" android:title="@string/seekFwd"></item>
+    <item android:id="@+id/seekBwd" android:title="@string/seekBackward"></item>
+    <item android:id="@+id/testUrl" android:title="@string/testURL"></item>
 
 </menu>

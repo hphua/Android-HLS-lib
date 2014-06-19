@@ -15,6 +15,7 @@
 #include <../android-source/frameworks/av/include/media/stagefright/ColorConverter.h>
 #include <../android-source/frameworks/av/include/media/stagefright/Utils.h>
 
+#include "stlhelpers.h"
 
 #include "HLSSegment.h"
 #include "HLSMediaSourceAdapter.h"
@@ -43,7 +44,6 @@ mNextSegmentMethodID(NULL), mSegmentTimeOffset(0), mVideoFrameDelta(0), mLastVid
 #define METHOD CLASS_NAME"::~HLSPlayer()"
 HLSPlayer::~HLSPlayer()
 {
-
 }
 
 #define METHOD CLASS_NAME"::Close()"
@@ -73,6 +73,7 @@ void HLSPlayer::Close(JNIEnv* env)
 	{
 		// do something!
 	}
+	stlwipe(mSegments);
 }
 
 
@@ -116,7 +117,7 @@ void HLSPlayer::SetNativeWindow(ANativeWindow* window)
 
 
 #define METHOD CLASS_NAME"::FeedSegment()"
-status_t HLSPlayer::FeedSegment(const char* path)
+status_t HLSPlayer::FeedSegment(const char* path, int quality, double time )
 {
 
 	// Make a data source from the file
@@ -126,14 +127,13 @@ status_t HLSPlayer::FeedSegment(const char* path)
 	status_t err = dataSource->initCheck();
 	if (err != OK) return err;
 
-	HLSSegment* s = new HLSSegment();
+	HLSSegment* s = new HLSSegment(quality, time);
 	if (s)
 	{
 		if (s->SetDataSource(dataSource))
 		{
 			mSegments.push_back(s);
-			PostSegment(s);
-			return OK;
+			return PostSegment(s);
 		}
 		else
 		{
@@ -255,12 +255,20 @@ bool HLSPlayer::Play()
 #define METHOD CLASS_NAME"::Update()"
 int HLSPlayer::Update()
 {
-	LOGINFO(METHOD, "Entered");
+	//LOGINFO(METHOD, "Entered");
 
 	if (mStatus != PLAYING)
 	{
 		LogStatus();
 		return -1;
+	}
+
+	if (mVideoTrack != NULL)
+	{
+		int segCount = ((HLSMediaSourceAdapter*) mVideoTrack.get())->getSegmentCount();
+		LOGINFO(METHOD, "Segment Count %d", segCount);
+		if (segCount < 2)
+			RequestNextSegment();
 	}
 //	if (mVideoBuffer != NULL)
 //	{
@@ -314,21 +322,12 @@ int HLSPlayer::Update()
 				return -1;
 			}
 
-			if (timeUs == 0)
-			{
-				// This looks like we're on a new segment
-				mSegmentTimeOffset = mLastVideoTimeUs + mVideoFrameDelta; // setting the offset. The first time through, these should all be 0
-			}
-
-			int64_t curTimeUs = timeUs + mSegmentTimeOffset;
-			if (mVideoFrameDelta == 0) mVideoFrameDelta = curTimeUs - mLastVideoTimeUs;
-
 			int64_t audioTime = mTimeSource->getRealTimeUs();
-			int64_t delta = audioTime - curTimeUs;
+			int64_t delta = audioTime - timeUs;
 
-			LOGINFO(METHOD, "audioTime = %lld | videoTime = %lld | diff = %lld | reportedVideoTime = %lld", audioTime, curTimeUs, delta, timeUs);
+			LOGINFO(METHOD, "audioTime = %lld | videoTime = %lld | diff = %lld", audioTime, timeUs, delta);
 
-			mLastVideoTimeUs = curTimeUs;
+			mLastVideoTimeUs = timeUs;
 			if (delta < -10000) // video is running ahead
 			{
 				LOGINFO(METHOD, "Video is running ahead - waiting til next time");
@@ -371,12 +370,7 @@ int HLSPlayer::Update()
 
 	}
 
-	if (mVideoTrack != NULL)
-	{
-		int segCount = ((HLSMediaSourceAdapter*) mVideoTrack.get())->getSegmentCount();
-		if (segCount < 2)
-			RequestNextSegment();
-	}
+
 
 
 //    int64_t nextTimeUs;
@@ -390,7 +384,7 @@ int HLSPlayer::Update()
 #define METHOD CLASS_NAME"::RenderBuffer()"
 bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 {
-	LOGINFO(METHOD, "Entered");
+	//LOGINFO(METHOD, "Entered");
 	//LOGINFO(METHOD, "Rendering Buffer size=%d", buffer->size());
 	if (!mWindow) { LOGINFO(METHOD, "mWindow is NULL"); return false; }
 	if (!buffer) { LOGINFO(METHOD, "the MediaBuffer is NULL"); return false; }
@@ -455,11 +449,14 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 #define METHOD CLASS_NAME"::SetStatus()"
 void HLSPlayer::SetStatus(int status)
 {
-	mStatus = status;
-	LOGINFO(METHOD, "status = %d", status);
+	if (mStatus != status)
+	{
+		mStatus = status;
+		LOGINFO(METHOD, "Status Changed: %d", status);
+	}
 }
 
-#define METHOD CLASS_NAME"::SetStatus()"
+#define METHOD CLASS_NAME"::LogStatus()"
 void HLSPlayer::LogStatus()
 {
 	LOGINFO(METHOD, "Status = %d", mStatus);
@@ -501,5 +498,65 @@ void HLSPlayer::RequestNextSegment()
 	{
 		LOGINFO(METHOD, "Call to method  com/kaltura/hlsplayersdk/PlayerView.requestNextSegment() FAILED" );
 	}
+}
+
+#define METHOD CLASS_NAME"::RequestSegmentForTime()"
+void HLSPlayer::RequestSegmentForTime(double time)
+{
+	LOGINFO(METHOD, "Requesting segment for time %d", time);
+	JNIEnv* env = NULL;
+	mJvm->AttachCurrentThread(&env, NULL);
+
+	if (mPlayerViewClass == NULL)
+	{
+		jclass c = env->FindClass("com/kaltura/hlsplayersdk/PlayerView");
+		if ( env->ExceptionCheck() || c == NULL) {
+			LOGINFO(METHOD, "Could not find class com/kaltura/hlsplayersdk/PlayerView" );
+			mPlayerViewClass = NULL;
+			return;
+		}
+
+		mPlayerViewClass = (jclass)env->NewGlobalRef((jobject)c);
+
+	}
+
+	if (mSegmentForTimeMethodID == NULL)
+	{
+		mSegmentForTimeMethodID = env->GetStaticMethodID(mPlayerViewClass, "requestSegmentForTime", "(D)V" );
+		if (env->ExceptionCheck())
+		{
+			mSegmentForTimeMethodID = NULL;
+			LOGINFO(METHOD, "Could not find method com/kaltura/hlsplayersdk/PlayerView.requestSegmentForTime()" );
+			return;
+		}
+	}
+
+	env->CallStaticVoidMethod(mPlayerViewClass, mSegmentForTimeMethodID, time);
+	if (env->ExceptionCheck())
+	{
+		LOGINFO(METHOD, "Call to method  com/kaltura/hlsplayersdk/PlayerView.requestSegmentForTime() FAILED" );
+	}
+}
+
+void HLSPlayer::Seek(double time)
+{
+	// Set seeking flag
+	mStatus = SEEKING;
+
+	// pause the audio player? Or do we reset it?
+	if (mAudioPlayer) mAudioPlayer->pause(false);
+
+	// Clear our data???
+	stlwipe(mSegments);
+	((HLSMediaSourceAdapter*)mVideoTrack.get())->clear();
+	((HLSMediaSourceAdapter*)mAudioTrack.get())->clear();
+
+	RequestSegmentForTime(time);
+
+	mVideoTrack->start();
+	mAudioTrack->start();
+	mAudioPlayer->start(true);
+
+
 }
 

@@ -60,7 +60,7 @@ extern "C"
 	#define METHOD CLASS_NAME"::Java_com_kaltura_hlsplayersdk_PlayerView_SetSurface()"
 	void Java_com_kaltura_hlsplayersdk_PlayerView_SetSurface(JNIEnv* env, jobject jcaller, jobject surface)
 	{
-		LOGINFO(METHOD, "Entered");
+		//LOGINFO(METHOD, "Entered");
 		if (gHLSPlayerSDK != NULL)
 		{
 			if (gHLSPlayerSDK->GetPlayer() == NULL) gHLSPlayerSDK->CreateDecoder();
@@ -82,7 +82,7 @@ extern "C"
 	void Java_com_kaltura_hlsplayersdk_PlayerView_NextFrame(JNIEnv* env, jobject jcaller)
 	{
 		bool rval = false;
-		LOGINFO(METHOD, "Entered");
+		//LOGINFO(METHOD, "Entered");
 		if (gHLSPlayerSDK != NULL)
 		{
 			if (gHLSPlayerSDK->GetPlayer())
@@ -94,7 +94,7 @@ extern "C"
 	}
 
 	#define METHOD CLASS_NAME"::Java_com_kaltura_hlsplayersdk_PlayerView_FeedSegment()"
-	void Java_com_kaltura_hlsplayersdk_PlayerView_FeedSegment(JNIEnv* env, jobject jcaller, jstring jurl )
+	void Java_com_kaltura_hlsplayersdk_PlayerView_FeedSegment(JNIEnv* env, jobject jcaller, jstring jurl, jint quality, jdouble startTime )
 	{
 		LOGINFO(METHOD, "Entered");
 		if (gHLSPlayerSDK != NULL)
@@ -102,8 +102,21 @@ extern "C"
 			if (gHLSPlayerSDK->GetPlayer())
 			{
 				const char* url = env->GetStringUTFChars(jurl, 0);
-				gHLSPlayerSDK->GetPlayer()->FeedSegment(url);
+				gHLSPlayerSDK->GetPlayer()->FeedSegment(url, quality, startTime);
 				env->ReleaseStringUTFChars(jurl, url);
+			}
+		}
+	}
+
+	#define METHOD CLASS_NAME"::Java_com_kaltura_hlsplayersdk_PlayerView_SeekTo()"
+	void Java_com_kaltura_hlsplayersdk_PlayerView_SeekTo(JNIEnv* env, jobject jcaller, jdouble time )
+	{
+		LOGINFO(METHOD, "Entered");
+		if (gHLSPlayerSDK != NULL)
+		{
+			if (gHLSPlayerSDK->GetPlayer())
+			{
+				gHLSPlayerSDK->GetPlayer()->Seek(time);
 			}
 		}
 	}

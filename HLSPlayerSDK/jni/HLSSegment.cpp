@@ -20,7 +20,7 @@ using namespace android;
 
 
 #define METHOD CLASS_NAME"::HLSSegment()"
-HLSSegment::HLSSegment() : mWidth(0), mHeight(0), mBitrate(0), mExtractorFlags(0), mActiveAudioTrackIndex(0)
+HLSSegment::HLSSegment(int32_t quality, double time) : mWidth(0), mHeight(0), mBitrate(0), mExtractorFlags(0), mActiveAudioTrackIndex(0), mStartTime(time), mQuality(quality)
 {
 
 }
@@ -247,12 +247,23 @@ int32_t HLSSegment::GetWidth()
 	return mWidth;
 }
 
-#define METHOD CLASS_NAME"::GetWidth()"
+#define METHOD CLASS_NAME"::GetHeight()"
 int32_t HLSSegment::GetHeight()
 {
 	return mHeight;
 }
 
+#define METHOD CLASS_NAME"::GetQuality()"
+int32_t HLSSegment::GetQuality()
+{
+	return mQuality;
+}
+
+#define METHOD CLASS_NAME"::GetStartTime()"
+double HLSSegment::GetStartTime()
+{
+	return mStartTime;
+}
 #define METHOD CLASS_NAME"::GetBitrate()"
 int64_t HLSSegment::GetBitrate()
 {

@@ -984,6 +984,7 @@ containing a value of this type.
         public static final int ic_launcher=0x7f020057;
     }
     public static final class id {
+        public static final int abc_dvr_item=0x7f05003f;
         public static final int action_bar=0x7f05001c;
         public static final int action_bar_activity_content=0x7f050015;
         public static final int action_bar_container=0x7f05001b;
@@ -1035,6 +1036,8 @@ containing a value of this type.
         public static final int search_plate=0x7f050036;
         public static final int search_src_text=0x7f050037;
         public static final int search_voice_btn=0x7f05003b;
+        public static final int seekBwd=0x7f050041;
+        public static final int seekFwd=0x7f050040;
         public static final int shortcut=0x7f05002e;
         public static final int showCustom=0x7f050007;
         public static final int showHome=0x7f050004;
@@ -1042,6 +1045,7 @@ containing a value of this type.
         public static final int split_action_bar=0x7f05001e;
         public static final int submit_area=0x7f050039;
         public static final int tabMode=0x7f050002;
+        public static final int testUrl=0x7f050042;
         public static final int title=0x7f05002b;
         public static final int top_action_bar=0x7f050020;
         public static final int up=0x7f050021;
@@ -1123,6 +1127,7 @@ containing a value of this type.
  Description of the shwoing of a popup window with activities to choose from. [CHAR LIMIT=NONE] 
          */
         public static final int abc_activitychooserview_choose_application=0x7f0a0009;
+        public static final int abc_dvr=0x7f0a0010;
         /**  SearchView accessibility description for clear button [CHAR LIMIT=NONE] 
          */
         public static final int abc_searchview_description_clear=0x7f0a0006;
@@ -1147,6 +1152,9 @@ containing a value of this type.
         public static final int action_settings=0x7f0a000f;
         public static final int app_name=0x7f0a000d;
         public static final int hello_world=0x7f0a000e;
+        public static final int seekBackward=0x7f0a0012;
+        public static final int seekFwd=0x7f0a0011;
+        public static final int testURL=0x7f0a0013;
     }
     public static final class style {
         /** 

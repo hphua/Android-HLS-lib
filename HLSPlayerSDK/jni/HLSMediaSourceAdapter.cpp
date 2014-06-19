@@ -18,7 +18,8 @@ using namespace android;
 
 #define METHOD CLASS_NAME"::HLSMediaSourceAdapter()"
 HLSMediaSourceAdapter::HLSMediaSourceAdapter() : mCurrentSource(NULL), mStartMetadata(NULL), mIsAudio(false),
-												 mNeedMoreSegments(NULL), mWidth(0), mHeight(0), mCropWidth(0), mCropHeight(0)
+												 mNeedMoreSegments(NULL), mWidth(0), mHeight(0), mCropWidth(0), mCropHeight(0),
+												 mFrameTimeDelta(0), mLastFrameTime(0), mTimestampOffset(0), mLastTimestamp(0)
 {
 	LOGINFO(METHOD, "%s Entered", mIsAudio?"AUDIO":"VIDEO");
 }
@@ -61,6 +62,15 @@ void HLSMediaSourceAdapter::append(sp<MediaSource> source)
 	else mSources.push_back(source);
 }
 
+#define METHOD CLASS_NAME"::clear()"
+void HLSMediaSourceAdapter::clear()
+{
+	LOGINFO(METHOD, "%s Entered", mIsAudio?"AUDIO":"VIDEO");
+	if (mCurrentSource != NULL) mCurrentSource->stop();
+	mCurrentSource = NULL;
+	mSources.clear();
+}
+
 #define METHOD CLASS_NAME"::start()"
 status_t HLSMediaSourceAdapter::start(android::MetaData * params /* = NULL */)
 {
@@ -71,13 +81,14 @@ status_t HLSMediaSourceAdapter::start(android::MetaData * params /* = NULL */)
 	}
 	if (mCurrentSource == NULL && mSources.size() == 0)
 	{
-		LOGINFO(METHOD, "We don't seem to have any more sources");
+		LOGINFO(METHOD, "%s: We don't seem to have any more sources", mIsAudio?"AUDIO":"VIDEO");
 		return ERROR_END_OF_STREAM;
 	}
 	if (mCurrentSource == NULL)
 	{
 		mCurrentSource = mSources.front();
 		mSources.pop_front();
+		LOGINFO(METHOD, "Remaining Segments = %d", mSources.size());
 	}
 
 	if (!mIsAudio)
@@ -98,7 +109,7 @@ status_t HLSMediaSourceAdapter::start(android::MetaData * params /* = NULL */)
 #define METHOD CLASS_NAME"::stop()"
 status_t HLSMediaSourceAdapter::stop()
 {
-	LOGINFO(METHOD, "%s Entered", mIsAudio?"AUDIO":"VIDEO");
+	//LOGINFO(METHOD, "%s Entered", mIsAudio?"AUDIO":"VIDEO");
 	status_t res = mCurrentSource->stop();
 	return res;
 }
@@ -106,7 +117,7 @@ status_t HLSMediaSourceAdapter::stop()
 #define METHOD CLASS_NAME"::getFormat()"
 sp<MetaData> HLSMediaSourceAdapter::getFormat()
 {
-	LOGINFO(METHOD, "%s Entered", mIsAudio?"AUDIO":"VIDEO");
+	//LOGINFO(METHOD, "%s Entered", mIsAudio?"AUDIO":"VIDEO");
 	sp<MetaData> meta = mCurrentSource->getFormat();
 	return meta;
 }
@@ -114,29 +125,89 @@ sp<MetaData> HLSMediaSourceAdapter::getFormat()
 #define METHOD CLASS_NAME"::read()"
 status_t HLSMediaSourceAdapter::read(MediaBuffer **buffer, const ReadOptions *options /* = NULL*/)
 {
-	LOGINFO(METHOD, "%s Entered", mIsAudio?"AUDIO":"VIDEO");
-	status_t res = mCurrentSource->read(buffer, options);
-	if (res == ERROR_END_OF_STREAM)
+	//LOGINFO(METHOD, "%s Entered", mIsAudio?"AUDIO":"VIDEO");
+	status_t res;
+	for (;;)
 	{
-		LOGINFO(METHOD, "read error = ERROR_END_OF_STREAM");
-
-		stop();
-		mCurrentSource = NULL;
-		if (start(mStartMetadata.get()) == OK)
+		res = mCurrentSource->read(buffer, options);
+		if (res == ERROR_END_OF_STREAM)
 		{
-			//if (mIsAudio) (*buffer)->release();
-			res = mCurrentSource->read(buffer, options);
-			if (res == INFO_FORMAT_CHANGED)
+			LOGINFO(METHOD, "%s: read error = ERROR_END_OF_STREAM", mIsAudio?"AUDIO":"VIDEO");
+
+			stop();
+			mCurrentSource = NULL;
+			if (start(mStartMetadata.get()) == OK)
 			{
-				LOGINFO(METHOD, "Format Changed. Media buffer = %0x", buffer);
+				LOGINFO(METHOD, "%s: Next Segment Started", mIsAudio?"AUDIO":"VIDEO");
+				//if (mIsAudio) (*buffer)->release();
 				res = mCurrentSource->read(buffer, options);
+				if (res == INFO_FORMAT_CHANGED)
+				{
+					LOGINFO(METHOD, "%s: Format Changed. Media buffer = %0x", mIsAudio?"AUDIO":"VIDEO", buffer);
+					res = mCurrentSource->read(buffer, options);
+				}
 			}
 		}
+		else if (res == INFO_DISCONTINUITY)
+		{
+			LOGINFO(METHOD, "%s: Found stream discontinuity");
+			continue;
+		}
+		else if (res != OK)
+		{
+			LOGINFO(METHOD, "%s: read error = %s", mIsAudio?"AUDIO":"VIDEO", strerror(-res));
+			return res;
+		}
+
+		if (mIsAudio)
+		{
+			return res;
+		}
+
+
+		if ((*buffer)->range_length() != 0)
+		{
+			// We have a valid buffer
+			break;
+		}
+		else
+		{
+			// Release the buffer because we're going to try to get a new one!
+			(*buffer)->release();
+			(*buffer) == NULL;
+		}
 	}
-	else if (res != OK)
+
+	if (res == OK && !mIsAudio)
 	{
-		LOGINFO(METHOD, "read error = %s", strerror(-res));
+		int64_t timeUs;
+		int64_t newTimeUs;
+		bool rval = (*buffer)->meta_data()->findInt64(kKeyTime, &timeUs);
+
+		if (rval)
+		{
+			// The assumption here is that if timeUs is not less than the lastTimestamp, then the timestamps are consecutive
+			if (timeUs < mLastTimestamp)
+			{
+				LOGINFO(METHOD, "%s: Updating Timestamp Time=%lld | Last Time=%lld", mIsAudio?"AUDIO":"VIDEO", timeUs, mLastTimestamp);
+				// we have a new segment - time to calculate the offset
+				mTimestampOffset = (mLastFrameTime - timeUs) + mFrameTimeDelta;
+			}
+
+			mLastTimestamp = timeUs;
+			newTimeUs = timeUs + mTimestampOffset;
+			mFrameTimeDelta = newTimeUs - mLastFrameTime;
+			mLastFrameTime = newTimeUs;
+
+			LOGINFO(METHOD, "%s: Time=%lld | Last Time=%lld | New Time=%lld | Delta=%lld | Offset=%lld", mIsAudio?"AUDIO":"VIDEO",
+									timeUs, mLastFrameTime, newTimeUs, mFrameTimeDelta, mTimestampOffset);
+
+
+			(*buffer)->meta_data()->setInt64(kKeyTime, newTimeUs);
+
+		}
 	}
+
 	return res;
 }
 

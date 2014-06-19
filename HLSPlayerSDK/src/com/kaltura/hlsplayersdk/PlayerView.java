@@ -29,7 +29,9 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 	private native void PlayFile();
 	private native void SetSurface(Surface surface);
 	private native void NextFrame();
-	private native void FeedSegment(String url);
+	private native void FeedSegment(String url, int quality, double startTime);
+	private native void SeekTo(double time); // seconds, not miliseconds - I'll change this later if it 
+	//private native double CurTim
 	
 	private static PlayerView currentPlayerView = null;
 	
@@ -38,7 +40,16 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 		if (currentPlayerView != null)
 		{
 			ManifestSegment seg = currentPlayerView.getStreamHandler().getNextFile(0);
-			currentPlayerView.FeedSegment(seg.uri);
+			currentPlayerView.FeedSegment(seg.uri, 0, seg.startTime);
+		}
+	}
+	
+	public static void requestSegmentForTime(double time)
+	{
+		if (currentPlayerView != null)
+		{
+			ManifestSegment seg = currentPlayerView.getStreamHandler().getFileForTime(time, 0);
+			currentPlayerView.FeedSegment(seg.uri, 0, seg.startTime);
 		}
 	}
 	
@@ -56,7 +67,7 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 	{
 		public void run()
 		{
-			Log.i("Runnable.run", "Running!");
+			//Log.i("Runnable.run", "Running!");
 			NextFrame();
 			postDelayed(runnable, frameDelay);
 		}
@@ -80,7 +91,9 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 		mStreamHandler = new StreamHandler(parser);
 		//mStreamHandler.initialize(parser);
 		ManifestSegment seg = getStreamHandler().getFileForTime(0, 0);
-		currentPlayerView.FeedSegment(seg.uri);
+		currentPlayerView.FeedSegment(seg.uri, 0, seg.startTime);
+		seg = getStreamHandler().getNextFile(0);
+		currentPlayerView.FeedSegment(seg.uri, 0, seg.startTime);
 		play();
 		//parser.dumpToLog();
 	}
