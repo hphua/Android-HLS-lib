@@ -227,6 +227,7 @@ int drawable abc_textfield_searchview_holo_light 0x7f020054
 int drawable abc_textfield_searchview_right_holo_dark 0x7f020055
 int drawable abc_textfield_searchview_right_holo_light 0x7f020056
 int drawable ic_launcher 0x7f020057
+int id abc_dvr_item 0x7f05003f
 int id action_bar 0x7f05001c
 int id action_bar_activity_content 0x7f050015
 int id action_bar_container 0x7f05001b
@@ -278,6 +279,8 @@ int id search_mag_icon 0x7f050035
 int id search_plate 0x7f050036
 int id search_src_text 0x7f050037
 int id search_voice_btn 0x7f05003b
+int id seekBwd 0x7f050041
+int id seekFwd 0x7f050040
 int id shortcut 0x7f05002e
 int id showCustom 0x7f050007
 int id showHome 0x7f050004
@@ -285,6 +288,7 @@ int id showTitle 0x7f050006
 int id split_action_bar 0x7f05001e
 int id submit_area 0x7f050039
 int id tabMode 0x7f050002
+int id testUrl 0x7f050042
 int id title 0x7f05002b
 int id top_action_bar 0x7f050020
 int id up 0x7f050021
@@ -323,6 +327,7 @@ int string abc_action_menu_overflow_description 0x7f0a0003
 int string abc_action_mode_done 0x7f0a0000
 int string abc_activity_chooser_view_see_all 0x7f0a000a
 int string abc_activitychooserview_choose_application 0x7f0a0009
+int string abc_dvr 0x7f0a0010
 int string abc_searchview_description_clear 0x7f0a0006
 int string abc_searchview_description_query 0x7f0a0005
 int string abc_searchview_description_search 0x7f0a0004
@@ -333,6 +338,9 @@ int string abc_shareactionprovider_share_with_application 0x7f0a000b
 int string action_settings 0x7f0a000f
 int string app_name 0x7f0a000d
 int string hello_world 0x7f0a000e
+int string seekBackward 0x7f0a0012
+int string seekFwd 0x7f0a0011
+int string testURL 0x7f0a0013
 int style AppBaseTheme 0x7f0b0083
 int style AppTheme 0x7f0b0084
 int style TextAppearance_AppCompat_Base_CompactMenu_Dialog 0x7f0b0063

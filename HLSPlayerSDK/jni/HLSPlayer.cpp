@@ -27,12 +27,13 @@ using namespace android;
 
 #define METHOD CLASS_NAME"::HLSPlayer()"
 HLSPlayer::HLSPlayer(JavaVM* jvm) : mExtractorFlags(0),
-mHeight(0), mWidth(0), mBitrate(0), mActiveAudioTrackIndex(-1),
+mHeight(0), mWidth(0), mCropHeight(0), mCropWidth(0), mBitrate(0), mActiveAudioTrackIndex(-1),
 mVideoBuffer(NULL), mWindow(NULL), mSurface(NULL), mRenderedFrameCount(0),
 mAudioPlayer(NULL), mAudioSink(NULL), mTimeSource(NULL),
 mDurationUs(0), mOffloadAudio(false), mStatus(HLSPlayer::STOPPED),
 mAudioTrack(NULL), mVideoTrack(NULL), mJvm(jvm), mPlayerViewClass(NULL),
-mNextSegmentMethodID(NULL), mSegmentTimeOffset(0), mVideoFrameDelta(0), mLastVideoTimeUs(0)
+mNextSegmentMethodID(NULL), mSegmentTimeOffset(0), mVideoFrameDelta(0), mLastVideoTimeUs(0),
+mSegmentForTimeMethodID(NULL), mFrameCount(0)
 {
 	status_t status = mClient.connect();
 	LOGINFO(METHOD, "OMXClient::Connect return %d", status);
@@ -149,36 +150,50 @@ status_t HLSPlayer::FeedSegment(const char* path, int quality, double time )
 status_t HLSPlayer::PostSegment(HLSSegment* s)
 {
 	LOGINFO(METHOD, "Entered");
-	if (!s) return BAD_VALUE;
 
-	sp<MediaSource> omxSource = OMXCodec::Create(mClient.interface(), s->GetVideoTrack()->getFormat(), false, s->GetVideoTrack(), NULL, 0, NULL /*nativeWindow*/);
-	LOGINFO(METHOD, "OMXCodec::Create() (video) returned %0x", omxSource.get());
-	((HLSMediaSourceAdapter*)mVideoTrack.get())->append(omxSource);
+	((HLSMediaSourceAdapter*)mVideoTrack.get())->append(s->GetVideoTrack());
+	((HLSMediaSourceAdapter*)mAudioTrack.get())->append(s->GetAudioTrack());
 
-	audio_stream_type_t streamType = AUDIO_STREAM_MUSIC;
-	if (mAudioSink != NULL)
-	{
-		streamType = mAudioSink->getAudioStreamType();
-	}
-
-	mOffloadAudio = canOffloadStream(s->GetAudioTrack()->getFormat(), (s->GetVideoTrack() != NULL), false /*streaming http */, streamType);
-	LOGINFO(METHOD, "mOffloadAudio == %s", mOffloadAudio ? "true" : "false");
-
-	sp<MediaSource> omxAudioSource = OMXCodec::Create(mClient.interface(), s->GetAudioTrack()->getFormat(), false, s->GetAudioTrack());
-	LOGINFO(METHOD, "OMXCodec::Create() (audio) returned %0x", omxAudioSource.get());
-
-
-	if (mOffloadAudio)
-	{
-		LOGINFO(METHOD, "Bypass OMX (offload) Line: %d", __LINE__);
-		((HLSMediaSourceAdapter*)mAudioTrack.get())->append(s->GetAudioTrack());
-	}
-	else
-	{
-		LOGINFO(METHOD, "Not Bypassing OMX Line: %d", __LINE__);
-		((HLSMediaSourceAdapter*)mAudioTrack.get())->append(omxAudioSource);
-	}
 	return OK;
+
+
+
+//	LOGINFO(METHOD, "Entered");
+//	if (!s) return BAD_VALUE;
+//
+//	// Video
+//	sp<MediaSource> omxSource = OMXCodec::Create(mClient.interface(), s->GetVideoTrack()->getFormat(), false, s->GetVideoTrack(), NULL, 0, NULL /*nativeWindow*/);
+//	LOGINFO(METHOD, "OMXCodec::Create() (video) returned %0x", omxSource.get());
+//	((HLSMediaSourceAdapter*)mVideoTrack.get())->append(omxSource);
+//
+//	audio_stream_type_t streamType = AUDIO_STREAM_MUSIC;
+//	if (mAudioSink != NULL)
+//	{
+//		streamType = mAudioSink->getAudioStreamType();
+//	}
+//
+//
+//
+//
+//	// Audio
+//	mOffloadAudio = canOffloadStream(s->GetAudioTrack()->getFormat(), (s->GetVideoTrack() != NULL), false /*streaming http */, streamType);
+//	LOGINFO(METHOD, "mOffloadAudio == %s", mOffloadAudio ? "true" : "false");
+//
+//	sp<MediaSource> omxAudioSource = OMXCodec::Create(mClient.interface(), s->GetAudioTrack()->getFormat(), false, s->GetAudioTrack());
+//	LOGINFO(METHOD, "OMXCodec::Create() (audio) returned %0x", omxAudioSource.get());
+//
+//
+//	if (mOffloadAudio)
+//	{
+//		LOGINFO(METHOD, "Bypass OMX (offload) Line: %d", __LINE__);
+//		((HLSMediaSourceAdapter*)mAudioTrack.get())->append(s->GetAudioTrack());
+//	}
+//	else
+//	{
+//		LOGINFO(METHOD, "Not Bypassing OMX Line: %d", __LINE__);
+//		((HLSMediaSourceAdapter*)mAudioTrack.get())->append(omxAudioSource);
+//	}
+//	return OK;
 
 
 }
@@ -200,12 +215,63 @@ bool HLSPlayer::CreateAudioPlayer()
 	}
 
 	mAudioPlayer = new AudioPlayer(mAudioSink, flags, NULL);
-	mAudioPlayer->setSource(mAudioTrack);
+	mAudioPlayer->setSource(mAudioSource);
 	mTimeSource = mAudioPlayer;
 
 	return true;
 }
 
+
+#define METHOD CLASS_NAME"::InitSources()"
+bool HLSPlayer::InitSources()
+{
+		LOGINFO(METHOD, "Entered");
+		if (mVideoTrack == NULL || mAudioTrack == NULL) return false;
+
+
+		// Video
+		sp<MediaSource> omxSource = OMXCodec::Create(mClient.interface(), mVideoTrack->getFormat(), false, mVideoTrack, NULL, 0, NULL /*nativeWindow*/);
+		LOGINFO(METHOD, "OMXCodec::Create() (video) returned %0x", omxSource.get());
+		mVideoSource = omxSource;
+
+		audio_stream_type_t streamType = AUDIO_STREAM_MUSIC;
+		if (mAudioSink != NULL)
+		{
+			streamType = mAudioSink->getAudioStreamType();
+		}
+
+
+		sp<MetaData> meta = mVideoSource->getFormat();
+		meta->findInt32(kKeyWidth, &mWidth);
+		meta->findInt32(kKeyHeight, &mHeight);
+		int32_t left, top;
+		meta->findRect(kKeyCropRect, &left, &top, &mCropWidth, &mCropHeight);
+
+
+
+
+		// Audio
+		mOffloadAudio = canOffloadStream(mAudioTrack->getFormat(), (mVideoTrack != NULL), false /*streaming http */, streamType);
+		LOGINFO(METHOD, "mOffloadAudio == %s", mOffloadAudio ? "true" : "false");
+
+		sp<MediaSource> omxAudioSource = OMXCodec::Create(mClient.interface(), mAudioTrack->getFormat(), false, mAudioTrack);
+		LOGINFO(METHOD, "OMXCodec::Create() (audio) returned %0x", omxAudioSource.get());
+
+
+		if (mOffloadAudio)
+		{
+			LOGINFO(METHOD, "Bypass OMX (offload) Line: %d", __LINE__);
+			mAudioSource = mAudioTrack;
+			//((HLSMediaSourceAdapter*)mAudioTrack.get())->append(s->GetAudioTrack());
+		}
+		else
+		{
+			LOGINFO(METHOD, "Not Bypassing OMX Line: %d", __LINE__);
+			mAudioSource = omxAudioSource;
+			//((HLSMediaSourceAdapter*)mAudioTrack.get())->append(omxAudioSource);
+		}
+		return true;
+}
 
 //
 //  Play()
@@ -222,10 +288,12 @@ bool HLSPlayer::Play()
 	nativeWindow = mWindow;
 	LOGINFO(METHOD, "%d", __LINE__);
 
-	status_t err = mVideoTrack->start();
+	if (!InitSources()) return false;
+
+	status_t err = mVideoSource->start();
 	if (err == OK)
 	{
-		err = mAudioTrack->start();
+		err = mAudioSource->start();
 		if (err == OK)
 		{
 			if (CreateAudioPlayer())
@@ -266,7 +334,7 @@ int HLSPlayer::Update()
 	if (mVideoTrack != NULL)
 	{
 		int segCount = ((HLSMediaSourceAdapter*) mVideoTrack.get())->getSegmentCount();
-		LOGINFO(METHOD, "Segment Count %d", segCount);
+		//LOGINFO(METHOD, "Segment Count %d", segCount);
 		if (segCount < 2)
 			RequestNextSegment();
 	}
@@ -280,12 +348,13 @@ int HLSPlayer::Update()
 	for (;;)
 	{
 		//LOGINFO(METHOD, "mVideoBuffer = %0x", mVideoBuffer);
-		RUNDEBUG(mVideoTrack->getFormat()->dumpToLog());
+		RUNDEBUG(mVideoSource->getFormat()->dumpToLog());
 		status_t err = OK;
 		if (mVideoBuffer == NULL)
 		{
 			LOGINFO(METHOD, "Reading video buffer");
-			err = mVideoTrack->read(&mVideoBuffer, &options);
+			err = mVideoSource->read(&mVideoBuffer, &options);
+			if (err == OK && mVideoBuffer->range_length() != 0) ++mFrameCount;
 		}
 		if (err != OK)
 		{
@@ -323,9 +392,38 @@ int HLSPlayer::Update()
 			}
 
 			int64_t audioTime = mTimeSource->getRealTimeUs();
+
+			LOGINFO(METHOD, "audioTime = %lld | videoTime = %lld | diff = %lld", audioTime, timeUs, audioTime - timeUs);
+
+
+
+			if (timeUs > mLastVideoTimeUs)
+			{
+				mVideoFrameDelta += timeUs - mLastVideoTimeUs;
+				LOGINFO(METHOD, "mVideoFrameDelta = %lld", mVideoFrameDelta);
+			}
+			else if (timeUs < mLastVideoTimeUs)
+			{
+				// okay - we need to do something to timeUs
+				LOGINFO(METHOD, "mFrameCount = %lld", mFrameCount);
+				if (timeUs + mSegmentTimeOffset + (mVideoFrameDelta / mFrameCount) < mLastVideoTimeUs)
+				{
+					mSegmentTimeOffset = mLastVideoTimeUs + (mVideoFrameDelta / mFrameCount);
+				}
+
+				timeUs += mSegmentTimeOffset;
+			}
+
+			LOGINFO(METHOD, "audioTime = %lld | videoTime = %lld | diff = %lld", audioTime, timeUs, audioTime - timeUs);
+
+//			if (timeUs < mLastVideoTimeUs)
+//			{
+//				// We need to add an offset
+//				timeUs += mLastVideoTimeUs;
+//			}
+
 			int64_t delta = audioTime - timeUs;
 
-			LOGINFO(METHOD, "audioTime = %lld | videoTime = %lld | diff = %lld", audioTime, timeUs, delta);
 
 			mLastVideoTimeUs = timeUs;
 			if (delta < -10000) // video is running ahead
@@ -350,15 +448,16 @@ int HLSPlayer::Update()
 					++mRenderedFrameCount;
 					rval = mRenderedFrameCount;
 					LOGINFO(METHOD, "mRenderedFrameCount = %d", mRenderedFrameCount);
-					break;
 				}
 				else
 				{
 					LOGINFO(METHOD, "Render Buffer returned false: STOPPING");
 					SetStatus(STOPPED);
 					rval=-1;
-					break;
 				}
+				mVideoBuffer->release();
+				mVideoBuffer = NULL;
+				break;
 
 			}
 		}
@@ -385,13 +484,13 @@ int HLSPlayer::Update()
 bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 {
 	//LOGINFO(METHOD, "Entered");
-	//LOGINFO(METHOD, "Rendering Buffer size=%d", buffer->size());
+	LOGINFO(METHOD, "Rendering Buffer size=%d", buffer->size());
 	if (!mWindow) { LOGINFO(METHOD, "mWindow is NULL"); return false; }
 	if (!buffer) { LOGINFO(METHOD, "the MediaBuffer is NULL"); return false; }
 	//if (!buffer->graphicBuffer().get()){ LOGINFO(CLASS_NAME, "the MediaBuffer->graphicBuffer is NULL"); return false; }
 	RUNDEBUG(buffer->meta_data()->dumpToLog());
 	int colf = 0;
-	bool res = mVideoTrack->getFormat()->findInt32(kKeyColorFormat, &colf);
+	bool res = mVideoSource->getFormat()->findInt32(kKeyColorFormat, &colf);
 	LOGINFO(METHOD, "Found Frame Color Format: %s", res ? "true" : "false" );
 	//RUNDEBUG(mVideoTrack->getFormat()->dumpToLog());
 	ColorConverter cc((OMX_COLOR_FORMATTYPE)colf, OMX_COLOR_Format16bitRGB565); // Should be getting these from the formats, probably
@@ -411,12 +510,12 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 		{
 			LOGINFO(METHOD, "buffer locked (%d x %d stride=%d, format=%d)", windowBuffer.width, windowBuffer.height, windowBuffer.stride, windowBuffer.format);
 
-			HLSMediaSourceAdapter* vt = (HLSMediaSourceAdapter*)mVideoTrack.get();
+			//MediaSource* vt = (MediaSource*)mVideoSource.get();
 
 			unsigned short *pixels = (unsigned short *)windowBuffer.bits;
 			for(int i=0; i<windowBuffer.width * windowBuffer.height; i++)
 				pixels[i] = 0x0000;
-			cc.convert(buffer->data(), vt->getWidth(), vt->getHeight(), 0, 0, vt->getCropWidth(), vt->getCropHeight(), windowBuffer.bits, windowBuffer.width, windowBuffer.height, 0,0,vt->getCropWidth(), vt->getCropHeight());
+			cc.convert(buffer->data(), mWidth, mHeight, 0, 0, mCropWidth, mCropHeight, windowBuffer.bits, windowBuffer.width, windowBuffer.height, 0,0,mCropWidth, mCropHeight);
 			void *gbBits = NULL;
 
 			//buffer->graphicBuffer().get()->lock(0, &gbBits);

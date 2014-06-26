@@ -65,6 +65,7 @@ private:
 	void SetStatus(int status);
 	void SetNativeWindow(ANativeWindow* window);
 	bool InitAudio();
+	bool InitSources();
 	bool CreateAudioPlayer();
 	bool CreateVideoPlayer();
 	bool RenderBuffer(android::MediaBuffer* buffer);
@@ -89,11 +90,17 @@ private:
 	int mStatus;
 
 	android::OMXClient mClient;
+
+	// These are our video and audo tracks that we shove data into
 	android::sp<android::MediaSource> mVideoTrack;
 	android::sp<android::MediaSource> mAudioTrack;
 
-	android::sp<android::DataSource> mFileSource;
-	android::sp<android::MediaExtractor> mExtractor;
+
+	// These are the codec converted sources that we get actual frames and audio from
+	android::sp<android::MediaSource> mVideoSource;
+	android::sp<android::MediaSource> mAudioSource;
+
+	android::sp<android::MediaExtractor> mExtractor;    // The object that pulls the initial data source apart into separate audio and video sources
 
 	android::AudioPlayer* mAudioPlayer;
 	android::sp<android::MediaPlayerBase::AudioSink> mAudioSink;
@@ -106,12 +113,15 @@ private:
 	int64_t mBitrate;
 	int32_t mWidth;
 	int32_t mHeight;
+	int32_t mCropWidth;
+	int32_t mCropHeight;
 	int32_t mActiveAudioTrackIndex;
 	uint32_t mExtractorFlags;
 
 	int64_t mLastVideoTimeUs;
 	int64_t mSegmentTimeOffset;
 	int64_t mVideoFrameDelta;
+	int64_t mFrameCount;
 
 
 };

@@ -110,10 +110,12 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 		for ( i = 0; i < lines.length; ++i)
 		{
 			String curLine = lines[i];
-			String curPrefix = curLine.substring(0, 1);
-			
 			// Ignore empty lines;
 			if (curLine.length() == 0) continue;
+
+			
+			String curPrefix = curLine.substring(0, 1);
+			
 			
 			if (!curPrefix.endsWith("#") && curLine.length() > 0)
 			{

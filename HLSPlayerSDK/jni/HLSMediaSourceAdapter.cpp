@@ -93,11 +93,11 @@ status_t HLSMediaSourceAdapter::start(android::MetaData * params /* = NULL */)
 
 	if (!mIsAudio)
 	{
-		sp<MetaData> meta = mCurrentSource->getFormat();
-		meta->findInt32(kKeyWidth, &mWidth);
-		meta->findInt32(kKeyHeight, &mHeight);
-		int32_t left, top;
-		meta->findRect(kKeyCropRect, &left, &top, &mCropWidth, &mCropHeight);
+//		sp<MetaData> meta = mCurrentSource->getFormat();
+//		meta->findInt32(kKeyWidth, &mWidth);
+//		meta->findInt32(kKeyHeight, &mHeight);
+//		int32_t left, top;
+//		meta->findRect(kKeyCropRect, &left, &top, &mCropWidth, &mCropHeight);
 
 	}
 
@@ -127,8 +127,21 @@ status_t HLSMediaSourceAdapter::read(MediaBuffer **buffer, const ReadOptions *op
 {
 	//LOGINFO(METHOD, "%s Entered", mIsAudio?"AUDIO":"VIDEO");
 	status_t res;
-	for (;;)
+	//for (;;)
 	{
+		if (options != NULL)
+		{
+			int64_t seekTime;
+			ReadOptions::SeekMode seekMode;
+			if (options->getSeekTo(&seekTime, &seekMode ))
+			{
+				LOGINFO(METHOD, "%s: SeekTime=%lld SeekMode=%d", mIsAudio?"AUDIO":"VIDEO", seekTime, seekMode );
+			}
+			else
+			{
+				LOGINFO(METHOD, "%s getSeekTo() failed", mIsAudio?"AUDIO":"VIDEO");
+			}
+		}
 		res = mCurrentSource->read(buffer, options);
 		if (res == ERROR_END_OF_STREAM)
 		{
@@ -141,17 +154,7 @@ status_t HLSMediaSourceAdapter::read(MediaBuffer **buffer, const ReadOptions *op
 				LOGINFO(METHOD, "%s: Next Segment Started", mIsAudio?"AUDIO":"VIDEO");
 				//if (mIsAudio) (*buffer)->release();
 				res = mCurrentSource->read(buffer, options);
-				if (res == INFO_FORMAT_CHANGED)
-				{
-					LOGINFO(METHOD, "%s: Format Changed. Media buffer = %0x", mIsAudio?"AUDIO":"VIDEO", buffer);
-					res = mCurrentSource->read(buffer, options);
-				}
 			}
-		}
-		else if (res == INFO_DISCONTINUITY)
-		{
-			LOGINFO(METHOD, "%s: Found stream discontinuity");
-			continue;
 		}
 		else if (res != OK)
 		{
@@ -159,54 +162,54 @@ status_t HLSMediaSourceAdapter::read(MediaBuffer **buffer, const ReadOptions *op
 			return res;
 		}
 
-		if (mIsAudio)
+		//if (mIsAudio)
 		{
 			return res;
 		}
 
 
-		if ((*buffer)->range_length() != 0)
-		{
-			// We have a valid buffer
-			break;
-		}
-		else
-		{
-			// Release the buffer because we're going to try to get a new one!
-			(*buffer)->release();
-			(*buffer) == NULL;
-		}
+//		if ((*buffer)->range_length() != 0)
+//		{
+//			// We have a valid buffer
+//			break;
+//		}
+//		else
+//		{
+//			// Release the buffer because we're going to try to get a new one!
+//			(*buffer)->release();
+//			(*buffer) == NULL;
+//		}
 	}
 
-	if (res == OK && !mIsAudio)
-	{
-		int64_t timeUs;
-		int64_t newTimeUs;
-		bool rval = (*buffer)->meta_data()->findInt64(kKeyTime, &timeUs);
-
-		if (rval)
-		{
-			// The assumption here is that if timeUs is not less than the lastTimestamp, then the timestamps are consecutive
-			if (timeUs < mLastTimestamp)
-			{
-				LOGINFO(METHOD, "%s: Updating Timestamp Time=%lld | Last Time=%lld", mIsAudio?"AUDIO":"VIDEO", timeUs, mLastTimestamp);
-				// we have a new segment - time to calculate the offset
-				mTimestampOffset = (mLastFrameTime - timeUs) + mFrameTimeDelta;
-			}
-
-			mLastTimestamp = timeUs;
-			newTimeUs = timeUs + mTimestampOffset;
-			mFrameTimeDelta = newTimeUs - mLastFrameTime;
-			mLastFrameTime = newTimeUs;
-
-			LOGINFO(METHOD, "%s: Time=%lld | Last Time=%lld | New Time=%lld | Delta=%lld | Offset=%lld", mIsAudio?"AUDIO":"VIDEO",
-									timeUs, mLastFrameTime, newTimeUs, mFrameTimeDelta, mTimestampOffset);
-
-
-			(*buffer)->meta_data()->setInt64(kKeyTime, newTimeUs);
-
-		}
-	}
+//	if (res == OK && !mIsAudio)
+//	{
+//		int64_t timeUs;
+//		int64_t newTimeUs;
+//		bool rval = (*buffer)->meta_data()->findInt64(kKeyTime, &timeUs);
+//
+//		if (rval)
+//		{
+//			// The assumption here is that if timeUs is not less than the lastTimestamp, then the timestamps are consecutive
+//			if (timeUs < mLastTimestamp)
+//			{
+//				LOGINFO(METHOD, "%s: Updating Timestamp Time=%lld | Last Time=%lld", mIsAudio?"AUDIO":"VIDEO", timeUs, mLastTimestamp);
+//				// we have a new segment - time to calculate the offset
+//				mTimestampOffset = (mLastFrameTime - timeUs) + mFrameTimeDelta;
+//			}
+//
+//			mLastTimestamp = timeUs;
+//			newTimeUs = timeUs + mTimestampOffset;
+//			mFrameTimeDelta = newTimeUs - mLastFrameTime;
+//			mLastFrameTime = newTimeUs;
+//
+//			LOGINFO(METHOD, "%s: Time=%lld | Last Time=%lld | New Time=%lld | Delta=%lld | Offset=%lld", mIsAudio?"AUDIO":"VIDEO",
+//									timeUs, mLastFrameTime, newTimeUs, mFrameTimeDelta, mTimestampOffset);
+//
+//
+//			(*buffer)->meta_data()->setInt64(kKeyTime, newTimeUs);
+//
+//		}
+//	}
 
 	return res;
 }

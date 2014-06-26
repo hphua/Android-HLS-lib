@@ -83,7 +83,8 @@ public class VideoPlayerActivity extends ActionBarActivity {
         }
         else if (id == R.id.testUrl)
         {
-        	playerView.setVideoUrl("https://dl.dropboxusercontent.com/u/41430608/TestStream/index_500_av-p.m3u8");
+        	//playerView.setVideoUrl("https://dl.dropboxusercontent.com/u/41430608/TestStream/index_500_av-p.m3u8");
+        	playerView.setVideoUrl("http://www.djing.com/tv/live.m3u8");
         	return true;
         }
         return super.onOptionsItemSelected(item);

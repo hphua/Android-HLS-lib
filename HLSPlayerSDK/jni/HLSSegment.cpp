@@ -59,7 +59,7 @@ bool HLSSegment::SetDataSource(android::sp<android::DataSource> dataSource)
 	for (size_t i = 0; i < mExtractor->countTracks(); ++i)
 	{
 
-		sp<MetaData> meta = mExtractor->getTrackMetaData(i);
+		sp<MetaData> meta = mExtractor->getTrackMetaData(i); // this is likely to return an MPEG2TSSource
 
 		int32_t bitrate = 0;
 		if (!meta->findInt32(kKeyBitRate, &bitrate))
@@ -138,84 +138,6 @@ bool HLSSegment::SetDataSource(android::sp<android::DataSource> dataSource)
 
 	return true;
 }
-
-//#define METHOD CLASS_NAME"::InitAudioDecoder()"
-//bool HLSSegment::InitAudioDecoder()
-//{
-//	LOGINFO(METHOD, "Entered");
-//	if (mAudioTrack == NULL) return false;
-//
-//	sp<MetaData> meta = mAudioTrack->getFormat();
-//
-//	LOGINFO(METHOD, "mAudioTrack MetaData");
-//	RUNDEBUG(meta->dumpToLog());
-//
-//	const char* mime = NULL;
-//
-//	if (!meta->findCString(kKeyMIMEType, &mime))
-//	{
-//		LOGINFO(METHOD, "Couldn't find mime type for audio track");
-//		return false;
-//	}
-//
-//	LOGINFO(METHOD, "Audio Track Mime Type = '%s' Line: %d", mime, __LINE__);
-//
-//	audio_stream_type_t streamType = AUDIO_STREAM_MUSIC;
-//
-//	LOGINFO(METHOD, "mAudioSink == %0x", mAudioSink.get());
-//	if (mAudioSink != NULL)
-//	{
-//		streamType = mAudioSink->getAudioStreamType();
-//	}
-//
-//	mOffloadAudio = canOffloadStream(meta, (mVideoSource != NULL), false /*streaming http */, streamType);
-//	LOGINFO(METHOD, "mOffloadAudio == %s", mOffloadAudio ? "true" : "false");
-//
-//
-//	if (!strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_RAW))
-//	{
-//		LOGINFO(METHOD, "bybass OMX (raw) Line: %d", __LINE__);
-//		mAudioSource = mAudioTrack;
-//	}
-//	else
-//	{
-//		mOmxSource = OMXCodec::Create(mClient.interface(), mAudioTrack->getFormat(), false, mAudioTrack);
-//		if (mOffloadAudio)
-//		{
-//			LOGINFO(METHOD, "Bypass OMX (offload) Line: %d", __LINE__);
-//			mAudioSource = mAudioTrack;
-//		}
-//		else
-//		{
-//			LOGINFO(METHOD, "Not Bypassing OMX Line: %d", __LINE__);
-//			mAudioSource = mOmxSource;
-//		}
-//	}
-//
-//	if (mAudioSource != NULL)
-//	{
-//		int64_t durationUs = 0;
-//		if (mAudioTrack->getFormat()->findInt64(kKeyDuration, &durationUs))
-//		{
-//			if (mDurationUs < 0 || durationUs > mDurationUs)
-//			{
-//				mDurationUs = durationUs;
-//			}
-//		}
-//
-//		status_t err = mAudioSource->start();
-//
-//		if (err != OK)
-//		{
-//			LOGINFO(METHOD, "Audio couldn't start - err: %d Line: %d", err, __LINE__);
-//			mAudioSource.clear();
-//			mOmxSource.clear();
-//			return false;
-//		}
-//	}
-//
-//	return true;
-//}
 
 #define METHOD CLASS_NAME"::SetAudioTrack()"
 void HLSSegment::SetAudioTrack(sp<MediaSource> source)
