@@ -120,9 +120,7 @@ status_t HLSPlayer::FeedSegment(const char* path, int quality, double time )
 
 	// Make a data source from the file
 	LOGINFO(METHOD, "path = '%s'", path);
-	if (mDataSource == NULL) mDataSource = new HLSDataSource(); //DataSource::CreateFromURI(path); //new FileSource(path);
-
-
+	if (mDataSource == NULL) mDataSource = new HLSDataSource();
 
 	status_t err = mDataSource->append(path);
 	if (err != OK)
@@ -131,13 +129,14 @@ status_t HLSPlayer::FeedSegment(const char* path, int quality, double time )
 		return err;
 	}
 
+	// I don't know if we still need this - might need to pass in the URL instead of the datasource
 	HLSSegment* s = new HLSSegment(quality, time);
 	if (s)
 	{
 		if (s->SetDataSource(mDataSource))
 		{
 			mSegments.push_back(s);
-			return PostSegment(s);
+			return OK;
 		}
 		else
 		{
@@ -147,58 +146,6 @@ status_t HLSPlayer::FeedSegment(const char* path, int quality, double time )
 		return UNKNOWN_ERROR;
 	}
 	return NO_MEMORY;
-}
-
-#define METHOD CLASS_NAME"::PostSegment()"
-status_t HLSPlayer::PostSegment(HLSSegment* s)
-{
-	LOGINFO(METHOD, "Entered");
-
-//	((HLSMediaSourceAdapter*)mVideoTrack.get())->append(s->GetVideoTrack());
-//	((HLSMediaSourceAdapter*)mAudioTrack.get())->append(s->GetAudioTrack());
-
-	return OK;
-
-
-
-//	LOGINFO(METHOD, "Entered");
-//	if (!s) return BAD_VALUE;
-//
-//	// Video
-//	sp<MediaSource> omxSource = OMXCodec::Create(mClient.interface(), s->GetVideoTrack()->getFormat(), false, s->GetVideoTrack(), NULL, 0, NULL /*nativeWindow*/);
-//	LOGINFO(METHOD, "OMXCodec::Create() (video) returned %0x", omxSource.get());
-//	((HLSMediaSourceAdapter*)mVideoTrack.get())->append(omxSource);
-//
-//	audio_stream_type_t streamType = AUDIO_STREAM_MUSIC;
-//	if (mAudioSink != NULL)
-//	{
-//		streamType = mAudioSink->getAudioStreamType();
-//	}
-//
-//
-//
-//
-//	// Audio
-//	mOffloadAudio = canOffloadStream(s->GetAudioTrack()->getFormat(), (s->GetVideoTrack() != NULL), false /*streaming http */, streamType);
-//	LOGINFO(METHOD, "mOffloadAudio == %s", mOffloadAudio ? "true" : "false");
-//
-//	sp<MediaSource> omxAudioSource = OMXCodec::Create(mClient.interface(), s->GetAudioTrack()->getFormat(), false, s->GetAudioTrack());
-//	LOGINFO(METHOD, "OMXCodec::Create() (audio) returned %0x", omxAudioSource.get());
-//
-//
-//	if (mOffloadAudio)
-//	{
-//		LOGINFO(METHOD, "Bypass OMX (offload) Line: %d", __LINE__);
-//		((HLSMediaSourceAdapter*)mAudioTrack.get())->append(s->GetAudioTrack());
-//	}
-//	else
-//	{
-//		LOGINFO(METHOD, "Not Bypassing OMX Line: %d", __LINE__);
-//		((HLSMediaSourceAdapter*)mAudioTrack.get())->append(omxAudioSource);
-//	}
-//	return OK;
-
-
 }
 
 #define METHOD CLASS_NAME"::InitTracks()"
@@ -448,11 +395,7 @@ int HLSPlayer::Update()
 		if (segCount < 3) // (current segment + 2)
 			RequestNextSegment();
 	}
-//	if (mVideoBuffer != NULL)
-//	{
-//		mVideoBuffer->release();
-//		mVideoBuffer = NULL;
-//	}
+
 	MediaSource::ReadOptions options;
 	bool rval = -1;
 	for (;;)
@@ -525,12 +468,6 @@ int HLSPlayer::Update()
 			}
 
 			LOGINFO(METHOD, "audioTime = %lld | videoTime = %lld | diff = %lld", audioTime, timeUs, audioTime - timeUs);
-
-//			if (timeUs < mLastVideoTimeUs)
-//			{
-//				// We need to add an offset
-//				timeUs += mLastVideoTimeUs;
-//			}
 
 			int64_t delta = audioTime - timeUs;
 

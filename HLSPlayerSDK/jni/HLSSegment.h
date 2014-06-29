@@ -52,9 +52,7 @@ private:
 	android::sp<android::MediaExtractor> mExtractor;
 	android::sp<android::MediaSource> mAudioTrack;
 	android::sp<android::MediaSource> mVideoTrack;
-//	android::sp<android::MediaPlayerBase::AudioSink> mAudioSink;
-//	bool mOffloadAudio;
-//	android::sp<android::MediaSource> mAudioSource; //
+
 };
 
 

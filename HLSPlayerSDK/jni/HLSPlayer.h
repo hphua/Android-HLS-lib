@@ -61,7 +61,6 @@ public:
 	void SetJavaVM(JavaVM* jvm);
 
 private:
-	android::status_t PostSegment(HLSSegment* s);
 	void SetStatus(int status);
 	void SetNativeWindow(ANativeWindow* window);
 	bool InitAudio();
