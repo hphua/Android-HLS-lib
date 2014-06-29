@@ -4,7 +4,7 @@ include $(CLEAR_VARS)
 
 
 LOCAL_MODULE    := HLSPlayerSDK
-LOCAL_SRC_FILES := HLSPlayerSDK.cpp HLSSegment.cpp HLSMediaSourceAdapter.cpp HLSPlayer.cpp
+LOCAL_SRC_FILES := HLSPlayerSDK.cpp HLSSegment.cpp HLSPlayer.cpp HLSDataSource.cpp
 LOCAL_CFLAGS += -DHAVE_SYS_UIO_H
 LOCAL_C_INCLUDES += $(LOCAL_PATH)/../android-source/frameworks/av/include
 LOCAL_C_INCLUDES += $(LOCAL_PATH)/../android-source/frameworks/native/include/media/openmax

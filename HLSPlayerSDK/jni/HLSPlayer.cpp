@@ -18,7 +18,7 @@
 #include "stlhelpers.h"
 
 #include "HLSSegment.h"
-#include "HLSMediaSourceAdapter.h"
+#include "HLSDataSource.h"
 
 
 using namespace android;
@@ -33,13 +33,10 @@ mAudioPlayer(NULL), mAudioSink(NULL), mTimeSource(NULL),
 mDurationUs(0), mOffloadAudio(false), mStatus(HLSPlayer::STOPPED),
 mAudioTrack(NULL), mVideoTrack(NULL), mJvm(jvm), mPlayerViewClass(NULL),
 mNextSegmentMethodID(NULL), mSegmentTimeOffset(0), mVideoFrameDelta(0), mLastVideoTimeUs(0),
-mSegmentForTimeMethodID(NULL), mFrameCount(0)
+mSegmentForTimeMethodID(NULL), mFrameCount(0), mDataSource(NULL)
 {
 	status_t status = mClient.connect();
 	LOGINFO(METHOD, "OMXClient::Connect return %d", status);
-	mAudioTrack = new HLSMediaSourceAdapter();
-	((HLSMediaSourceAdapter*)mAudioTrack.get())->setIsAudio(true);
-	mVideoTrack = new HLSMediaSourceAdapter();
 }
 
 #define METHOD CLASS_NAME"::~HLSPlayer()"
@@ -123,15 +120,21 @@ status_t HLSPlayer::FeedSegment(const char* path, int quality, double time )
 
 	// Make a data source from the file
 	LOGINFO(METHOD, "path = '%s'", path);
-	sp<DataSource> dataSource = DataSource::CreateFromURI(path); //new FileSource(path);
+	if (mDataSource == NULL) mDataSource = new HLSDataSource(); //DataSource::CreateFromURI(path); //new FileSource(path);
 
-	status_t err = dataSource->initCheck();
-	if (err != OK) return err;
+
+
+	status_t err = mDataSource->append(path);
+	if (err != OK)
+	{
+		LOGERROR(METHOD, "append Failed: %s", strerror(-err));
+		return err;
+	}
 
 	HLSSegment* s = new HLSSegment(quality, time);
 	if (s)
 	{
-		if (s->SetDataSource(dataSource))
+		if (s->SetDataSource(mDataSource))
 		{
 			mSegments.push_back(s);
 			return PostSegment(s);
@@ -151,8 +154,8 @@ status_t HLSPlayer::PostSegment(HLSSegment* s)
 {
 	LOGINFO(METHOD, "Entered");
 
-	((HLSMediaSourceAdapter*)mVideoTrack.get())->append(s->GetVideoTrack());
-	((HLSMediaSourceAdapter*)mAudioTrack.get())->append(s->GetAudioTrack());
+//	((HLSMediaSourceAdapter*)mVideoTrack.get())->append(s->GetVideoTrack());
+//	((HLSMediaSourceAdapter*)mAudioTrack.get())->append(s->GetAudioTrack());
 
 	return OK;
 
@@ -198,6 +201,114 @@ status_t HLSPlayer::PostSegment(HLSSegment* s)
 
 }
 
+#define METHOD CLASS_NAME"::InitTracks()"
+bool HLSPlayer::InitTracks()
+{
+	status_t err = mDataSource->initCheck();
+	if (err != OK)
+	{
+		LOGERROR(METHOD, "DataSource is invalid: %s", strerror(-err));
+		//return false;
+	}
+
+
+	mExtractor = MediaExtractor::Create(mDataSource);
+	if (mExtractor == NULL)
+	{
+		LOGERROR(METHOD, "Could not create MediaExtractor from DataSource %0x", mDataSource.get());
+		return false;
+	}
+
+	if (mExtractor->getDrmFlag())
+	{
+		LOGERROR(METHOD, "This datasource has DRM - not implemented!!!");
+		return false;
+	}
+
+	int64_t totalBitRate = 0;
+	for (size_t i = 0; i < mExtractor->countTracks(); ++i)
+	{
+
+		sp<MetaData> meta = mExtractor->getTrackMetaData(i); // this is likely to return an MPEG2TSSource
+
+		int32_t bitrate = 0;
+		if (!meta->findInt32(kKeyBitRate, &bitrate))
+		{
+			const char* mime = "[unknown]";
+			meta->findCString(kKeyMIMEType, &mime);
+
+			LOGINFO(METHOD, "Track #%d of type '%s' does not publish bitrate", i, mime );
+			continue;
+		}
+		LOGINFO(METHOD, "bitrate for track %d = %d bits/sec", i , bitrate);
+		totalBitRate += bitrate;
+	}
+
+	mBitrate = totalBitRate;
+
+
+
+	LOGINFO(METHOD, "mBitrate = %lld bits/sec", mBitrate);
+
+	bool haveAudio = false;
+	bool haveVideo = false;
+
+	for (size_t i = 0; i < mExtractor->countTracks(); ++i)
+	{
+		sp<MetaData> meta = mExtractor->getTrackMetaData(i);
+		meta->dumpToLog();
+
+		const char* cmime;
+		if (meta->findCString(kKeyMIMEType, &cmime))
+		{
+			String8 mime = String8(cmime);
+
+			if (!haveVideo && !strncasecmp(mime.string(), "video/", 6))
+			{
+				mVideoTrack = mExtractor->getTrack(i);
+				haveVideo = true;
+
+				// Set the presentation/display size
+				int32_t width, height;
+				bool res = meta->findInt32(kKeyWidth, &width);
+				if (res)
+				{
+					res = meta->findInt32(kKeyHeight, &height);
+				}
+				if (res)
+				{
+					mWidth = width;
+					mHeight = height;
+					LOGINFO(METHOD, "Video Track Width = %d, Height = %d, %d", width, height, __LINE__);
+				}
+			}
+			else if (!haveAudio && !strncasecmp(mime.string(), "audio/", 6))
+			{
+				mAudioTrack = mExtractor->getTrack(i);
+				haveAudio = true;
+
+				mActiveAudioTrackIndex = i;
+
+			}
+			else if (!strcasecmp(mime.string(), MEDIA_MIMETYPE_TEXT_3GPP))
+			{
+				//addTextSource_l(i, mExtractor->getTrack(i));
+			}
+		}
+	}
+
+	if (!haveAudio && !haveVideo)
+	{
+		return UNKNOWN_ERROR;
+	}
+
+
+
+	mExtractorFlags = mExtractor->flags();
+
+	return true;
+}
+
 #define METHOD CLASS_NAME"::CreateAudioPlayer()"
 bool HLSPlayer::CreateAudioPlayer()
 {
@@ -225,52 +336,51 @@ bool HLSPlayer::CreateAudioPlayer()
 #define METHOD CLASS_NAME"::InitSources()"
 bool HLSPlayer::InitSources()
 {
-		LOGINFO(METHOD, "Entered");
-		if (mVideoTrack == NULL || mAudioTrack == NULL) return false;
+	if (!InitTracks()) return false;
+	LOGINFO(METHOD, "Entered");
+	if (mVideoTrack == NULL || mAudioTrack == NULL) return false;
 
 
-		// Video
-		sp<MediaSource> omxSource = OMXCodec::Create(mClient.interface(), mVideoTrack->getFormat(), false, mVideoTrack, NULL, 0, NULL /*nativeWindow*/);
-		LOGINFO(METHOD, "OMXCodec::Create() (video) returned %0x", omxSource.get());
-		mVideoSource = omxSource;
+	// Video
+	sp<MediaSource> omxSource = OMXCodec::Create(mClient.interface(), mVideoTrack->getFormat(), false, mVideoTrack, NULL, 0, NULL /*nativeWindow*/);
+	LOGINFO(METHOD, "OMXCodec::Create() (video) returned %0x", omxSource.get());
+	mVideoSource = omxSource;
 
-		audio_stream_type_t streamType = AUDIO_STREAM_MUSIC;
-		if (mAudioSink != NULL)
-		{
-			streamType = mAudioSink->getAudioStreamType();
-		}
-
-
-		sp<MetaData> meta = mVideoSource->getFormat();
-		meta->findInt32(kKeyWidth, &mWidth);
-		meta->findInt32(kKeyHeight, &mHeight);
-		int32_t left, top;
-		meta->findRect(kKeyCropRect, &left, &top, &mCropWidth, &mCropHeight);
+	audio_stream_type_t streamType = AUDIO_STREAM_MUSIC;
+	if (mAudioSink != NULL)
+	{
+		streamType = mAudioSink->getAudioStreamType();
+	}
 
 
+	sp<MetaData> meta = mVideoSource->getFormat();
+	meta->findInt32(kKeyWidth, &mWidth);
+	meta->findInt32(kKeyHeight, &mHeight);
+	int32_t left, top;
+	meta->findRect(kKeyCropRect, &left, &top, &mCropWidth, &mCropHeight);
 
 
-		// Audio
-		mOffloadAudio = canOffloadStream(mAudioTrack->getFormat(), (mVideoTrack != NULL), false /*streaming http */, streamType);
-		LOGINFO(METHOD, "mOffloadAudio == %s", mOffloadAudio ? "true" : "false");
+	// Audio
+	mOffloadAudio = canOffloadStream(mAudioTrack->getFormat(), (mVideoTrack != NULL), false /*streaming http */, streamType);
+	LOGINFO(METHOD, "mOffloadAudio == %s", mOffloadAudio ? "true" : "false");
 
-		sp<MediaSource> omxAudioSource = OMXCodec::Create(mClient.interface(), mAudioTrack->getFormat(), false, mAudioTrack);
-		LOGINFO(METHOD, "OMXCodec::Create() (audio) returned %0x", omxAudioSource.get());
+	sp<MediaSource> omxAudioSource = OMXCodec::Create(mClient.interface(), mAudioTrack->getFormat(), false, mAudioTrack);
+	LOGINFO(METHOD, "OMXCodec::Create() (audio) returned %0x", omxAudioSource.get());
 
 
-		if (mOffloadAudio)
-		{
-			LOGINFO(METHOD, "Bypass OMX (offload) Line: %d", __LINE__);
-			mAudioSource = mAudioTrack;
-			//((HLSMediaSourceAdapter*)mAudioTrack.get())->append(s->GetAudioTrack());
-		}
-		else
-		{
-			LOGINFO(METHOD, "Not Bypassing OMX Line: %d", __LINE__);
-			mAudioSource = omxAudioSource;
-			//((HLSMediaSourceAdapter*)mAudioTrack.get())->append(omxAudioSource);
-		}
-		return true;
+	if (mOffloadAudio)
+	{
+		LOGINFO(METHOD, "Bypass OMX (offload) Line: %d", __LINE__);
+		mAudioSource = mAudioTrack;
+		//((HLSMediaSourceAdapter*)mAudioTrack.get())->append(s->GetAudioTrack());
+	}
+	else
+	{
+		LOGINFO(METHOD, "Not Bypassing OMX Line: %d", __LINE__);
+		mAudioSource = omxAudioSource;
+		//((HLSMediaSourceAdapter*)mAudioTrack.get())->append(omxAudioSource);
+	}
+	return true;
 }
 
 //
@@ -333,9 +443,9 @@ int HLSPlayer::Update()
 
 	if (mVideoTrack != NULL)
 	{
-		int segCount = ((HLSMediaSourceAdapter*) mVideoTrack.get())->getSegmentCount();
+		int segCount = ((HLSDataSource*) mDataSource.get())->getPreloadedSegmentCount();
 		//LOGINFO(METHOD, "Segment Count %d", segCount);
-		if (segCount < 2)
+		if (segCount < 3) // (current segment + 2)
 			RequestNextSegment();
 	}
 //	if (mVideoBuffer != NULL)
@@ -639,22 +749,22 @@ void HLSPlayer::RequestSegmentForTime(double time)
 
 void HLSPlayer::Seek(double time)
 {
-	// Set seeking flag
-	mStatus = SEEKING;
-
-	// pause the audio player? Or do we reset it?
-	if (mAudioPlayer) mAudioPlayer->pause(false);
-
-	// Clear our data???
-	stlwipe(mSegments);
-	((HLSMediaSourceAdapter*)mVideoTrack.get())->clear();
-	((HLSMediaSourceAdapter*)mAudioTrack.get())->clear();
-
-	RequestSegmentForTime(time);
-
-	mVideoTrack->start();
-	mAudioTrack->start();
-	mAudioPlayer->start(true);
+//	// Set seeking flag
+//	mStatus = SEEKING;
+//
+//	// pause the audio player? Or do we reset it?
+//	if (mAudioPlayer) mAudioPlayer->pause(false);
+//
+//	// Clear our data???
+//	stlwipe(mSegments);
+//	((HLSMediaSourceAdapter*)mVideoTrack.get())->clear();
+//	((HLSMediaSourceAdapter*)mAudioTrack.get())->clear();
+//
+//	RequestSegmentForTime(time);
+//
+//	mVideoTrack->start();
+//	mAudioTrack->start();
+//	mAudioPlayer->start(true);
 
 
 }

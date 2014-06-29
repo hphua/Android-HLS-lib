@@ -31,8 +31,8 @@
 
 #include <list>
 
-class HLSMediaSourceAdapter;
 class HLSSegment;
+class HLSDataSource;
 
 class HLSPlayer
 {
@@ -71,6 +71,8 @@ private:
 	bool RenderBuffer(android::MediaBuffer* buffer);
 	void LogStatus();
 
+	bool InitTracks();
+
 	void RequestNextSegment();
 	void RequestSegmentForTime(double time);
 
@@ -100,10 +102,13 @@ private:
 	android::sp<android::MediaSource> mVideoSource;
 	android::sp<android::MediaSource> mAudioSource;
 
+	android::sp<HLSDataSource> mDataSource;
+
 	android::sp<android::MediaExtractor> mExtractor;    // The object that pulls the initial data source apart into separate audio and video sources
 
 	android::AudioPlayer* mAudioPlayer;
 	android::sp<android::MediaPlayerBase::AudioSink> mAudioSink;
+
 	android::TimeSource* mTimeSource;
 	bool mOffloadAudio;
 	int64_t mDurationUs;

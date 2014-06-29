@@ -34,107 +34,107 @@ HLSSegment::~HLSSegment()
 #define METHOD CLASS_NAME"::SetDataSource()"
 bool HLSSegment::SetDataSource(android::sp<android::DataSource> dataSource)
 {
-	status_t err = dataSource->initCheck();
-	if (err != OK)
-	{
-		LOGERROR(METHOD, "DataSource is invalid: %s", strerror(-err));
-		return false;
-	}
-
-	mFileSource = dataSource;
-	mExtractor = MediaExtractor::Create(mFileSource);
-	if (mExtractor == NULL)
-	{
-		LOGERROR(METHOD, "Could not create MediaExtractor from DataSource %0x", dataSource.get());
-		return false;
-	}
-
-	if (mExtractor->getDrmFlag())
-	{
-		LOGERROR(METHOD, "This datasource has DRM - not implemented!!!");
-		return false;
-	}
-
-	int64_t totalBitRate = 0;
-	for (size_t i = 0; i < mExtractor->countTracks(); ++i)
-	{
-
-		sp<MetaData> meta = mExtractor->getTrackMetaData(i); // this is likely to return an MPEG2TSSource
-
-		int32_t bitrate = 0;
-		if (!meta->findInt32(kKeyBitRate, &bitrate))
-		{
-			const char* mime = "[unknown]";
-			meta->findCString(kKeyMIMEType, &mime);
-
-			LOGINFO(METHOD, "Track #%d of type '%s' does not publish bitrate", i, mime );
-			continue;
-		}
-		LOGINFO(METHOD, "bitrate for track %d = %d bits/sec", i , bitrate);
-		totalBitRate += bitrate;
-	}
-
-	mBitrate = totalBitRate;
-
-
-
-	LOGINFO(METHOD, "mBitrate = %lld bits/sec", mBitrate);
-
-	bool haveAudio = false;
-	bool haveVideo = false;
-
-	for (size_t i = 0; i < mExtractor->countTracks(); ++i)
-	{
-		sp<MetaData> meta = mExtractor->getTrackMetaData(i);
-		meta->dumpToLog();
-
-		const char* cmime;
-		if (meta->findCString(kKeyMIMEType, &cmime))
-		{
-			String8 mime = String8(cmime);
-
-			if (!haveVideo && !strncasecmp(mime.string(), "video/", 6))
-			{
-				SetVideoTrack(mExtractor->getTrack(i));
-				haveVideo = true;
-
-				// Set the presentation/display size
-				int32_t width, height;
-				bool res = meta->findInt32(kKeyWidth, &width);
-				if (res)
-				{
-					res = meta->findInt32(kKeyHeight, &height);
-				}
-				if (res)
-				{
-					mWidth = width;
-					mHeight = height;
-					LOGINFO(METHOD, "Video Track Width = %d, Height = %d, %d", width, height, __LINE__);
-				}
-			}
-			else if (!haveAudio && !strncasecmp(mime.string(), "audio/", 6))
-			{
-				SetAudioTrack(mExtractor->getTrack(i));
-				haveAudio = true;
-
-				mActiveAudioTrackIndex = i;
-
-			}
-			else if (!strcasecmp(mime.string(), MEDIA_MIMETYPE_TEXT_3GPP))
-			{
-				//addTextSource_l(i, mExtractor->getTrack(i));
-			}
-		}
-	}
-
-	if (!haveAudio && !haveVideo)
-	{
-		return UNKNOWN_ERROR;
-	}
-
-
-
-	mExtractorFlags = mExtractor->flags();
+//	status_t err = dataSource->initCheck();
+//	if (err != OK)
+//	{
+//		LOGERROR(METHOD, "DataSource is invalid: %s", strerror(-err));
+//		return false;
+//	}
+//
+//	mFileSource = dataSource;
+//	mExtractor = MediaExtractor::Create(mFileSource);
+//	if (mExtractor == NULL)
+//	{
+//		LOGERROR(METHOD, "Could not create MediaExtractor from DataSource %0x", dataSource.get());
+//		return false;
+//	}
+//
+//	if (mExtractor->getDrmFlag())
+//	{
+//		LOGERROR(METHOD, "This datasource has DRM - not implemented!!!");
+//		return false;
+//	}
+//
+//	int64_t totalBitRate = 0;
+//	for (size_t i = 0; i < mExtractor->countTracks(); ++i)
+//	{
+//
+//		sp<MetaData> meta = mExtractor->getTrackMetaData(i); // this is likely to return an MPEG2TSSource
+//
+//		int32_t bitrate = 0;
+//		if (!meta->findInt32(kKeyBitRate, &bitrate))
+//		{
+//			const char* mime = "[unknown]";
+//			meta->findCString(kKeyMIMEType, &mime);
+//
+//			LOGINFO(METHOD, "Track #%d of type '%s' does not publish bitrate", i, mime );
+//			continue;
+//		}
+//		LOGINFO(METHOD, "bitrate for track %d = %d bits/sec", i , bitrate);
+//		totalBitRate += bitrate;
+//	}
+//
+//	mBitrate = totalBitRate;
+//
+//
+//
+//	LOGINFO(METHOD, "mBitrate = %lld bits/sec", mBitrate);
+//
+//	bool haveAudio = false;
+//	bool haveVideo = false;
+//
+//	for (size_t i = 0; i < mExtractor->countTracks(); ++i)
+//	{
+//		sp<MetaData> meta = mExtractor->getTrackMetaData(i);
+//		meta->dumpToLog();
+//
+//		const char* cmime;
+//		if (meta->findCString(kKeyMIMEType, &cmime))
+//		{
+//			String8 mime = String8(cmime);
+//
+//			if (!haveVideo && !strncasecmp(mime.string(), "video/", 6))
+//			{
+//				SetVideoTrack(mExtractor->getTrack(i));
+//				haveVideo = true;
+//
+//				// Set the presentation/display size
+//				int32_t width, height;
+//				bool res = meta->findInt32(kKeyWidth, &width);
+//				if (res)
+//				{
+//					res = meta->findInt32(kKeyHeight, &height);
+//				}
+//				if (res)
+//				{
+//					mWidth = width;
+//					mHeight = height;
+//					LOGINFO(METHOD, "Video Track Width = %d, Height = %d, %d", width, height, __LINE__);
+//				}
+//			}
+//			else if (!haveAudio && !strncasecmp(mime.string(), "audio/", 6))
+//			{
+//				SetAudioTrack(mExtractor->getTrack(i));
+//				haveAudio = true;
+//
+//				mActiveAudioTrackIndex = i;
+//
+//			}
+//			else if (!strcasecmp(mime.string(), MEDIA_MIMETYPE_TEXT_3GPP))
+//			{
+//				//addTextSource_l(i, mExtractor->getTrack(i));
+//			}
+//		}
+//	}
+//
+//	if (!haveAudio && !haveVideo)
+//	{
+//		return UNKNOWN_ERROR;
+//	}
+//
+//
+//
+//	mExtractorFlags = mExtractor->flags();
 
 	return true;
 }
