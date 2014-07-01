@@ -76,8 +76,8 @@ ssize_t HLSDataSource::readAt(off64_t offset, void* data, size_t size)
 	ssize_t rsize = mSources[mSourceIdx]->readAt(adjoffset, data, size);
 
 
-	LOGINFO(METHOD, "%x | getSize = %lld | offset=%lld | offsetAdjustment = %lld | adjustedOffset = %lld | requested size = %d | rsize = %ld",
-					this, sourceSize, offset, mOffsetAdjustment, adjoffset, size, rsize);
+//	LOGINFO(METHOD, "%x | getSize = %lld | offset=%lld | offsetAdjustment = %lld | adjustedOffset = %lld | requested size = %d | rsize = %ld",
+//					this, sourceSize, offset, mOffsetAdjustment, adjoffset, size, rsize);
 	return rsize;
 }
 

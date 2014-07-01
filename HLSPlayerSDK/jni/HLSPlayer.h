@@ -60,6 +60,8 @@ public:
 
 	void SetJavaVM(JavaVM* jvm);
 
+	bool UpdateWindowBufferFormat();
+
 private:
 	void SetStatus(int status);
 	void SetNativeWindow(ANativeWindow* window);

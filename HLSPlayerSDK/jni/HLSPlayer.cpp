@@ -306,6 +306,7 @@ bool HLSPlayer::InitSources()
 	int32_t left, top;
 	meta->findRect(kKeyCropRect, &left, &top, &mCropWidth, &mCropHeight);
 
+	UpdateWindowBufferFormat();
 
 	// Audio
 	mOffloadAudio = canOffloadStream(mAudioTrack->getFormat(), (mVideoTrack != NULL), false /*streaming http */, streamType);
@@ -328,6 +329,36 @@ bool HLSPlayer::InitSources()
 		//((HLSMediaSourceAdapter*)mAudioTrack.get())->append(omxAudioSource);
 	}
 	return true;
+}
+
+
+#define METHOD CLASS_NAME"::UpdateWindowBufferFormat()"
+bool HLSPlayer::UpdateWindowBufferFormat()
+{
+	int32_t screenWidth = ANativeWindow_getWidth(mWindow);
+	int32_t screenHeight = ANativeWindow_getHeight(mWindow);
+	LOGINFO(METHOD, "screenWidth=%d | screenHeight=%d", screenWidth, screenHeight);
+
+	int32_t bufferWidth = mWidth;
+	int32_t bufferHeight = mHeight;
+	LOGINFO(METHOD, "bufferWidth=%d | bufferHeight=%d", bufferWidth, bufferHeight);
+
+	double screenScale = (double)screenWidth / (double)screenHeight;
+
+	LOGINFO(METHOD, "screenScale=%f", screenScale);
+	if (screenWidth > screenHeight)
+	{
+		double vidScale = (double)mWidth / (double)mHeight;
+		bufferWidth = ((double)mWidth / vidScale) * screenScale; // width / bufferScale * screenScale
+	}
+	else if (screenHeight > screenWidth)
+	{
+		bufferHeight = (double)mWidth / screenScale;
+	}
+
+	LOGINFO(METHOD, "bufferWidth=%d | bufferHeight=%d", bufferWidth, bufferHeight);
+
+	ANativeWindow_setBuffersGeometry(mWindow, bufferWidth, bufferHeight, 0);
 }
 
 //
@@ -559,10 +590,22 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 
 			//MediaSource* vt = (MediaSource*)mVideoSource.get();
 
+			int32_t targetWidth = windowBuffer.width == windowBuffer.stride ? windowBuffer.width : windowBuffer.stride;
+			int32_t targetHeight = windowBuffer.height;
+
 			unsigned short *pixels = (unsigned short *)windowBuffer.bits;
 			for(int i=0; i<windowBuffer.width * windowBuffer.height; i++)
 				pixels[i] = 0x0000;
-			cc.convert(buffer->data(), mWidth, mHeight, 0, 0, mCropWidth, mCropHeight, windowBuffer.bits, windowBuffer.width, windowBuffer.height, 0,0,mCropWidth, mCropHeight);
+
+//			LOGINFO(METHOD, "mWidth=%d | mHeight=%d | mCropWidth=%d | mCropHeight=%d | buffer.width=%d | buffer.height=%d",
+//							mWidth, mHeight, mCropWidth, mCropHeight, windowBuffer.width, windowBuffer.height);
+
+			int32_t offsetx = (windowBuffer.width - mWidth) / 2;
+			if (offsetx & 1 == 1) ++offsetx;
+			int32_t offsety = (windowBuffer.height - mHeight) / 2;
+
+			cc.convert(buffer->data(), mWidth, mHeight, 0, 0, mCropWidth, mCropHeight,
+					windowBuffer.bits, targetWidth, targetHeight, offsetx, offsety,mCropWidth + offsetx, mCropHeight + offsety);
 			void *gbBits = NULL;
 
 			//buffer->graphicBuffer().get()->lock(0, &gbBits);
