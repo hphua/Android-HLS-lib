@@ -727,6 +727,28 @@ void HLSPlayer::RequestSegmentForTime(double time)
 	}
 }
 
+int HLSPlayer::GetState()
+{
+	return mStatus;
+}
+
+#define METHOD CLASS_NAME"::TogglePause()"
+void HLSPlayer::TogglePause()
+{
+	LOGINFO(METHOD, "mStatus = %d", mStatus);
+	if (mStatus == PAUSED)
+	{
+		mStatus = PLAYING;
+		status_t res = mAudioPlayer->resume();
+		LOGINFO(METHOD, "AudioPlayer->resume() result = %s", strerror(-res));
+	}
+	else if (mStatus == PLAYING)
+	{
+		mStatus = PAUSED;
+		mAudioPlayer->pause(false);
+	}
+}
+
 void HLSPlayer::Seek(double time)
 {
 //	// Set seeking flag

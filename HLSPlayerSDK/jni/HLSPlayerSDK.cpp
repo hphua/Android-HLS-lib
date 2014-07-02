@@ -57,6 +57,15 @@ extern "C"
 		}
 	}
 
+	#define METHOD CLASS_NAME"::Java_com_kaltura_hlsplayersdk_PlayerView_TogglePause()"
+	void Java_com_kaltura_hlsplayersdk_PlayerView_TogglePause(JNIEnv* env, jobject jcaller)
+	{
+		if (gHLSPlayerSDK != NULL && gHLSPlayerSDK->GetPlayer())
+		{
+			gHLSPlayerSDK->GetPlayer()->TogglePause();
+		}
+	}
+
 	#define METHOD CLASS_NAME"::Java_com_kaltura_hlsplayersdk_PlayerView_SetSurface()"
 	void Java_com_kaltura_hlsplayersdk_PlayerView_SetSurface(JNIEnv* env, jobject jcaller, jobject surface)
 	{
@@ -119,6 +128,15 @@ extern "C"
 				gHLSPlayerSDK->GetPlayer()->Seek(time);
 			}
 		}
+	}
+
+	jint Java_com_kaltura_hlsplayersdk_PlayerView_GetState(JNIEnv* env, jobject jcaller, jdouble time )
+	{
+		if (gHLSPlayerSDK != NULL && gHLSPlayerSDK->GetPlayer())
+		{
+			return gHLSPlayerSDK->GetPlayer()->GetState();
+		}
+		return 0;
 	}
 
 }

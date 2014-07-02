@@ -62,6 +62,10 @@ public:
 
 	bool UpdateWindowBufferFormat();
 
+	void TogglePause();
+
+	int GetState();
+
 private:
 	void SetStatus(int status);
 	void SetNativeWindow(ANativeWindow* window);

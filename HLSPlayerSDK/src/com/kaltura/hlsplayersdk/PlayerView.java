@@ -27,10 +27,12 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 	private native void InitNativeDecoder();
 	private native void CloseNativeDecoder();
 	private native void PlayFile();
+	private native void TogglePause();
 	private native void SetSurface(Surface surface);
 	private native void NextFrame();
 	private native void FeedSegment(String url, int quality, double startTime);
-	private native void SeekTo(double time); // seconds, not miliseconds - I'll change this later if it 
+	private native void SeekTo(double time); // seconds, not miliseconds - I'll change this later if it
+	private native int GetState();
 	//private native double CurTim
 	
 	private static PlayerView currentPlayerView = null;
@@ -67,8 +69,11 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 	{
 		public void run()
 		{
-			//Log.i("Runnable.run", "Running!");
-			NextFrame();
+			if (GetState() == 2)
+			{
+				//Log.i("Runnable.run", "Running!");
+				NextFrame();
+			}
 			postDelayed(runnable, frameDelay);
 		}
 	};
@@ -78,6 +83,7 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 	@Override
 	public void setVideoUrl(String url) {
 		Log.i("PlayerView.setVideoUrl", url);
+		//layoutParams lp = this.getLayoutParams();
 		
 		manifestLoader = new URLLoader(this, null);
 		manifestLoader.get(url);
@@ -214,11 +220,7 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 	
 	public void pause()
 	{
-		if (this.isPlaying())
-		{
-			
-			
-		}
+		TogglePause();
 	}
 	
 	@Override
