@@ -20,7 +20,8 @@ import android.view.ViewGroup;
 import android.view.animation.BounceInterpolator;
 import android.widget.RelativeLayout;
 
-public class PlayerViewController extends RelativeLayout {
+public class PlayerViewController extends RelativeLayout 
+{
 	private PlayerView mPlayerView;
 	private Activity mActivity;
 	private OnToggleFullScreenListener mFSListener;
@@ -39,6 +40,11 @@ public class PlayerViewController extends RelativeLayout {
     public PlayerViewController(Context context, AttributeSet attrs,
             int defStyle) {
         super(context, attrs, defStyle);
+    }
+    
+    public void close()
+    {
+    	if (mPlayerView != null) mPlayerView.close();
     }
     
 //    @Override
@@ -130,7 +136,10 @@ public class PlayerViewController extends RelativeLayout {
     
     public void destroy() {
         if ( mPlayerView!=null )
+        {
             mPlayerView.stop();
+            mPlayerView.close();
+        }
     }
     
     // /////////////////////////////////////////////////////////////////////////////////////////////

@@ -47,12 +47,13 @@ HLSPlayer::~HLSPlayer()
 #define METHOD CLASS_NAME"::Close()"
 void HLSPlayer::Close(JNIEnv* env)
 {
+	LOGINFO(METHOD, "Entered");
+	Reset();
 	if (mPlayerViewClass)
 	{
 		env->DeleteGlobalRef(mPlayerViewClass);
 		mPlayerViewClass = NULL;
 	}
-	LOGINFO(METHOD, "Entered");
 	if (mWindow)
 	{
 		ANativeWindow_release(mWindow);
@@ -63,17 +64,49 @@ void HLSPlayer::Close(JNIEnv* env)
 		(*env).DeleteGlobalRef(mSurface);
 		mSurface = NULL;
 	}
-	if (mAudioPlayer)
-	{
-		// do something!
-	}
-	if (mTimeSource)
-	{
-		// do something!
-	}
-	stlwipe(mSegments);
 }
 
+#define METHOD CLASS_NAME"::Reset()"
+void HLSPlayer::Reset()
+{
+	LOGINFO(METHOD, "Entered");
+	mStatus = STOPPED;
+	LogStatus();
+
+	mDataSource.clear();
+	mAudioTrack.clear();
+	mVideoTrack.clear();
+	mExtractor.clear();
+
+	if (mAudioPlayer) mAudioPlayer->pause(true);
+	mAudioSource.clear();
+
+	mTimeSource = NULL;
+
+	if (mAudioPlayer)
+	{
+		delete mAudioPlayer;
+		mAudioPlayer = NULL;
+	}
+
+	LOGINFO(METHOD, "Killing the video buffer");
+	if (mVideoBuffer)
+	{
+		mVideoBuffer->release();
+		mVideoBuffer = NULL;
+	}
+	if (mVideoSource != NULL) mVideoSource->stop();
+	mVideoSource.clear();
+
+	LOGINFO(METHOD, "Killing the segments");
+	stlwipe(mSegments);
+	LOGINFO(METHOD, "Killing the audio & video tracks");
+
+	mLastVideoTimeUs = 0;
+	mSegmentTimeOffset = 0;
+	mVideoFrameDelta = 0;
+	mFrameCount = 0;
+}
 
 ///
 /// Set Surface. Takes a java surface object
@@ -82,6 +115,17 @@ void HLSPlayer::Close(JNIEnv* env)
 void HLSPlayer::SetSurface(JNIEnv* env, jobject surface)
 {
 	LOGINFO(METHOD, "Entered");
+
+	if (mWindow)
+	{
+		ANativeWindow_release(mWindow);
+		mWindow = NULL;
+	}
+	if (mSurface)
+	{
+		(*env).DeleteGlobalRef(mSurface);
+		mSurface = NULL;
+	}
 
 	mSurface = (jobject)env->NewGlobalRef(surface);
 
@@ -96,7 +140,14 @@ void HLSPlayer::SetSurface(JNIEnv* env, jobject surface)
 	{
 		SetNativeWindow(window);
 	}
+
+	if (mStatus == PLAYING)
+	{
+		UpdateWindowBufferFormat();
+	}
 }
+
+
 
 
 
@@ -419,13 +470,22 @@ int HLSPlayer::Update()
 		return -1;
 	}
 
-	if (mVideoTrack != NULL)
+	status_t audioPlayerStatus;
+	if (mAudioPlayer->reachedEOS(&audioPlayerStatus))
+	{
+		mStatus == STOPPED;
+		return -1;
+	}
+
+
+	if (mDataSource != NULL)
 	{
 		int segCount = ((HLSDataSource*) mDataSource.get())->getPreloadedSegmentCount();
 		//LOGINFO(METHOD, "Segment Count %d", segCount);
 		if (segCount < 3) // (current segment + 2)
 			RequestNextSegment();
 	}
+
 
 	MediaSource::ReadOptions options;
 	bool rval = -1;
@@ -748,6 +808,18 @@ void HLSPlayer::TogglePause()
 		mAudioPlayer->pause(false);
 	}
 }
+
+#define METHOD CLASS_NAME"::Stop()"
+void HLSPlayer::Stop()
+{
+	LOGINFO(METHOD, "STOPPING! mStatus = %d", mStatus);
+	if (mStatus == PLAYING)
+	{
+		mStatus = STOPPED;
+		mAudioPlayer->pause(false);
+	}
+}
+
 
 void HLSPlayer::Seek(double time)
 {

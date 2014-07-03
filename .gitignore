@@ -1,1 +1,5 @@
 .metadata/
+*.class
+*.jar
+*.o
+*.d

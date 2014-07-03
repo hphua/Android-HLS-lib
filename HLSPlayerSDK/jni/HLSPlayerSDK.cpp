@@ -48,6 +48,26 @@ extern "C"
 		}
 	}
 
+	#define METHOD CLASS_NAME"::Java_com_kaltura_hlsplayersdk_PlayerView_ResetPlayer()"
+	void Java_com_kaltura_hlsplayersdk_PlayerView_ResetPlayer(JNIEnv* env, jobject jcaller)
+	{
+		LOGINFO(METHOD, "Entered");
+		if (gHLSPlayerSDK != NULL && gHLSPlayerSDK->GetPlayer())
+		{
+			gHLSPlayerSDK->GetPlayer()->Reset();
+		}
+	}
+
+	#define METHOD CLASS_NAME"::Java_com_kaltura_hlsplayersdk_PlayerView_StopPlayer()"
+	void Java_com_kaltura_hlsplayersdk_PlayerView_StopPlayer(JNIEnv* env, jobject jcaller)
+	{
+		LOGINFO(METHOD, "Entered");
+		if (gHLSPlayerSDK != NULL && gHLSPlayerSDK->GetPlayer())
+		{
+			gHLSPlayerSDK->GetPlayer()->Stop();
+		}
+	}
+
 	#define METHOD CLASS_NAME"::Java_com_kaltura_hlsplayersdk_PlayerView_PlayFile()"
 	void Java_com_kaltura_hlsplayersdk_PlayerView_PlayFile(JNIEnv* env, jobject jcaller)
 	{

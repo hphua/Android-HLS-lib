@@ -24,6 +24,7 @@ public class VideoPlayerActivity extends ActionBarActivity {
 
 	PlayerViewController playerView = null;
 	final Context context = this;
+	String lastUrl = "";
 	
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -48,6 +49,13 @@ public class VideoPlayerActivity extends ActionBarActivity {
         
 
     }
+    
+    @Override
+    public void onStop()
+    {
+    	if (playerView != null) playerView.close();
+    	super.onStop();
+    }
 
 
     @Override
@@ -65,14 +73,16 @@ public class VideoPlayerActivity extends ActionBarActivity {
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
         if (id == R.id.action_settings) {
-        	playerView.setVideoUrl("http://www.kaltura.com/p/0/playManifest/entryId/1_0i2t7w0i/format/applehttp");
+        	lastUrl = "http://www.kaltura.com/p/0/playManifest/entryId/1_0i2t7w0i/format/applehttp";
+        	playerView.setVideoUrl(lastUrl);
         	//playerView.setVideoUrl("http://kalturavod-vh.akamaihd.net/i/p/1281471/sp/128147100/serveFlavor/entryId/1_0i2t7w0i/v/1/flavorId/1_rncam6d3/index_0_av.m3u8");
         	//playerView.play();
             return true;
         }
         else if (id == R.id.abc_dvr_item)
         {
-        	playerView.setVideoUrl("http://abclive.abcnews.com/i/abc_live4@136330/index_500_av-p.m3u8?sd=10&rebase=on");
+        	lastUrl = "http://abclive.abcnews.com/i/abc_live4@136330/index_500_av-p.m3u8?sd=10&rebase=on";
+        	playerView.setVideoUrl(lastUrl);
         	//playerView.setVideoUrl("http://abclive.abcnews.com/i/abc_live4@136330/master.m3u8");
         	return true;
         }
@@ -89,7 +99,8 @@ public class VideoPlayerActivity extends ActionBarActivity {
         else if (id == R.id.testUrl)
         {
         	//playerView.setVideoUrl("https://dl.dropboxusercontent.com/u/41430608/TestStream/index_500_av-p.m3u8");
-        	playerView.setVideoUrl("http://www.djing.com/tv/live.m3u8");
+        	lastUrl = "http://www.djing.com/tv/live.m3u8";
+        	playerView.setVideoUrl(lastUrl);
         	return true;
         }
         else if (id == R.id.play_pause)
@@ -116,7 +127,8 @@ public class VideoPlayerActivity extends ActionBarActivity {
         		.setPositiveButton("OK", new DialogInterface.OnClickListener() {
 					public void onClick(DialogInterface dialog, int id) {
 						// get user input and set it to result
-						playerView.setVideoUrl(input.getText().toString());
+						lastUrl = input.getText().toString();
+						playerView.setVideoUrl(lastUrl);
 					}
 				})
 				.setNegativeButton("Cancel",

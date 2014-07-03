@@ -23,10 +23,18 @@ import android.widget.VideoView;
 
 public class PlayerView extends SurfaceView implements VideoPlayerInterface, MediaPlayerControl, OnParseCompleteListener, URLLoader.DownloadEventListener 
 {
+	
+	private final int STATE_STOPPED = 0;
+	private final int STATE_PAUSED = 1;
+	private final int STATE_PLAYING = 2;
+	private final int STATE_SEEKING = 3;
+	
 	// Native Methods
 	private native void InitNativeDecoder();
 	private native void CloseNativeDecoder();
+	private native void ResetPlayer();
 	private native void PlayFile();
+	private native void StopPlayer();
 	private native void TogglePause();
 	private native void SetSurface(Surface surface);
 	private native void NextFrame();
@@ -42,7 +50,10 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 		if (currentPlayerView != null)
 		{
 			ManifestSegment seg = currentPlayerView.getStreamHandler().getNextFile(0);
-			currentPlayerView.FeedSegment(seg.uri, 0, seg.startTime);
+			if (seg != null)
+			{
+				currentPlayerView.FeedSegment(seg.uri, 0, seg.startTime);
+			}
 		}
 	}
 	
@@ -69,12 +80,12 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 	{
 		public void run()
 		{
-			if (GetState() == 2)
+			if (GetState() == STATE_PLAYING)
 			{
 				//Log.i("Runnable.run", "Running!");
 				NextFrame();
+				postDelayed(runnable, frameDelay);
 			}
-			postDelayed(runnable, frameDelay);
 		}
 	};
 	
@@ -84,7 +95,8 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 	public void setVideoUrl(String url) {
 		Log.i("PlayerView.setVideoUrl", url);
 		//layoutParams lp = this.getLayoutParams();
-		
+		stop(); // We don't call StopPlayer here because we want to stop everything, including the update pump
+		ResetPlayer();
 		manifestLoader = new URLLoader(this, null);
 		manifestLoader.get(url);
 	}
@@ -94,6 +106,7 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 	@Override
 	public void onParserComplete(ManifestParser parser)
 	{
+		Log.i("PlayerView.onParserComplete", "Entered");
 		mStreamHandler = new StreamHandler(parser);
 		//mStreamHandler.initialize(parser);
 		ManifestSegment seg = getStreamHandler().getFileForTime(0, 0);
@@ -161,7 +174,7 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 	
 	public boolean isPlaying()
 	{
-		return true;
+		return GetState() == STATE_PLAYING;
 	}
 	
 	@Override
@@ -226,6 +239,13 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 	@Override
 	public void stop()
 	{
+		StopPlayer();
+		try {
+			Thread.sleep(frameDelay * 2);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
 		//super.stopPlayback();
 	}
 	

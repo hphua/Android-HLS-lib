@@ -49,11 +49,13 @@ public:
 	~HLSPlayer();
 
 	void Close(JNIEnv* env);
+	void Reset();
 
 	void SetSurface(JNIEnv* env, jobject surface);
 	android::status_t FeedSegment(const char* path, int32_t quality, double time );
 
 	bool Play();
+	void Stop();
 	int Update();
 
 	void Seek(double time);

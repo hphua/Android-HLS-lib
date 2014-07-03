@@ -61,16 +61,13 @@ ssize_t HLSDataSource::readAt(off64_t offset, void* data, size_t size)
 
 	off64_t adjoffset = offset - mOffsetAdjustment;  // get our adjusted offset. It should always be >= 0
 
-	if (adjoffset >= sourceSize)
+	if (adjoffset >= sourceSize && (mSourceIdx + 1 < mSources.size())) // The thinking here is that if we run out of sources, we should just let it pass through to read the last source at the invalid buffer, generating the proper return code
+																	   // However, this doesn't solve the problem of delayed fragment downloads... not sure what to do about that, yet
+																	   // This should at least prevent us from crashing
 	{
 		adjoffset -= sourceSize; // subtract the size of the current source from the offset
 		mOffsetAdjustment += sourceSize; // Add the size of the current source to our offset adjustment for the future
 		++mSourceIdx;
-		if (mSourceIdx == mSources.size())
-		{
-			LOGINFO(METHOD, "%x | getSize = %lld | offset=%lld | adjustedOffset = %lld | requested size = %d | OUT OF SOURCES!", this, sourceSize, offset, offset-mOffsetAdjustment, size);
-			return 0;
-		}
 	}
 
 	ssize_t rsize = mSources[mSourceIdx]->readAt(adjoffset, data, size);
