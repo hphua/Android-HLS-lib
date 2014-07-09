@@ -11,18 +11,19 @@
 
 #include <jni.h>
 
-#include <../android-source/frameworks/av/include/media/stagefright/OMXClient.h>
-#include <../android-source/frameworks/av/include/media/stagefright/MediaBuffer.h>
-#include <../android-source/frameworks/av/include/media/stagefright/MediaSource.h>
-#include <../android-source/frameworks/av/include/media/stagefright/MediaExtractor.h>
-#include <../android-source/frameworks/av/include/media/stagefright/MetaData.h>
-#include <../android-source/frameworks/av/include/media/stagefright/DataSource.h>
-#include <../android-source/frameworks/av/include/media/stagefright/FileSource.h>
-#include <../android-source/frameworks/av/include/media/stagefright/OMXCodec.h>
-#include <../android-source/frameworks/av/include/media/stagefright/TimeSource.h>
+#include "androidVideoShim.h"
+//#include <../android-source/frameworks/av/include/media/stagefright/OMXClient.h>
+//#include <../android-source/frameworks/av/include/media/stagefright/MediaBuffer.h>
+//#include <../android-source/frameworks/av/include/media/stagefright/MediaSource.h>
+//#include <../android-source/frameworks/av/include/media/stagefright/MediaExtractor.h>
+//#include <../android-source/frameworks/av/include/media/stagefright/MetaData.h>
+//#include <../android-source/frameworks/av/include/media/stagefright/DataSource.h>
+//#include <../android-source/frameworks/av/include/media/stagefright/FileSource.h>
+//#include <../android-source/frameworks/av/include/media/stagefright/OMXCodec.h>
+//#include <../android-source/frameworks/av/include/media/stagefright/TimeSource.h>
 
-#include <../android-source/frameworks/av/include/media/stagefright/AudioPlayer.h>
-#include <../android-source/frameworks/av/include/media/MediaPlayerInterface.h>
+//#include <../android-source/frameworks/av/include/media/stagefright/AudioPlayer.h>
+//#include <../android-source/frameworks/av/include/media/MediaPlayerInterface.h>
 
 
 
@@ -32,7 +33,7 @@
 #include <list>
 
 class HLSSegment;
-class HLSDataSource;
+//class HLSDataSource;
 
 class HLSPlayer
 {
@@ -52,7 +53,7 @@ public:
 	void Reset();
 
 	void SetSurface(JNIEnv* env, jobject surface);
-	android::status_t FeedSegment(const char* path, int32_t quality, double time );
+	android_video_shim::status_t FeedSegment(const char* path, int32_t quality, double time );
 
 	bool Play();
 	void Stop();
@@ -75,7 +76,7 @@ private:
 	bool InitSources();
 	bool CreateAudioPlayer();
 	bool CreateVideoPlayer();
-	bool RenderBuffer(android::MediaBuffer* buffer);
+	bool RenderBuffer(android_video_shim::MediaBuffer* buffer);
 	void LogStatus();
 
 	bool InitTracks();
@@ -98,29 +99,29 @@ private:
 
 	int mStatus;
 
-	android::OMXClient mClient;
+	android_video_shim::OMXClient mClient;
 
 	// These are our video and audo tracks that we shove data into
-	android::sp<android::MediaSource> mVideoTrack;
-	android::sp<android::MediaSource> mAudioTrack;
+	android_video_shim::sp<android_video_shim::MediaSource> mVideoTrack;
+	android_video_shim::sp<android_video_shim::MediaSource> mAudioTrack;
 
 
 	// These are the codec converted sources that we get actual frames and audio from
-	android::sp<android::MediaSource> mVideoSource;
-	android::sp<android::MediaSource> mAudioSource;
+	android_video_shim::sp<android_video_shim::MediaSource> mVideoSource;
+	android_video_shim::sp<android_video_shim::MediaSource> mAudioSource;
 
-	android::sp<HLSDataSource> mDataSource;
+	android_video_shim::sp<android_video_shim::HLSDataSource> mDataSource;
 
-	android::sp<android::MediaExtractor> mExtractor;    // The object that pulls the initial data source apart into separate audio and video sources
+	android_video_shim::sp<android_video_shim::MediaExtractor> mExtractor;    // The object that pulls the initial data source apart into separate audio and video sources
 
-	android::AudioPlayer* mAudioPlayer;
-	android::sp<android::MediaPlayerBase::AudioSink> mAudioSink;
+	android_video_shim::AudioPlayer* mAudioPlayer;
+	android_video_shim::sp<android_video_shim::MediaPlayerBase::AudioSink> mAudioSink;
 
-	android::TimeSource* mTimeSource;
+	android_video_shim::TimeSource* mTimeSource;
 	bool mOffloadAudio;
 	int64_t mDurationUs;
 
-	android::MediaBuffer* mVideoBuffer;
+	android_video_shim::MediaBuffer* mVideoBuffer;
 
 	int64_t mBitrate;
 	int32_t mWidth;

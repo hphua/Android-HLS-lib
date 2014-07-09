@@ -6,14 +6,14 @@
  */
 #include <android/native_window.h>
 #include <android/window.h>
-#include <../android-source/frameworks/av/include/media/stagefright/MediaDefs.h>
+//#include <../android-source/frameworks/av/include/media/stagefright/MediaDefs.h>
 
 
 #include "constants.h"
 #include "debug.h"
 #include "HLSSegment.h"
 
-using namespace android;
+//using namespace android;
 
 
 #define CLASS_NAME APP_NAME"::HLSSegment"
@@ -31,35 +31,35 @@ HLSSegment::~HLSSegment()
 
 }
 
-#define METHOD CLASS_NAME"::SetDataSource()"
-bool HLSSegment::SetDataSource(android::sp<android::DataSource> dataSource)
-{
-	return true;
-}
+//#define METHOD CLASS_NAME"::SetDataSource()"
+//bool HLSSegment::SetDataSource(android::sp<android::DataSource> dataSource)
+//{
+//	return true;
+//}
 
-#define METHOD CLASS_NAME"::SetAudioTrack()"
-void HLSSegment::SetAudioTrack(sp<MediaSource> source)
-{
-	mAudioTrack = source;
-}
+//#define METHOD CLASS_NAME"::SetAudioTrack()"
+//void HLSSegment::SetAudioTrack(sp<MediaSource> source)
+//{
+//	mAudioTrack = source;
+//}
+//
+//#define METHOD CLASS_NAME"::SetVideoTrack()"
+//void HLSSegment::SetVideoTrack(sp<MediaSource> source)
+//{
+//	mVideoTrack = source;
+//}
 
-#define METHOD CLASS_NAME"::SetVideoTrack()"
-void HLSSegment::SetVideoTrack(sp<MediaSource> source)
-{
-	mVideoTrack = source;
-}
-
-#define METHOD CLASS_NAME"::GetAudioTrack()"
-sp<MediaSource> HLSSegment::GetAudioTrack()
-{
-	return mAudioTrack;
-}
-
-#define METHOD CLASS_NAME"::GetVideoTrack()"
-sp<MediaSource> HLSSegment::GetVideoTrack()
-{
-	return mVideoTrack;
-}
+//#define METHOD CLASS_NAME"::GetAudioTrack()"
+//sp<MediaSource> HLSSegment::GetAudioTrack()
+//{
+//	return mAudioTrack;
+//}
+//
+//#define METHOD CLASS_NAME"::GetVideoTrack()"
+//sp<MediaSource> HLSSegment::GetVideoTrack()
+//{
+//	return mVideoTrack;
+//}
 
 #define METHOD CLASS_NAME"::GetWidth()"
 int32_t HLSSegment::GetWidth()

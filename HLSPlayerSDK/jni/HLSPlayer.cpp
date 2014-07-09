@@ -10,18 +10,18 @@
 #include "constants.h"
 #include <android/log.h>
 #include <android/native_window_jni.h>
-#include <../android-source/frameworks/av/include/media/stagefright/MediaDefs.h>
-#include <../android-source/frameworks/native/include/ui/GraphicBuffer.h>
-#include <../android-source/frameworks/av/include/media/stagefright/ColorConverter.h>
-#include <../android-source/frameworks/av/include/media/stagefright/Utils.h>
+//#include <../android-source/frameworks/av/include/media/stagefright/MediaDefs.h>
+//#include <../android-source/frameworks/native/include/ui/GraphicBuffer.h>
+//#include <../android-source/frameworks/av/include/media/stagefright/ColorConverter.h>
+//#include <../android-source/frameworks/av/include/media/stagefright/Utils.h>
 
 #include "stlhelpers.h"
 
 #include "HLSSegment.h"
-#include "HLSDataSource.h"
+//#include "HLSDataSource.h"
 
 
-using namespace android;
+using namespace android_video_shim;
 
 #define CLASS_NAME APP_NAME"::HLSPlayer"
 
@@ -81,8 +81,6 @@ void HLSPlayer::Reset()
 	if (mAudioPlayer) mAudioPlayer->pause(true);
 	mAudioSource.clear();
 
-	mTimeSource = NULL;
-
 	if (mAudioPlayer)
 	{
 		delete mAudioPlayer;
@@ -132,9 +130,9 @@ void HLSPlayer::SetSurface(JNIEnv* env, jobject surface)
 	ANativeWindow* window = ANativeWindow_fromSurface(env, mSurface);
 
 	LOGINFO(METHOD, "Java_com_kaltura_hlsplayersdk_PlayerView_SetSurface() - window = %0x", window);
-	LOGINFO(METHOD, "window->flags = %0x", window->flags);
-	LOGINFO(METHOD, "window->swapInterfal Min: %d Max: %d", window->minSwapInterval, window->maxSwapInterval);
-	LOGINFO(METHOD, "window->dpi  x:%f y:%f", window->xdpi, window->ydpi);
+//	LOGINFO(METHOD, "window->flags = %0x", window->flags);
+//	LOGINFO(METHOD, "window->swapInterval Min: %d Max: %d", window->minSwapInterval, window->maxSwapInterval);
+//	LOGINFO(METHOD, "window->dpi  x:%f y:%f", window->xdpi, window->ydpi);
 
 	if (window)
 	{
@@ -171,7 +169,20 @@ status_t HLSPlayer::FeedSegment(const char* path, int quality, double time )
 
 	// Make a data source from the file
 	LOGINFO(METHOD, "path = '%s'", path);
-	if (mDataSource == NULL) mDataSource = new HLSDataSource();
+	if (mDataSource == NULL)
+	{
+		mDataSource = new HLSDataSource();
+		if (mDataSource.get())
+		{
+			mDataSource->patchTable();
+		}
+		else
+		{
+			return NO_MEMORY;
+		}
+	}
+
+	LOGINFO(METHOD, "mDataSource = %p", mDataSource.get());
 
 	status_t err = mDataSource->append(path);
 	if (err != OK)
@@ -184,17 +195,8 @@ status_t HLSPlayer::FeedSegment(const char* path, int quality, double time )
 	HLSSegment* s = new HLSSegment(quality, time);
 	if (s)
 	{
-		if (s->SetDataSource(mDataSource))
-		{
-			mSegments.push_back(s);
-			return OK;
-		}
-		else
-		{
-			delete s;
-			s = NULL;
-		}
-		return UNKNOWN_ERROR;
+		mSegments.push_back(s);
+		return OK;
 	}
 	return NO_MEMORY;
 }
@@ -202,6 +204,7 @@ status_t HLSPlayer::FeedSegment(const char* path, int quality, double time )
 #define METHOD CLASS_NAME"::InitTracks()"
 bool HLSPlayer::InitTracks()
 {
+	LOGINFO(METHOD, "Entered: mDataSource=%p", mDataSource.get());
 	status_t err = mDataSource->initCheck();
 	if (err != OK)
 	{
@@ -217,12 +220,13 @@ bool HLSPlayer::InitTracks()
 		return false;
 	}
 
-	if (mExtractor->getDrmFlag())
-	{
-		LOGERROR(METHOD, "This datasource has DRM - not implemented!!!");
-		return false;
-	}
+//	if (mExtractor->getDrmFlag())
+//	{
+//		LOGERROR(METHOD, "This datasource has DRM - not implemented!!!");
+//		return false;
+//	}
 
+	LOGINFO(METHOD, "Getting bit rate of stream");
 	int64_t totalBitRate = 0;
 	for (size_t i = 0; i < mExtractor->countTracks(); ++i)
 	{
@@ -259,9 +263,9 @@ bool HLSPlayer::InitTracks()
 		const char* cmime;
 		if (meta->findCString(kKeyMIMEType, &cmime))
 		{
-			String8 mime = String8(cmime);
+			//String8 mime = String8(cmime);
 
-			if (!haveVideo && !strncasecmp(mime.string(), "video/", 6))
+			if (!haveVideo && !strncasecmp(cmime /*mime.string()*/, "video/", 6))
 			{
 				mVideoTrack = mExtractor->getTrack(i);
 				haveVideo = true;
@@ -280,7 +284,7 @@ bool HLSPlayer::InitTracks()
 					LOGINFO(METHOD, "Video Track Width = %d, Height = %d, %d", width, height, __LINE__);
 				}
 			}
-			else if (!haveAudio && !strncasecmp(mime.string(), "audio/", 6))
+			else if (!haveAudio && !strncasecmp(cmime /*mime.string()*/, "audio/", 6))
 			{
 				mAudioTrack = mExtractor->getTrack(i);
 				haveAudio = true;
@@ -288,10 +292,10 @@ bool HLSPlayer::InitTracks()
 				mActiveAudioTrackIndex = i;
 
 			}
-			else if (!strcasecmp(mime.string(), MEDIA_MIMETYPE_TEXT_3GPP))
-			{
-				//addTextSource_l(i, mExtractor->getTrack(i));
-			}
+//			else if (!strcasecmp(cmime /*mime.string()*/, MEDIA_MIMETYPE_TEXT_3GPP))
+//			{
+//				//addTextSource_l(i, mExtractor->getTrack(i));
+//			}
 		}
 	}
 
@@ -302,7 +306,7 @@ bool HLSPlayer::InitTracks()
 
 
 
-	mExtractorFlags = mExtractor->flags();
+	//mExtractorFlags = mExtractor->flags();
 
 	return true;
 }
@@ -340,15 +344,17 @@ bool HLSPlayer::InitSources()
 
 
 	// Video
-	sp<MediaSource> omxSource = OMXCodec::Create(mClient.interface(), mVideoTrack->getFormat(), false, mVideoTrack, NULL, 0, NULL /*nativeWindow*/);
+	sp<IOMX> iomx = mClient.interface();
+	sp<MetaData> vidFormat = mVideoTrack->getFormat();
+	sp<MediaSource> omxSource = OMXCodec::Create(iomx, vidFormat, false, mVideoTrack, NULL, 0 /*, nativeWindow = NULL */);
 	LOGINFO(METHOD, "OMXCodec::Create() (video) returned %0x", omxSource.get());
 	mVideoSource = omxSource;
 
 	audio_stream_type_t streamType = AUDIO_STREAM_MUSIC;
-	if (mAudioSink != NULL)
-	{
-		streamType = mAudioSink->getAudioStreamType();
-	}
+//	if (mAudioSink != NULL)
+//	{
+//		streamType = mAudioSink->getAudioStreamType();
+//	}
 
 
 	sp<MetaData> meta = mVideoSource->getFormat();
@@ -363,7 +369,8 @@ bool HLSPlayer::InitSources()
 	mOffloadAudio = canOffloadStream(mAudioTrack->getFormat(), (mVideoTrack != NULL), false /*streaming http */, streamType);
 	LOGINFO(METHOD, "mOffloadAudio == %s", mOffloadAudio ? "true" : "false");
 
-	sp<MediaSource> omxAudioSource = OMXCodec::Create(mClient.interface(), mAudioTrack->getFormat(), false, mAudioTrack);
+	sp<MetaData> audioFormat = mAudioTrack->getFormat();
+	sp<MediaSource> omxAudioSource = OMXCodec::Create(iomx, audioFormat, false, mAudioTrack, NULL, 0);
 	LOGINFO(METHOD, "OMXCodec::Create() (audio) returned %0x", omxAudioSource.get());
 
 
@@ -409,7 +416,7 @@ bool HLSPlayer::UpdateWindowBufferFormat()
 
 	LOGINFO(METHOD, "bufferWidth=%d | bufferHeight=%d", bufferWidth, bufferHeight);
 
-	ANativeWindow_setBuffersGeometry(mWindow, bufferWidth, bufferHeight, 0);
+	ANativeWindow_setBuffersGeometry(mWindow, bufferWidth, bufferHeight, WINDOW_FORMAT_RGB_565);
 }
 
 //
@@ -423,8 +430,6 @@ bool HLSPlayer::Play()
 {
 	LOGINFO(METHOD, "Entered");
 	if (!mWindow) { LOGINFO(METHOD, "mWindow is NULL"); return false; }
-	sp<ANativeWindow> nativeWindow = NULL;
-	nativeWindow = mWindow;
 	LOGINFO(METHOD, "%d", __LINE__);
 
 	if (!InitSources()) return false;
@@ -535,7 +540,7 @@ int HLSPlayer::Update()
 				return -1;
 			}
 
-			int64_t audioTime = mTimeSource->getRealTimeUs();
+			int64_t audioTime = mAudioPlayer->getRealTimeUs(); //mTimeSource->getRealTimeUs();
 
 			LOGINFO(METHOD, "audioTime = %lld | videoTime = %lld | diff = %lld", audioTime, timeUs, audioTime - timeUs);
 
@@ -637,7 +642,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
     if (buffer->meta_data()->findInt64(kKeyTime, &timeUs))
     {
     	//LOGINFO(METHOD, "%d", __LINE__);
-		native_window_set_buffers_timestamp(mWindow, timeUs * 1000);
+		//native_window_set_buffers_timestamp(mWindow, timeUs * 1000);
 		//LOGINFO(METHOD, "%d", __LINE__);
 		//status_t err = mWindow->queueBuffer(mWindow, buffer->graphicBuffer().get(), -1);
 
@@ -653,8 +658,9 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 			int32_t targetWidth = windowBuffer.width == windowBuffer.stride ? windowBuffer.width : windowBuffer.stride;
 			int32_t targetHeight = windowBuffer.height;
 
+			// TODO: This isn't right - it won't work correctly when the stride is larger than the width
 			unsigned short *pixels = (unsigned short *)windowBuffer.bits;
-			for(int i=0; i<windowBuffer.width * windowBuffer.height; i++)
+			for(int i=0; i<windowBuffer.stride * windowBuffer.height; i++)
 				pixels[i] = 0x0000;
 
 //			LOGINFO(METHOD, "mWidth=%d | mHeight=%d | mCropWidth=%d | mCropHeight=%d | buffer.width=%d | buffer.height=%d",
@@ -685,9 +691,9 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 		//}
 		//LOGINFO(METHOD, "%d", __LINE__);
 
-		sp<MetaData> metaData = buffer->meta_data();
+//		sp<MetaData> metaData = buffer->meta_data();
 		//LOGINFO(METHOD, "%d", __LINE__);
-		metaData->setInt32(kKeyRendered, 1);
+//		metaData->setInt32(kKeyRendered, 1);
 		//LOGINFO(METHOD, "%d", __LINE__);
 		return true;
     }

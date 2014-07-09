@@ -18,6 +18,7 @@
 
 #include "debug.h"
 #include "constants.h"
+#include "androidVideoShim.h"
 
 #define CLASS_NAME APP_NAME"::HLSPlayerSDK"
 
@@ -30,6 +31,7 @@ extern "C"
 	#define METHOD CLASS_NAME"::Java_com_kaltura_hlsplayersdk_PlayerView_InitNativeDecoder()"
 	void Java_com_kaltura_hlsplayersdk_PlayerView_InitNativeDecoder(JNIEnv * env, jobject jcaller)
 	{
+		android_video_shim::initLibraries();
 		JavaVM* jvm = NULL;
 		env->GetJavaVM(&jvm);
 		if (gHLSPlayerSDK == NULL)

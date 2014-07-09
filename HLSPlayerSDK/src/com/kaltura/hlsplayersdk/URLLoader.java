@@ -35,8 +35,8 @@ public class URLLoader extends AsyncHttpResponseHandler
 	@Override
 	public void onFailure(Throwable error, String content)
 	{
-		Log.i("URLLoader.onFailure", content);
-		if(mDownloadEventListener != null) mDownloadEventListener.onDownloadFailed(this, content);
+		Log.i("URLLoader.onFailure", content==null?"null" : content);
+		if(mDownloadEventListener != null) mDownloadEventListener.onDownloadFailed(this, content==null?"null" : content);
 	}
 	
 	

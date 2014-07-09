@@ -8,7 +8,10 @@
 #ifndef DEBUG_H_
 #define DEBUG_H_
 
+#include <android/log.h>
+
 #define _DEBUG
+
 //#define _VERBOSE
 
 #define LOGERROR(x, ...) __android_log_print(ANDROID_LOG_ERROR, (x), __VA_ARGS__)
