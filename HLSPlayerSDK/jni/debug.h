@@ -10,21 +10,42 @@
 
 #include <android/log.h>
 
-#define _DEBUG
+#define USE_AUDIO
+
+#define _DEBUG_E
+#define _DEBUG_W
+#define _DEBUG_I
+//#define _DEBUG_V
+//#define LOGV
 
 //#define _VERBOSE
+#ifdef _DEBUG_E
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, __PRETTY_FUNCTION__, __VA_ARGS__)
+#else
+#define LOGE(...)
+#endif
 
-#define LOGERROR(x, ...) __android_log_print(ANDROID_LOG_ERROR, (x), __VA_ARGS__)
+#ifdef _DEBUG_I
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, __PRETTY_FUNCTION__, __VA_ARGS__)
+#else
+#define LOGI(...)
+#endif
 
-#ifdef _DEBUG
-#define LOGINFO(x, ...) __android_log_print(ANDROID_LOG_INFO, (x), __VA_ARGS__)
-#ifdef _VERBOSE
+#ifdef _DEBUG_W
+#define LOGW(...) __android_log_print(ANDROID_LOG_WARN, __PRETTY_FUNCTION__, __VA_ARGS__)
+#else
+#define LOGW(...)
+#endif
+
+#ifdef _DEBUG_V
+#define LOGV(...) __android_log_print(ANDROID_LOG_VERBOSE, __PRETTY_FUNCTION__, __VA_ARGS__)
+#else
+#define LOGV(...)
+#endif
+
+#ifdef LOGV
 #define RUNDEBUG(x)  (x)
 #else
-#define RUNDEBUG(x)
-#endif
-#else
-#define LOGINFO(x, ...)
 #define RUNDEBUG(x)
 #endif
 

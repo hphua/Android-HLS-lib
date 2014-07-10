@@ -20,7 +20,6 @@
 #include "constants.h"
 #include "androidVideoShim.h"
 
-#define CLASS_NAME APP_NAME"::HLSPlayerSDK"
 
 
 HLSPlayerSDK* gHLSPlayerSDK = NULL;
@@ -28,7 +27,6 @@ HLSPlayerSDK* gHLSPlayerSDK = NULL;
 
 extern "C"
 {
-	#define METHOD CLASS_NAME"::Java_com_kaltura_hlsplayersdk_PlayerView_InitNativeDecoder()"
 	void Java_com_kaltura_hlsplayersdk_PlayerView_InitNativeDecoder(JNIEnv * env, jobject jcaller)
 	{
 		android_video_shim::initLibraries();
@@ -39,7 +37,6 @@ extern "C"
 		if (gHLSPlayerSDK && gHLSPlayerSDK->GetPlayer() == NULL) gHLSPlayerSDK->CreateDecoder();
 	}
 
-	#define METHOD CLASS_NAME"::Java_com_kaltura_hlsplayersdk_PlayerView_CloseNativeDecoder()"
 	void Java_com_kaltura_hlsplayersdk_PlayerView_CloseNativeDecoder(JNIEnv* env, jobject jcaller)
 	{
 		if (gHLSPlayerSDK != NULL)
@@ -50,27 +47,24 @@ extern "C"
 		}
 	}
 
-	#define METHOD CLASS_NAME"::Java_com_kaltura_hlsplayersdk_PlayerView_ResetPlayer()"
 	void Java_com_kaltura_hlsplayersdk_PlayerView_ResetPlayer(JNIEnv* env, jobject jcaller)
 	{
-		LOGINFO(METHOD, "Entered");
+		LOGI("Entered");
 		if (gHLSPlayerSDK != NULL && gHLSPlayerSDK->GetPlayer())
 		{
 			gHLSPlayerSDK->GetPlayer()->Reset();
 		}
 	}
 
-	#define METHOD CLASS_NAME"::Java_com_kaltura_hlsplayersdk_PlayerView_StopPlayer()"
 	void Java_com_kaltura_hlsplayersdk_PlayerView_StopPlayer(JNIEnv* env, jobject jcaller)
 	{
-		LOGINFO(METHOD, "Entered");
+		LOGI("Entered");
 		if (gHLSPlayerSDK != NULL && gHLSPlayerSDK->GetPlayer())
 		{
 			gHLSPlayerSDK->GetPlayer()->Stop();
 		}
 	}
 
-	#define METHOD CLASS_NAME"::Java_com_kaltura_hlsplayersdk_PlayerView_PlayFile()"
 	void Java_com_kaltura_hlsplayersdk_PlayerView_PlayFile(JNIEnv* env, jobject jcaller)
 	{
 		if (gHLSPlayerSDK != NULL)
@@ -79,7 +73,6 @@ extern "C"
 		}
 	}
 
-	#define METHOD CLASS_NAME"::Java_com_kaltura_hlsplayersdk_PlayerView_TogglePause()"
 	void Java_com_kaltura_hlsplayersdk_PlayerView_TogglePause(JNIEnv* env, jobject jcaller)
 	{
 		if (gHLSPlayerSDK != NULL && gHLSPlayerSDK->GetPlayer())
@@ -88,19 +81,18 @@ extern "C"
 		}
 	}
 
-	#define METHOD CLASS_NAME"::Java_com_kaltura_hlsplayersdk_PlayerView_SetSurface()"
 	void Java_com_kaltura_hlsplayersdk_PlayerView_SetSurface(JNIEnv* env, jobject jcaller, jobject surface)
 	{
-		//LOGINFO(METHOD, "Entered");
+		//LOGI("Entered");
 		if (gHLSPlayerSDK != NULL)
 		{
 			if (gHLSPlayerSDK->GetPlayer() == NULL) gHLSPlayerSDK->CreateDecoder();
-			LOGINFO(METHOD, "HLSPlayerSDK is not null");
+			LOGI("HLSPlayerSDK is not null");
 
 			gHLSPlayerSDK->GetPlayer()->SetSurface(env, surface);
 
 //			ANativeWindow* window = ANativeWindow_fromSurface(env, surface);
-//			LOGINFO(CLASS_NAME, "Java_com_kaltura_hlsplayersdk_PlayerView_SetSurface() - window = %0x", window);
+//			LOGI(CLASS_NAME, "Java_com_kaltura_hlsplayersdk_PlayerView_SetSurface() - window = %0x", window);
 //			if (window)
 //			{
 //				HLSDecoder* decoder = gHLSPlayerSDK->GetDecoder();
@@ -109,11 +101,10 @@ extern "C"
 		}
 	}
 
-	#define METHOD CLASS_NAME"::Java_com_kaltura_hlsplayersdk_PlayerView_NextFrame()"
 	void Java_com_kaltura_hlsplayersdk_PlayerView_NextFrame(JNIEnv* env, jobject jcaller)
 	{
 		bool rval = false;
-		//LOGINFO(METHOD, "Entered");
+		//LOGI("Entered");
 		if (gHLSPlayerSDK != NULL)
 		{
 			if (gHLSPlayerSDK->GetPlayer())
@@ -124,10 +115,9 @@ extern "C"
 		}
 	}
 
-	#define METHOD CLASS_NAME"::Java_com_kaltura_hlsplayersdk_PlayerView_FeedSegment()"
 	void Java_com_kaltura_hlsplayersdk_PlayerView_FeedSegment(JNIEnv* env, jobject jcaller, jstring jurl, jint quality, jdouble startTime )
 	{
-		LOGINFO(METHOD, "Entered");
+		LOGI("Entered");
 		if (gHLSPlayerSDK != NULL)
 		{
 			if (gHLSPlayerSDK->GetPlayer())
@@ -139,10 +129,9 @@ extern "C"
 		}
 	}
 
-	#define METHOD CLASS_NAME"::Java_com_kaltura_hlsplayersdk_PlayerView_SeekTo()"
 	void Java_com_kaltura_hlsplayersdk_PlayerView_SeekTo(JNIEnv* env, jobject jcaller, jdouble time )
 	{
-		LOGINFO(METHOD, "Entered");
+		LOGI("Entered");
 		if (gHLSPlayerSDK != NULL)
 		{
 			if (gHLSPlayerSDK->GetPlayer())
@@ -163,19 +152,16 @@ extern "C"
 
 }
 
-#define METHOD CLASS_NAME"::HLSPlayerSDK()"
 HLSPlayerSDK::HLSPlayerSDK(JavaVM* jvm) : mPlayer(NULL), mJvm(jvm)
 {
 
 }
 
-#define METHOD CLASS_NAME"::HLSPlayerSDK()"
 HLSPlayerSDK::~HLSPlayerSDK()
 {
 
 }
 
-#define METHOD CLASS_NAME"::Close()"
 void HLSPlayerSDK::Close(JNIEnv* env)
 {
 	if (mPlayer != NULL)
@@ -186,7 +172,6 @@ void HLSPlayerSDK::Close(JNIEnv* env)
 	}
 }
 
-#define METHOD CLASS_NAME"::CreateDecoder()"
 bool HLSPlayerSDK::CreateDecoder()
 {
 	if (!mPlayer)
@@ -203,16 +188,14 @@ bool HLSPlayerSDK::CreateDecoder()
 //	return mDecoder;
 //}
 
-#define METHOD CLASS_NAME"::GetPlayer()"
 HLSPlayer* HLSPlayerSDK::GetPlayer()
 {
 	return mPlayer;
 }
 
-#define METHOD CLASS_NAME"::PlayFile()"
 void HLSPlayerSDK::PlayFile()
 {
-	LOGINFO(METHOD, "::PlayFile()");
+	LOGI("::PlayFile()");
 	if (!mPlayer && !CreateDecoder()) return;
 
 	//	mPlayer->FeedSegment("/storage/emulated/0/Movies/segment1_0_av.ts");
@@ -225,7 +208,7 @@ void HLSPlayerSDK::PlayFile()
 	{
 		while (mPlayer->Update() == 0)
 		{
-			LOGINFO(CLASS_NAME, "Decoded a frame!");
+			LOGI(CLASS_NAME, "Decoded a frame!");
 		}
 	}
 }

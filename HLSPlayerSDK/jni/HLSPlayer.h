@@ -12,20 +12,6 @@
 #include <jni.h>
 
 #include "androidVideoShim.h"
-//#include <../android-source/frameworks/av/include/media/stagefright/OMXClient.h>
-//#include <../android-source/frameworks/av/include/media/stagefright/MediaBuffer.h>
-//#include <../android-source/frameworks/av/include/media/stagefright/MediaSource.h>
-//#include <../android-source/frameworks/av/include/media/stagefright/MediaExtractor.h>
-//#include <../android-source/frameworks/av/include/media/stagefright/MetaData.h>
-//#include <../android-source/frameworks/av/include/media/stagefright/DataSource.h>
-//#include <../android-source/frameworks/av/include/media/stagefright/FileSource.h>
-//#include <../android-source/frameworks/av/include/media/stagefright/OMXCodec.h>
-//#include <../android-source/frameworks/av/include/media/stagefright/TimeSource.h>
-
-//#include <../android-source/frameworks/av/include/media/stagefright/AudioPlayer.h>
-//#include <../android-source/frameworks/av/include/media/MediaPlayerInterface.h>
-
-
 
 #include <android/native_window.h>
 #include <android/window.h>
@@ -33,7 +19,6 @@
 #include <list>
 
 class HLSSegment;
-//class HLSDataSource;
 
 class HLSPlayer
 {

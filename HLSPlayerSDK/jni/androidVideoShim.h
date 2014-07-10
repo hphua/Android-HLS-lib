@@ -17,8 +17,12 @@
 
 #include <vector>
 
-#define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "native-activity", __VA_ARGS__))
-#define LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "native-activity", __VA_ARGS__))
+#include "debug.h"
+
+//#define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "native-activity", __VA_ARGS__))
+//#define LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "native-activity", __VA_ARGS__))
+
+
 
 /******************************************************************************
 
@@ -1256,7 +1260,7 @@ namespace android_video_shim
             typedef void (*localFuncCast)(void *thiz);
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZNK7android8MetaData9dumpToLogEv");
             assert(lfc);
-            LOGI("dumpToLog %p this=%p", lfc, this);
+            LOGV("dumpToLog %p this=%p", lfc, this);
             lfc(this);
         }
     };
@@ -1361,7 +1365,7 @@ namespace android_video_shim
         TimeSource() {}
         virtual ~TimeSource() {}
 
-        virtual int64_t getRealTimeUs() = 0;
+         int64_t getRealTimeUs();
 
     private:
         TimeSource(const TimeSource &);
@@ -1369,9 +1373,6 @@ namespace android_video_shim
     };
 
     // How do we override a DataSource?
-    #define LOGERROR(x, ...) __android_log_print(ANDROID_LOG_ERROR, (x), __VA_ARGS__)
-    #define APP_NAME "dlsym"
-    #define CLASS_NAME APP_NAME"::HLSDataSource"
     class HLSDataSource : public DataSource
     {
     public:
@@ -1431,7 +1432,7 @@ Add 2 with int*
 
             // Dump the vtable.
             for(int i=0; i<16; i++)
-              LOGI("vtable[%d] = %p", i, fakeObj[0][i]);
+              LOGV("vtable[%d] = %p", i, fakeObj[0][i]);
 
             // The compiler may complain about these as we are getting into
             // pointer-to-member-function (pmf) territory. However, we aren't
@@ -1470,7 +1471,6 @@ Add 2 with int*
 
         virtual void foo() { assert(0); }
 
-        #define METHOD CLASS_NAME"::append()"
         status_t append(const char* uri)
         {
             sp<DataSource> dataSource = DataSource::CreateFromURI(uri);
@@ -1481,7 +1481,7 @@ Add 2 with int*
             }
 
             status_t rval = dataSource->initCheck();
-            LOGERROR(METHOD, "DataSource initCheck() result: %s", strerror(-rval));
+            LOGE("DataSource initCheck() result: %s", strerror(-rval));
             mSources.push_back(dataSource);
             return rval;
         }
@@ -1503,7 +1503,7 @@ Add 2 with int*
 
         ssize_t _readAt(off64_t offset, void* data, size_t size)
         {
-            //LOGI("Attempting _readAt");
+            LOGV("Attempting _readAt");
 
             off64_t sourceSize = 0;
             mSources[mSourceIdx]->getSize(&sourceSize);
@@ -1514,22 +1514,24 @@ Add 2 with int*
                                                                                // However, this doesn't solve the problem of delayed fragment downloads... not sure what to do about that, yet
                                                                                // This should at least prevent us from crashing
             {
+            	LOGI("Changing Segments: curIdx=%d, nextIdx=%d", mSourceIdx, mSourceIdx + 1);
                 adjoffset -= sourceSize; // subtract the size of the current source from the offset
                 mOffsetAdjustment += sourceSize; // Add the size of the current source to our offset adjustment for the future
                 ++mSourceIdx;
+
             }
 
             ssize_t rsize = mSources[mSourceIdx]->readAt(adjoffset, data, size);
 
 
-//            LOGI("%p | getSize = %lld | offset=%lld | offsetAdjustment = %lld | adjustedOffset = %lld | requested size = %d | rsize = %ld",
-//                            this, sourceSize, offset, mOffsetAdjustment, adjoffset, size, rsize);
+            LOGI("%p | getSize = %lld | offset=%lld | offsetAdjustment = %lld | adjustedOffset = %lld | requested size = %d | rsize = %ld",
+                            this, sourceSize, offset, mOffsetAdjustment, adjoffset, size, rsize);
             return rsize;
         }
 
         ssize_t _readAt_23(off_t offset, void* data, size_t size)
         {
-            //LOGI("Attempting _readAt");
+            LOGV("Attempting _readAt");
 
             off_t sourceSize = 0;
             mSources[mSourceIdx]->getSize_23(&sourceSize);
@@ -1547,7 +1549,7 @@ Add 2 with int*
 
             ssize_t rsize = mSources[mSourceIdx]->readAt_23(adjoffset, data, size);
 
-            LOGI("%p | getSize = %ld | offset=%ld | offsetAdjustment = %lld | adjustedOffset = %ld | requested size = %d | rsize = %ld",
+            LOGV("%p | getSize = %ld | offset=%ld | offsetAdjustment = %lld | adjustedOffset = %ld | requested size = %d | rsize = %ld",
                             this, sourceSize, offset, mOffsetAdjustment, adjoffset, size, rsize);
             return rsize;
         }
@@ -1555,9 +1557,10 @@ Add 2 with int*
         status_t _getSize(off64_t* size)
         {
             LOGI("Attempting _getSize");
-            status_t rval = mSources[mSourceIdx]->getSize(size);
+            //status_t rval = mSources[mSourceIdx]->getSize(size);
+            *size = 0;
             LOGI("getSize - %p | size = %lld",this, *size);
-            return rval;
+            return 0;
         }
 
         status_t _getSize_23(off_t* size)
@@ -1876,12 +1879,19 @@ Add 2 with int*
         typedef bool (*localFuncCast)(const sp<MetaData>& meta, bool hasVideo,
                 					  bool isStreaming, audio_stream_type_t streamType);
         localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android16canOffloadStreamERKNS_2spINS_8MetaDataEEEbb19audio_stream_type_t");
+        if(!lfc)
+        {
+            LOGI("Cannot find canOffloadStream! Returning false...");
+            return false;
+        }
         assert(lfc);
         return lfc(meta, hasVideo, isStreaming, streamType);
     }
 
     class AudioPlayer : public TimeSource {
     public:
+
+    	char buffer[8192]; // Space for members we don't directly access.
         enum {
             REACHED_EOS,
             SEEK_COMPLETE
@@ -1902,9 +1912,27 @@ Add 2 with int*
             typedef void (*localFuncCast)(void *thiz, const sp<MediaPlayerBase::AudioSink> &audioSink,
                     uint32_t flags,
                     void *audioObserver);
-            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android11AudioPlayerC2ERKNS_2spINS_15MediaPlayerBase9AudioSinkEEEjPNS_13AwesomePlayerE");
-            assert(lfc);
-            lfc(this, audioSink, flags, audioObserver);
+            typedef void (*localFuncCast2)(void *thiz, const sp<MediaPlayerBase::AudioSink> &audioSink,
+                    bool flags,
+                    void *audioObserver);
+            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android11AudioPlayerC1ERKNS_2spINS_15MediaPlayerBase9AudioSinkEEEjPNS_13AwesomePlayerE");
+            localFuncCast2 lfc2 = (localFuncCast2)searchSymbol("_ZN7android11AudioPlayerC1ERKNS_2spINS_15MediaPlayerBase9AudioSinkEEEbPNS_13AwesomePlayerE");
+            LOGI("Using C1 Not C2");
+            if(lfc)
+            {
+                LOGI("AudioPlayer ctor 1");
+                lfc(this, audioSink, flags, audioObserver);
+            }
+            else if(lfc2)
+            {
+                LOGI("AudioPlayer ctor 2, ignoring flags=%x", flags);
+                lfc2(this, audioSink, false, audioObserver);
+            }
+            else
+            {
+                LOGI("No AudioPlayer ctor found");
+                assert(0);
+            }
         }
 
         ~AudioPlayer()
