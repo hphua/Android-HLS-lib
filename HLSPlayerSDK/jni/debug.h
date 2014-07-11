@@ -20,25 +20,25 @@
 
 //#define _VERBOSE
 #ifdef _DEBUG_E
-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, __PRETTY_FUNCTION__, __VA_ARGS__)
+#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, __func__, __VA_ARGS__)
 #else
 #define LOGE(...)
 #endif
 
 #ifdef _DEBUG_I
-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, __PRETTY_FUNCTION__, __VA_ARGS__)
+#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, __func__, __VA_ARGS__)
 #else
 #define LOGI(...)
 #endif
 
 #ifdef _DEBUG_W
-#define LOGW(...) __android_log_print(ANDROID_LOG_WARN, __PRETTY_FUNCTION__, __VA_ARGS__)
+#define LOGW(...) __android_log_print(ANDROID_LOG_WARN, __func__, __VA_ARGS__)
 #else
 #define LOGW(...)
 #endif
 
 #ifdef _DEBUG_V
-#define LOGV(...) __android_log_print(ANDROID_LOG_VERBOSE, __PRETTY_FUNCTION__, __VA_ARGS__)
+#define LOGV(...) __android_log_print(ANDROID_LOG_VERBOSE, __func__, __VA_ARGS__)
 #else
 #define LOGV(...)
 #endif
