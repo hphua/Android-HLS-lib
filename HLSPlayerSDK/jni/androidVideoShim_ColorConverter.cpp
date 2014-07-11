@@ -51,6 +51,7 @@ bool ColorConverter_Local::isValid() const {
         case OMX_COLOR_FormatYUV420SemiPlanar:
         case OMX_TI_COLOR_FormatYUV420PackedSemiPlanar:        
         case QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka:
+        case QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka2:
             return true;
         default:
             return false;
@@ -113,6 +114,7 @@ status_t ColorConverter_Local::convert(
             err = convertTIYUV420PackedSemiPlanar(src, dst);
             break;
         case QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka:
+        case QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka2:
             convertQOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka(src, dst);
             break;
         default:

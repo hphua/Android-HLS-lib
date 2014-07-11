@@ -3,3 +3,11 @@
 *.jar
 *.o
 *.d
+appcompat_v7/bin/
+appcompat_v7/gen/
+HLSPlayerSDK/bin/
+HLSPlayerSDK/gen/
+HLSPlayerSDK/libs/
+HLSPlayerSDK/obj/
+VideoPlayer/bin/
+VideoPlayer/gen/
