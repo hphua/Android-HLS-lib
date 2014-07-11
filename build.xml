@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="KalturaVideo" default="all">
+
+
+<target name="all">
+    <!-- Build JNI. -->
+    <exec dir="HLSPlayerSDK/" executable="C:\Users\jeni\Downloads\android-ndk-r9d-windows-x86_64\android-ndk-r9d\ndk-build.cmd" failonerror="true">
+    </exec>
+
+	<ant dir="appcompat_v7/" antfile="build.xml" target="debug"/>
+	<ant dir="HLSPlayerSDK/" antfile="build.xml" target="debug"/>
+	<ant dir="VideoPlayer/" antfile="build.xml" target="debug"/>
+
+	<ant dir="VideoPlayer/" antfile="build.xml" target="uninstall"/>
+	<ant dir="VideoPlayer/" antfile="build.xml" target="installd"/>
+</target>
+
+</project>
