@@ -1092,7 +1092,7 @@ namespace android_video_shim
 
             LOGI("this = %p", this);
             LOGI("*this = %p", *(void**)this);
-            LOGI("Mpeg2TSExtractor::getTrack should be %p", searchSymbol("_ZN7android16MPEG2TSExtractor16getTrackMetaDataEjj"));
+            LOGI("Mpeg2TSExtractor::getTrackMetaData should be %p", searchSymbol("_ZN7android16MPEG2TSExtractor16getTrackMetaDataEjj"));
 
             localFuncCast **fakeObj = *((localFuncCast***)this);
 
@@ -1100,7 +1100,7 @@ namespace android_video_shim
                 LOGI("virtual layout[%d]=%p", i, fakeObj[i]);
 
             localFuncCast lfc = (localFuncCast)fakeObj[vtableOffset];
-            LOGI("virtual getTrack=%p", lfc);
+            LOGI("virtual getTrackMetaData=%p", lfc);
             return lfc(this, index, flags);
 		}
 
@@ -1259,6 +1259,11 @@ namespace android_video_shim
         {
             typedef void (*localFuncCast)(void *thiz);
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZNK7android8MetaData9dumpToLogEv");
+            if(!lfc)
+            {
+                LOGI("Failing to dumpToLog, symbol not found.");
+                return;
+            }
             assert(lfc);
             LOGV("dumpToLog %p this=%p", lfc, this);
             lfc(this);
@@ -1648,6 +1653,7 @@ Add 2 with int*
         OMX_TI_COLOR_FormatYUV420PackedSemiPlanar = 0x7F000100,
         OMX_QCOM_COLOR_FormatYVU420SemiPlanar = 0x7FA30C00,
         QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka = 0x7fa30c03,
+        QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka2 = 0x7fa30c04,
 
         OMX_COLOR_FormatMax = 0x7FFFFFFF
     } OMX_COLOR_FORMATTYPE;
@@ -1926,8 +1932,14 @@ Add 2 with int*
             typedef void (*localFuncCast2)(void *thiz, const sp<MediaPlayerBase::AudioSink> &audioSink,
                     bool flags,
                     void *audioObserver);
+
+            typedef void (*localFuncCast3)(void *thiz, const sp<MediaPlayerBase::AudioSink> &audioSink, 
+                    void *audioObserver);
+
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android11AudioPlayerC1ERKNS_2spINS_15MediaPlayerBase9AudioSinkEEEjPNS_13AwesomePlayerE");
             localFuncCast2 lfc2 = (localFuncCast2)searchSymbol("_ZN7android11AudioPlayerC1ERKNS_2spINS_15MediaPlayerBase9AudioSinkEEEbPNS_13AwesomePlayerE");
+            localFuncCast3 lfc3 = (localFuncCast3)searchSymbol("_ZN7android11AudioPlayerC1ERKNS_2spINS_15MediaPlayerBase9AudioSinkEEEPNS_13AwesomePlayerE");
+
             LOGI("Using C1 Not C2");
             if(lfc)
             {
@@ -1938,6 +1950,11 @@ Add 2 with int*
             {
                 LOGI("AudioPlayer ctor 2, ignoring flags=%x", flags);
                 lfc2(this, audioSink, false, audioObserver);
+            }
+            else if(lfc3)
+            {
+                LOGI("AudioPlayer ctor 1 variant 2, ignoring flags=%x", flags);
+                lfc3(this, audioSink, audioObserver);                
             }
             else
             {

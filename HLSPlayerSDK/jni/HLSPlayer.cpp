@@ -216,7 +216,6 @@ bool HLSPlayer::InitTracks()
 	int64_t totalBitRate = 0;
 	for (size_t i = 0; i < mExtractor->countTracks(); ++i)
 	{
-
 		sp<MetaData> meta = mExtractor->getTrackMetaData(i); // this is likely to return an MPEG2TSSource
 
 		int32_t bitrate = 0;
@@ -233,9 +232,6 @@ bool HLSPlayer::InitTracks()
 	}
 
 	mBitrate = totalBitRate;
-
-
-
 	LOGI("mBitrate = %lld bits/sec", mBitrate);
 
 	bool haveAudio = false;
@@ -636,7 +632,6 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 	LOGI("ColorConversion from %d is valid: %s", colf, cc.isValid() ? "true" : "false" );
 
 	bool useLocalCC = lcc.isValid();
-
 
 	if (!useLocalCC && !cc.isValid())
 	{
