@@ -1,4 +1,0 @@
-1395789022571	Rename package 'com.kaltura.hlsplayerskd.events'
-1395876334531	Rename type 'KPlayerEventListener'
-1395876371304	Rename type 'KPlayerJsCallbackReadyListener'
-1395876396443	Rename method 'onKPlayerEvent'

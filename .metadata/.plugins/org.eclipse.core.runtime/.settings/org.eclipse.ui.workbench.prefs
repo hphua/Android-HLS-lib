@@ -1,7 +1,0 @@
-ColorsAndFontsPreferencePage.expandedCategories=Torg.eclipse.ui.workbenchMisc
-ColorsAndFontsPreferencePage.selectedElement=Forg.eclipse.ui.workbench.texteditor.blockSelectionModeFont
-OPEN_PERSPECTIVE_MODE=2
-eclipse.preferences.version=1
-org.eclipse.jface.textfont=1|Droid Sans Mono|11.25|0|WINDOWS|1|-15|0|0|0|400|0|0|0|0|3|2|1|49|Droid Sans Mono;
-org.eclipse.ui.commands=<?xml version\="1.0" encoding\="UTF-8"?>\r\n<org.eclipse.ui.commands>\r\n<keyBinding contextId\="org.eclipse.ui.textEditorScope" keyConfigurationId\="org.eclipse.ui.defaultAcceleratorConfiguration" keySequence\="CTRL+D"/>\r\n<keyBinding contextId\="org.eclipse.ui.textEditorScope" keyConfigurationId\="org.eclipse.ui.defaultAcceleratorConfiguration" keySequence\="CTRL+D"/>\r\n</org.eclipse.ui.commands>
-org.eclipse.ui.workbench.texteditor.blockSelectionModeFont=1|Droid Sans Mono|11.25|0|WINDOWS|1|-15|0|0|0|400|0|0|0|0|3|2|1|49|Droid Sans Mono;
