@@ -402,7 +402,7 @@ bool HLSPlayer::UpdateWindowBufferFormat()
 
 	LOGI("bufferWidth=%d | bufferHeight=%d", bufferWidth, bufferHeight);
 
-	ANativeWindow_setBuffersGeometry(mWindow, bufferWidth, bufferHeight, WINDOW_FORMAT_RGB_565);
+	int32_t res = ANativeWindow_setBuffersGeometry(mWindow, bufferWidth, bufferHeight, WINDOW_FORMAT_RGB_565);
 }
 
 //
@@ -467,7 +467,7 @@ int HLSPlayer::Update()
 	if (mAudioPlayer->reachedEOS(&audioPlayerStatus))
 	{
 		LOGI("Audio player is at EOS, stopping...");
-		mStatus == STOPPED;
+		mStatus = STOPPED;
 		return -1;
 	}
 

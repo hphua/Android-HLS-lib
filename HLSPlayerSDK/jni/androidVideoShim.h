@@ -1523,6 +1523,17 @@ Add 2 with int*
 
             ssize_t rsize = mSources[mSourceIdx]->readAt(adjoffset, data, size);
 
+            if (rsize < size && mSourceIdx + 1 < mSources.size())
+            {
+            	LOGI("Incomplete Read - Changing Segments : curIdx=%d, nextIdx=%d", mSourceIdx, mSourceIdx + 1);
+                adjoffset -= sourceSize; // subtract the size of the current source from the offset
+                mOffsetAdjustment += sourceSize; // Add the size of the current source to our offset adjustment for the future
+                ++mSourceIdx;
+
+                LOGI("Reading At %lld | New ", adjoffset + rsize);
+                rsize += mSources[mSourceIdx]->readAt(adjoffset + rsize, data + rsize, size - rsize);
+            }
+
 
             LOGI("%p | getSize = %lld | offset=%lld | offsetAdjustment = %lld | adjustedOffset = %lld | requested size = %d | rsize = %ld",
                             this, sourceSize, offset, mOffsetAdjustment, adjoffset, size, rsize);
@@ -1636,7 +1647,7 @@ Add 2 with int*
         OMX_COLOR_FormatAndroidOpaque = 0x7F000789,
         OMX_TI_COLOR_FormatYUV420PackedSemiPlanar = 0x7F000100,
         OMX_QCOM_COLOR_FormatYVU420SemiPlanar = 0x7FA30C00,
-        QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka = 0x7fa30c04,
+        QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka = 0x7fa30c03,
 
         OMX_COLOR_FormatMax = 0x7FFFFFFF
     } OMX_COLOR_FORMATTYPE;

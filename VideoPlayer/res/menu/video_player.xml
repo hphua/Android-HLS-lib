@@ -10,9 +10,9 @@
         app:showAsAction="never">
     </item>
     <item android:id="@+id/abc_dvr_item" android:title="@string/abc_dvr" android:orderInCategory="5"></item>
-    <item android:id="@+id/seekFwd" android:title="@string/seekFwd" android:orderInCategory="3"></item>
-    <item android:id="@+id/seekBwd" android:title="@string/seekBackward" android:orderInCategory="4"></item>
-    <item android:id="@+id/testUrl" android:title="@string/testURL" android:orderInCategory="7"></item>
+    <item android:id="@+id/seekFwd" android:title="@string/seekFwd" android:orderInCategory="3" android:visible="false"></item>
+    <item android:id="@+id/seekBwd" android:title="@string/seekBackward" android:orderInCategory="4" android:visible="false"></item>
+    <item android:id="@+id/testUrl" android:title="@string/testURL" android:orderInCategory="7" android:visible="false"></item>
     <item android:id="@+id/openUrl" android:title="@string/OpenURL" android:orderInCategory="1"></item>
     <item android:id="@+id/play_pause" android:title="@string/play_pause" android:orderInCategory="2"></item>
 
