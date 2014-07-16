@@ -50,8 +50,8 @@ bool ColorConverter_Local::isValid() const {
         case OMX_QCOM_COLOR_FormatYVU420SemiPlanar:
         case OMX_COLOR_FormatYUV420SemiPlanar:
         case OMX_TI_COLOR_FormatYUV420PackedSemiPlanar:        
+        case OMX_QCOM_COLOR_FormatYUV420PackedSemiPlanar32m:
         case QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka:
-        case QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka2:
             return true;
         default:
             return false;
@@ -88,6 +88,11 @@ status_t ColorConverter_Local::convert(
     if (mDstFormat != OMX_COLOR_Format16bitRGB565) {
         return ERROR_UNSUPPORTED;
     }
+
+	LOGI("source coords, %d, %d, %d, %d, %d, %d", srcWidth, srcHeight, srcCropLeft, srcCropTop, srcCropRight, srcCropBottom);
+	LOGI("dest coords, %d, %d, %d, %d, %d, %d", dstWidth, dstHeight, dstCropLeft, dstCropTop, dstCropRight, dstCropBottom);
+
+
     BitmapParams src(
             const_cast<void *>(srcBits),
             srcWidth, srcHeight,
@@ -111,10 +116,10 @@ status_t ColorConverter_Local::convert(
             err = convertYUV420SemiPlanar(src, dst);
             break;
         case OMX_TI_COLOR_FormatYUV420PackedSemiPlanar:
+        case OMX_QCOM_COLOR_FormatYUV420PackedSemiPlanar32m:
             err = convertTIYUV420PackedSemiPlanar(src, dst);
             break;
         case QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka:
-        case QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka2:
             convertQOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka(src, dst);
             break;
         default:
@@ -451,7 +456,8 @@ uint8_t *ColorConverter_Local::initClip() {
 
 status_t ColorConverter_Local::convertQOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka(const BitmapParams &src, const BitmapParams &dst)
 {
-    convertNV12Tile(src.cropWidth(), src.cropHeight(), src.mBits, 0, dst.mBits, src.cropWidth() * 2);
+    convertNV12Tile(src.mWidth, src.mHeight, src.mBits, 0, dst.mBits, dst.mWidth * sizeof(short));
+    return OK;
 }
 
 // GetTiledMemBlockNum

@@ -11,3 +11,4 @@ HLSPlayerSDK/libs/
 HLSPlayerSDK/obj/
 VideoPlayer/bin/
 VideoPlayer/gen/
+*.dmp

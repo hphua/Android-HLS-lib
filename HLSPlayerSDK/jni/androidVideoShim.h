@@ -19,11 +19,6 @@
 
 #include "debug.h"
 
-//#define LOGI(...) ((void)__android_log_print(ANDROID_LOG_INFO, "native-activity", __VA_ARGS__))
-//#define LOGW(...) ((void)__android_log_print(ANDROID_LOG_WARN, "native-activity", __VA_ARGS__))
-
-
-
 /******************************************************************************
 
     Android Video Compatibility Shim
@@ -218,7 +213,7 @@ namespace android_video_shim
         {
             typedef void (*localFuncCast)(void *thiz, void *id);
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZNK7android7RefBase9incStrongEPKv");
-            LOGI("RefBase - Inc'ing %p %p %p", (void*)this, id, lfc);
+            LOGV("RefBase - Inc'ing %p %p %p", (void*)this, id, lfc);
             assert(lfc);
             lfc(this, id);
         }
@@ -227,7 +222,7 @@ namespace android_video_shim
         {
             typedef void (*localFuncCast)(void *thiz, void *id);
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZNK7android7RefBase9decStrongEPKv");
-            LOGI("RefBase - Dec'ing %p %p %p", (void*)this, id, lfc);
+            LOGV("RefBase - Dec'ing %p %p %p", (void*)this, id, lfc);
             assert(lfc);
             lfc(this, id);
         }
@@ -235,7 +230,7 @@ namespace android_video_shim
         RefBase()
         {
             // Call our c'tor.
-            LOGI("RefBase - ctor %p", this);
+            LOGV("RefBase - ctor %p", this);
             typedef void (*localFuncCast)(void *thiz);
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android7RefBaseC2Ev");
             assert(lfc);
@@ -445,8 +440,8 @@ namespace android_video_shim
             typedef status_t (*localFuncCast)(void *thiz);
             localFuncCast **fakeObj = (localFuncCast**)this;
 
-            for(int i=0; i<24; i++)
-                LOGI("virtual layout[%d]=%p", i, fakeObj[0][i]);
+            //for(int i=0; i<24; i++)
+            //    LOGI("virtual layout[%d]=%p", i, fakeObj[0][i]);
 
             LOGI("FileSource::initCheck should be %p", searchSymbol("_ZNK7android10FileSource9initCheckEv"));
             LOGI("NuCachedSource2::initCheck should be %p", searchSymbol("_ZNK7android15NuCachedSource29initCheckEv"));
@@ -467,10 +462,10 @@ namespace android_video_shim
             /*for(int i=0; i<17; i++)
                 LOGI("virtual layout[%d]=%p", i, fakeObj[0][i]); */
 
-            LOGI("FileSource::readAt should be %p", searchSymbol("_ZN7android10FileSource9readAtDRMExPvj"));
+            LOGV("FileSource::readAt should be %p", searchSymbol("_ZN7android10FileSource9readAtDRMExPvj"));
 
             localFuncCast lfc = (localFuncCast)fakeObj[0][vtableOffset];
-            LOGI("virtual readAt=%p", lfc);
+            LOGV("virtual readAt=%p", lfc);
             ssize_t r = lfc((void*)this, offset, data, size);
             //LOGI("    o got %ld", r);
             return r;
@@ -652,7 +647,7 @@ namespace android_video_shim
             typedef sp<MetaData> (*localFuncCast)(void *thiz);
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android11MediaBuffer9meta_dataEv");
             assert(lfc);
-            LOGI("MediaBuffer::meta_data = %p this=%p", lfc, this);
+            LOGV("MediaBuffer::meta_data = %p this=%p", lfc, this);
 
             return lfc(this);
         }
@@ -1037,8 +1032,8 @@ namespace android_video_shim
 
             localFuncCast **fakeObj = *((localFuncCast***)this);
 
-            for(int i=0; i<10; i++)
-                LOGI("virtual layout[%d]=%p", i, fakeObj[i]);
+            //for(int i=0; i<10; i++)
+            //    LOGI("virtual layout[%d]=%p", i, fakeObj[i]);
 
 
             localFuncCast lfc = (localFuncCast)fakeObj[vtableOffset];
@@ -1057,8 +1052,8 @@ namespace android_video_shim
 
             localFuncCast **fakeObj = *((localFuncCast***)this);
 
-            for(int i=0; i<10; i++)
-                LOGI("virtual layout[%d]=%p", i, fakeObj[i]);
+            //for(int i=0; i<10; i++)
+            //    LOGI("virtual layout[%d]=%p", i, fakeObj[i]);
 
             localFuncCast lfc = (localFuncCast)fakeObj[vtableOffset];
             LOGI("virtual getTrack=%p", lfc);
@@ -1076,8 +1071,8 @@ namespace android_video_shim
 
             localFuncCast **fakeObj = *((localFuncCast***)this);
 
-            for(int i=0; i<10; i++)
-                LOGI("virtual layout[%d]=%p", i, fakeObj[i]);
+            //for(int i=0; i<10; i++)
+            //    LOGI("virtual layout[%d]=%p", i, fakeObj[i]);
 
             localFuncCast lfc = (localFuncCast)fakeObj[vtableOffset];
             LOGI("virtual getTrack=%p", lfc);
@@ -1096,8 +1091,8 @@ namespace android_video_shim
 
             localFuncCast **fakeObj = *((localFuncCast***)this);
 
-            for(int i=0; i<10; i++)
-                LOGI("virtual layout[%d]=%p", i, fakeObj[i]);
+            //for(int i=0; i<10; i++)
+            //    LOGI("virtual layout[%d]=%p", i, fakeObj[i]);
 
             localFuncCast lfc = (localFuncCast)fakeObj[vtableOffset];
             LOGI("virtual getTrackMetaData=%p", lfc);
@@ -1245,14 +1240,14 @@ namespace android_video_shim
             return lfc(this, key, value);
         }
 
-        bool findRect(uint32_t key, int32_t *top, int32_t *left, int32_t *bottom, int32_t *right)
+        bool findRect(uint32_t key, int32_t *left, int32_t *top, int32_t *right, int32_t *bottom)
         {
-            typedef bool (*localFuncCast)(void *thiz, uint32_t key, int32_t *top, int32_t *left, int32_t *bottom, int32_t *right);
+            typedef bool (*localFuncCast)(void *thiz, uint32_t key, int32_t *left, int32_t *top, int32_t *right, int32_t *bottom);
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android8MetaData8findRectEjPiS1_S1_S1_");
             if(!lfc)
                 return false;
             assert(lfc);
-            return lfc(this, key, top, left, bottom, right);
+            return lfc(this, key, left, top, right, bottom);
         }
 
         void dumpToLog()
@@ -1508,7 +1503,7 @@ Add 2 with int*
 
         ssize_t _readAt(off64_t offset, void* data, size_t size)
         {
-            LOGV("Attempting _readAt");
+            //LOGV("Attempting _readAt");
 
             off64_t sourceSize = 0;
             mSources[mSourceIdx]->getSize(&sourceSize);
@@ -1523,7 +1518,6 @@ Add 2 with int*
                 adjoffset -= sourceSize; // subtract the size of the current source from the offset
                 mOffsetAdjustment += sourceSize; // Add the size of the current source to our offset adjustment for the future
                 ++mSourceIdx;
-
             }
 
             ssize_t rsize = mSources[mSourceIdx]->readAt(adjoffset, data, size);
@@ -1536,12 +1530,12 @@ Add 2 with int*
                 ++mSourceIdx;
 
                 LOGI("Reading At %lld | New ", adjoffset + rsize);
-                rsize += mSources[mSourceIdx]->readAt(adjoffset + rsize, data + rsize, size - rsize);
+                rsize += mSources[mSourceIdx]->readAt(adjoffset + rsize, (unsigned char*)data + rsize, size - rsize);
             }
 
 
-            LOGI("%p | getSize = %lld | offset=%lld | offsetAdjustment = %lld | adjustedOffset = %lld | requested size = %d | rsize = %ld",
-                            this, sourceSize, offset, mOffsetAdjustment, adjoffset, size, rsize);
+            //LOGI("%p | getSize = %lld | offset=%lld | offsetAdjustment = %lld | adjustedOffset = %lld | requested size = %d | rsize = %ld",
+            //                this, sourceSize, offset, mOffsetAdjustment, adjoffset, size, rsize);
             return rsize;
         }
 
@@ -1653,7 +1647,7 @@ Add 2 with int*
         OMX_TI_COLOR_FormatYUV420PackedSemiPlanar = 0x7F000100,
         OMX_QCOM_COLOR_FormatYVU420SemiPlanar = 0x7FA30C00,
         QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka = 0x7fa30c03,
-        QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka2 = 0x7fa30c04,
+        OMX_QCOM_COLOR_FormatYUV420PackedSemiPlanar32m = 0x7fa30c04,
 
         OMX_COLOR_FormatMax = 0x7FFFFFFF
     } OMX_COLOR_FORMATTYPE;
@@ -1953,7 +1947,7 @@ Add 2 with int*
             }
             else if(lfc3)
             {
-                LOGI("AudioPlayer ctor 1 variant 2, ignoring flags=%x", flags);
+                LOGI("AudioPlayer ctor 3 variant 2, ignoring flags=%x", flags);
                 lfc3(this, audioSink, audioObserver);                
             }
             else
