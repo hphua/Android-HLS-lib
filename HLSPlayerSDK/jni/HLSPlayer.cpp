@@ -302,6 +302,19 @@ bool HLSPlayer::CreateAudioPlayer()
 		mAudioPlayer = NULL;
 	}
 
+	LOGI("Constructing JAudioTrack");
+	mJAudioTrack = new AudioTrack(mJvm);
+	if (mJAudioTrack)
+	{
+		if (!mJAudioTrack->Init())
+		{
+			LOGE("JAudioTrack::Init() failed - quitting CreateAudioPlayer");
+			return false;
+		}
+
+		mJAudioTrack->Set(mAudioSource);
+	}
+
 	LOGI("Constructing AudioPlayer");
 	mAudioPlayer = new AudioPlayer(NULL, flags, NULL);
 	LOGI("AudioPlayer::setSource with %p", mAudioSource.get());
@@ -428,7 +441,8 @@ bool HLSPlayer::Play()
 				LOGI("Starting audio playback");
 
 #ifdef USE_AUDIO
-				err = mAudioPlayer->start(true);
+				//err = mAudioPlayer->start(true);
+				mJAudioTrack->Play();
 #endif
 
 				LOGI("   OK! err=%d", err);
@@ -464,12 +478,14 @@ int HLSPlayer::Update()
 	}
 
 	status_t audioPlayerStatus;
-	if (mAudioPlayer->reachedEOS(&audioPlayerStatus))
-	{
-		LOGI("Audio player is at EOS, stopping...");
-		mStatus = STOPPED;
-		return -1;
-	}
+//	if (mAudioPlayer->reachedEOS(&audioPlayerStatus))
+//	{
+//		LOGI("Audio player is at EOS, stopping...");
+//		mStatus = STOPPED;
+//		return -1;
+//	}
+	if (mJAudioTrack != NULL)
+		mJAudioTrack->Update();
 
 
 	if (mDataSource != NULL)
@@ -530,7 +546,8 @@ int HLSPlayer::Update()
 			}
 
 #ifdef USE_AUDIO
-			int64_t audioTime = mAudioPlayer->getRealTimeUs(); //mTimeSource->getRealTimeUs();
+			//int64_t audioTime = mAudioPlayer->getRealTimeUs(); //mTimeSource->getRealTimeUs();
+			int64_t audioTime = timeUs; // this is just temporary to test the audio player
 #else
 			int64_t audioTime = timeUs;
 #endif

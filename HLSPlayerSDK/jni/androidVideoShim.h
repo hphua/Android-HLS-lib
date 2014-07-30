@@ -204,6 +204,44 @@ namespace android_video_shim
         ERROR_HEARTBEAT_TERMINATE_REQUESTED                     = HEARTBEAT_ERROR_BASE,
     };
 
+    extern const char *MEDIA_MIMETYPE_IMAGE_JPEG;
+
+    extern const char *MEDIA_MIMETYPE_VIDEO_VP8;
+    extern const char *MEDIA_MIMETYPE_VIDEO_VP9;
+    extern const char *MEDIA_MIMETYPE_VIDEO_AVC;
+    extern const char *MEDIA_MIMETYPE_VIDEO_MPEG4;
+    extern const char *MEDIA_MIMETYPE_VIDEO_H263;
+    extern const char *MEDIA_MIMETYPE_VIDEO_MPEG2;
+    extern const char *MEDIA_MIMETYPE_VIDEO_RAW;
+
+    extern const char *MEDIA_MIMETYPE_AUDIO_AMR_NB;
+    extern const char *MEDIA_MIMETYPE_AUDIO_AMR_WB;
+    extern const char *MEDIA_MIMETYPE_AUDIO_MPEG;           // layer III
+    extern const char *MEDIA_MIMETYPE_AUDIO_MPEG_LAYER_I;
+    extern const char *MEDIA_MIMETYPE_AUDIO_MPEG_LAYER_II;
+    extern const char *MEDIA_MIMETYPE_AUDIO_AAC;
+    extern const char *MEDIA_MIMETYPE_AUDIO_QCELP;
+    extern const char *MEDIA_MIMETYPE_AUDIO_VORBIS;
+    extern const char *MEDIA_MIMETYPE_AUDIO_G711_ALAW;
+    extern const char *MEDIA_MIMETYPE_AUDIO_G711_MLAW;
+    extern const char *MEDIA_MIMETYPE_AUDIO_RAW;
+    extern const char *MEDIA_MIMETYPE_AUDIO_FLAC;
+    extern const char *MEDIA_MIMETYPE_AUDIO_AAC_ADTS;
+    extern const char *MEDIA_MIMETYPE_AUDIO_MSGSM;
+
+    extern const char *MEDIA_MIMETYPE_CONTAINER_MPEG4;
+    extern const char *MEDIA_MIMETYPE_CONTAINER_WAV;
+    extern const char *MEDIA_MIMETYPE_CONTAINER_OGG;
+    extern const char *MEDIA_MIMETYPE_CONTAINER_MATROSKA;
+    extern const char *MEDIA_MIMETYPE_CONTAINER_MPEG2TS;
+    extern const char *MEDIA_MIMETYPE_CONTAINER_AVI;
+    extern const char *MEDIA_MIMETYPE_CONTAINER_MPEG2PS;
+
+    extern const char *MEDIA_MIMETYPE_CONTAINER_WVM;
+
+    extern const char *MEDIA_MIMETYPE_TEXT_3GPP;
+    extern const char *MEDIA_MIMETYPE_TEXT_SUBRIP;
+
     class MetaData;
 
     class RefBase
@@ -1125,6 +1163,7 @@ namespace android_video_shim
         kKeyStride            = 'strd',  // int32_t
         kKeySliceHeight       = 'slht',  // int32_t
         kKeyChannelCount      = '#chn',  // int32_t
+        kKeyChannelMask       = 'chnm',  // int32_t
         kKeySampleRate        = 'srte',  // int32_t (audio sampling rate Hz)
         kKeyFrameRate         = 'frmR',  // int32_t (video frame rate fps)
         kKeyBitRate           = 'brte',  // int32_t (bps)
@@ -1194,6 +1233,52 @@ namespace android_video_shim
         kKeyTextFormatData    = 'text',  // raw data
         kKeyRequiresSecureBuffers = 'secu',  // bool (int32_t)
     };
+
+
+    // Some audio types - these are from <system/audio.h>
+    // I'm only including types necessary for PCM as, by the time we need this information
+    // we should only be dealing with PCM
+    /* PCM sub formats */
+    typedef enum {
+        AUDIO_FORMAT_PCM_SUB_16_BIT          = 0x1, /* DO NOT CHANGE - PCM signed 16 bits */
+        AUDIO_FORMAT_PCM_SUB_8_BIT           = 0x2, /* DO NOT CHANGE - PCM unsigned 8 bits */
+        AUDIO_FORMAT_PCM_SUB_32_BIT          = 0x3, /* PCM signed .31 fixed point */
+        AUDIO_FORMAT_PCM_SUB_8_24_BIT        = 0x4, /* PCM signed 7.24 fixed point */
+    } audio_format_pcm_sub_fmt_t;
+
+    /* Audio format consists in a main format field (upper 8 bits) and a sub format
+     * field (lower 24 bits).
+     *
+     * The main format indicates the main codec type. The sub format field
+     * indicates options and parameters for each format. The sub format is mainly
+     * used for record to indicate for instance the requested bitrate or profile.
+     * It can also be used for certain formats to give informations not present in
+     * the encoded audio stream (e.g. octet alignement for AMR).
+     */
+    typedef enum {
+        AUDIO_FORMAT_INVALID             = 0xFFFFFFFFUL,
+        AUDIO_FORMAT_DEFAULT             = 0,
+        AUDIO_FORMAT_PCM                 = 0x00000000UL, /* DO NOT CHANGE */
+        AUDIO_FORMAT_MP3                 = 0x01000000UL,
+        AUDIO_FORMAT_AMR_NB              = 0x02000000UL,
+        AUDIO_FORMAT_AMR_WB              = 0x03000000UL,
+        AUDIO_FORMAT_AAC                 = 0x04000000UL,
+        AUDIO_FORMAT_HE_AAC_V1           = 0x05000000UL,
+        AUDIO_FORMAT_HE_AAC_V2           = 0x06000000UL,
+        AUDIO_FORMAT_VORBIS              = 0x07000000UL,
+        AUDIO_FORMAT_MAIN_MASK           = 0xFF000000UL,
+        AUDIO_FORMAT_SUB_MASK            = 0x00FFFFFFUL,
+
+        /* Aliases */
+        AUDIO_FORMAT_PCM_16_BIT          = (AUDIO_FORMAT_PCM |
+                                            AUDIO_FORMAT_PCM_SUB_16_BIT),
+        AUDIO_FORMAT_PCM_8_BIT           = (AUDIO_FORMAT_PCM |
+                                            AUDIO_FORMAT_PCM_SUB_8_BIT),
+        AUDIO_FORMAT_PCM_32_BIT          = (AUDIO_FORMAT_PCM |
+                                            AUDIO_FORMAT_PCM_SUB_32_BIT),
+        AUDIO_FORMAT_PCM_8_24_BIT        = (AUDIO_FORMAT_PCM |
+                                            AUDIO_FORMAT_PCM_SUB_8_24_BIT),
+    } audio_format_t;
 
     class MetaData : public RefBase
     {

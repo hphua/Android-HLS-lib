@@ -16,6 +16,8 @@
 #include <android/native_window.h>
 #include <android/window.h>
 
+#include "AudioTrack.h"
+
 #include <list>
 
 class HLSSegment;
@@ -99,6 +101,7 @@ private:
 
 	android_video_shim::sp<android_video_shim::MediaExtractor> mExtractor;    // The object that pulls the initial data source apart into separate audio and video sources
 
+	AudioTrack* mJAudioTrack;
 	android_video_shim::AudioPlayer* mAudioPlayer;
 	android_video_shim::sp<android_video_shim::MediaPlayerBase::AudioSink> mAudioSink;
 
