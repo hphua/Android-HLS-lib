@@ -19,6 +19,25 @@
 
 using namespace android_video_shim;
 
+
+//////////
+//
+// Thread stuff
+//
+/////////
+
+void* audio_thread_func(void* arg)
+{
+	AudioTrack* audioTrack = (AudioTrack*)arg;
+
+	while (audioTrack->Update())
+	{
+
+	}
+	return NULL;
+}
+
+
 HLSPlayer::HLSPlayer(JavaVM* jvm) : mExtractorFlags(0),
 mHeight(0), mWidth(0), mCropHeight(0), mCropWidth(0), mBitrate(0), mActiveAudioTrackIndex(-1),
 mVideoBuffer(NULL), mWindow(NULL), mSurface(NULL), mRenderedFrameCount(0),
@@ -442,7 +461,11 @@ bool HLSPlayer::Play()
 
 #ifdef USE_AUDIO
 				//err = mAudioPlayer->start(true);
-				mJAudioTrack->Play();
+				if (mJAudioTrack->Play())
+				{
+					if (pthread_create(&audioThread, NULL, audio_thread_func, (void*)mJAudioTrack  ) != 0)
+						return false;
+				}
 #endif
 
 				LOGI("   OK! err=%d", err);
@@ -484,8 +507,8 @@ int HLSPlayer::Update()
 //		mStatus = STOPPED;
 //		return -1;
 //	}
-	if (mJAudioTrack != NULL)
-		mJAudioTrack->Update();
+//	if (mJAudioTrack != NULL)
+//		mJAudioTrack->Update();
 
 
 	if (mDataSource != NULL)
@@ -547,7 +570,7 @@ int HLSPlayer::Update()
 
 #ifdef USE_AUDIO
 			//int64_t audioTime = mAudioPlayer->getRealTimeUs(); //mTimeSource->getRealTimeUs();
-			int64_t audioTime = timeUs; // this is just temporary to test the audio player
+			int64_t audioTime = mJAudioTrack->GetTimeStamp(); // timeUs; // this is just temporary to test the audio player
 #else
 			int64_t audioTime = timeUs;
 #endif

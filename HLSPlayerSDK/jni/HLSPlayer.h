@@ -18,6 +18,7 @@
 
 #include "AudioTrack.h"
 
+#include <pthread.h>
 #include <list>
 
 class HLSSegment;
@@ -73,6 +74,7 @@ private:
 
 	std::list<HLSSegment* > mSegments;
 
+	pthread_t audioThread;
 
 	int mRenderedFrameCount;
 	ANativeWindow* mWindow;

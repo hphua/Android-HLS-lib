@@ -23,9 +23,9 @@ public:
 
 	bool Set(android_video_shim::sp<android_video_shim::MediaSource> audioSource, bool alreadyStarted = false);
 
-	void Update();
+	bool Update();
 
-	uint64_t GetTimeStamp();
+	int64_t GetTimeStamp();
 
 private:
 	jclass mCAudioTrack;
@@ -36,6 +36,7 @@ private:
 	jmethodID mRelease;
 	jmethodID mGetTimestamp;
 	jmethodID mWrite;
+	jmethodID mGetPlaybackHeadPosition;
 
 	jobject mTrack;
 
