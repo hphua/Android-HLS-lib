@@ -17,6 +17,8 @@
 
 #include <vector>
 
+#include <pthread.h>
+
 #include "debug.h"
 
 /******************************************************************************
@@ -627,7 +629,7 @@ namespace android_video_shim
             typedef void (*localFuncCast)(void *thiz);
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android11MediaBuffer7releaseEv");
             assert(lfc);
-            LOGI("MediaBuffer::release = %p", lfc);
+            //LOGI("MediaBuffer::release = %p", lfc);
 
             lfc(this);
         }
@@ -643,7 +645,7 @@ namespace android_video_shim
             typedef void *(*localFuncCast)(void *thiz);
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZNK7android11MediaBuffer4dataEv");
             assert(lfc);
-            LOGI("MediaBuffer::data = %p this=%p", lfc, this);
+            //LOGI("MediaBuffer::data = %p this=%p", lfc, this);
             return lfc(this);
         }
 
@@ -652,7 +654,7 @@ namespace android_video_shim
             typedef size_t (*localFuncCast)(void *thiz);
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZNK7android11MediaBuffer4sizeEv");
             assert(lfc);
-            LOGI("MediaBuffer::size = %p this=%p", lfc, this);
+            //LOGI("MediaBuffer::size = %p this=%p", lfc, this);
             return lfc(this);
         }
         size_t range_offset() const
@@ -665,7 +667,7 @@ namespace android_video_shim
             typedef size_t (*localFuncCast)(void *thiz);
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZNK7android11MediaBuffer12range_lengthEv");
             assert(lfc);
-            LOGI("MediaBuffer::range_length = %p this=%p", lfc, this);
+            //LOGI("MediaBuffer::range_length = %p this=%p", lfc, this);
             return lfc(this);
         }
 
@@ -1463,6 +1465,9 @@ namespace android_video_shim
     public:
         HLSDataSource(): mSourceIdx(0), mSegmentStartOffset(0), mOffsetAdjustment(0)
         {
+            // Initialize our mutex.
+            int err = pthread_mutex_init(&mutex, NULL);
+            LOGI(" HLSDataSource mutex err = %d", err);
         }
 
         void patchTable()
@@ -1482,27 +1487,6 @@ namespace android_video_shim
 
             // Take into account mandatory vtable offsets.
             fakeObj[0] = (void**)(((int*)newVtable) + 2);
-
-/*
-No add
-07-08 06:28:04.539: I/native-activity(22824): vtable[0] = 0x0
-07-08 06:28:04.539: I/native-activity(22824): vtable[1] = 0x0
-07-08 06:28:04.539: I/native-activity(22824): vtable[2] = 0xa2f4930d
-07-08 06:28:04.539: I/native-activity(22824): vtable[3] = 0xa2f49331
-*/
-
-            /*
-Add +2
-07-08 06:31:38.914: I/native-activity(23530): vtable[0] = 0x0
-07-08 06:31:38.925: I/native-activity(23530): vtable[1] = 0x930d0000
-07-08 06:31:38.925: I/native-activity(23530): vtable[2] = 0x9331a2f4
-07-08 06:31:38.925: I/native-activity(23530): vtable[3] = 0x49e9a2f4
-
-Add 2 with int*
-07-08 06:32:38.838: I/native-activity(23750): vtable[0] = 0xa2f4930d
-07-08 06:32:38.838: I/native-activity(23750): vtable[1] = 0xa2f49331
-07-08 06:32:38.838: I/native-activity(23750): vtable[2] = 0xa81149e9
-            */
 
             // Dump some useful known symbols.
             #if 1
@@ -1558,22 +1542,30 @@ Add 2 with int*
 
         status_t append(const char* uri)
         {
+            pthread_mutex_lock(&mutex);
+
             sp<DataSource> dataSource = DataSource::CreateFromURI(uri);
             if(!dataSource.get())
             {
                 LOGI("Failed to create DataSource for %s", uri);
+                pthread_mutex_unlock(&mutex);
                 return -1;
             }
 
             status_t rval = dataSource->initCheck();
             LOGE("DataSource initCheck() result: %s", strerror(-rval));
             mSources.push_back(dataSource);
+
+            pthread_mutex_unlock(&mutex);
             return rval;
         }
 
         int getPreloadedSegmentCount()
         {
-            return mSources.size() - mSourceIdx;
+            pthread_mutex_lock(&mutex);
+            int res = mSources.size() - mSourceIdx;
+            pthread_mutex_unlock(&mutex);
+            return res;
         }
 
         status_t _initCheck() const
@@ -1589,6 +1581,7 @@ Add 2 with int*
         ssize_t _readAt(off64_t offset, void* data, size_t size)
         {
             //LOGV("Attempting _readAt");
+            pthread_mutex_lock(&mutex);
 
             off64_t sourceSize = 0;
             mSources[mSourceIdx]->getSize(&sourceSize);
@@ -1621,12 +1614,15 @@ Add 2 with int*
 
             //LOGI("%p | getSize = %lld | offset=%lld | offsetAdjustment = %lld | adjustedOffset = %lld | requested size = %d | rsize = %ld",
             //                this, sourceSize, offset, mOffsetAdjustment, adjoffset, size, rsize);
+
+            pthread_mutex_unlock(&mutex);
             return rsize;
         }
 
         ssize_t _readAt_23(off_t offset, void* data, size_t size)
         {
             LOGV("Attempting _readAt");
+            pthread_mutex_lock(&mutex);
 
             off_t sourceSize = 0;
             mSources[mSourceIdx]->getSize_23(&sourceSize);
@@ -1646,6 +1642,7 @@ Add 2 with int*
 
             LOGV("%p | getSize = %ld | offset=%ld | offsetAdjustment = %lld | adjustedOffset = %ld | requested size = %d | rsize = %ld",
                             this, sourceSize, offset, mOffsetAdjustment, adjoffset, size, rsize);
+            pthread_mutex_unlock(&mutex);
             return rsize;
         }
 
@@ -1668,10 +1665,12 @@ Add 2 with int*
 
     private:
 
+        pthread_mutex_t mutex;
         std::vector< sp<DataSource> > mSources;
         uint32_t mSourceIdx;
         off64_t mSegmentStartOffset;
         off64_t mOffsetAdjustment;
+
     };
 
     typedef enum OMX_COLOR_FORMATTYPE {
