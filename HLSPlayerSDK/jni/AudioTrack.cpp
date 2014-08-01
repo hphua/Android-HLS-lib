@@ -197,7 +197,6 @@ int64_t AudioTrack::GetTimeStamp()
 	double frames = env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mGetPlaybackHeadPosition);
 	double secs = frames / (double)mSampleRate;
 	return (secs * 1000000);
-
 }
 
 
@@ -211,9 +210,9 @@ bool AudioTrack::Update()
 
 	MediaBuffer* mediaBuffer = NULL;
 
-	LOGI("Reading to the media buffer");
+	//LOGI("Reading to the media buffer");
 	status_t res = mAudioSource->read(&mediaBuffer, NULL);
-	LOGI("Finished reading from the media buffer");
+	//LOGI("Finished reading from the media buffer");
 	if (res == OK)
 	{
 		RUNDEBUG(mediaBuffer->meta_data()->dumpToLog());
@@ -226,20 +225,20 @@ bool AudioTrack::Update()
 		if (pBuffer)
 		{
 			size_t mbufSize = mediaBuffer->range_length();
-			LOGI("MediaBufferSize = %d, mBufferSizeInBytes = %d", mbufSize, mBufferSizeInBytes );
+			//LOGI("MediaBufferSize = %d, mBufferSizeInBytes = %d", mbufSize, mBufferSizeInBytes );
 			if (mbufSize <= mBufferSizeInBytes)
 			{
-				LOGI("Writing data to jAudioTrack %d", mbufSize);
+				//LOGI("Writing data to jAudioTrack %d", mbufSize);
 				memcpy(pBuffer, mediaBuffer->data(), mbufSize);
 				unsigned short* pBShorts = (unsigned short*)pBuffer;
-				LOGV("%uhd %uhd %uhd %uhd", pBShorts[0], pBShorts[1], pBShorts[2], pBShorts[3]);
+				LOGV("%hd %hd %hd %hd", pBShorts[0], pBShorts[1], pBShorts[2], pBShorts[3]);
 				int len = mbufSize / 2;
-				LOGV("%uhd %uhd %uhd %uhd", pBShorts[len - 4], pBShorts[len - 3], pBShorts[len - 2], pBShorts[len - 1]);
+				LOGV("%hd %hd %hd %hd", pBShorts[len - 4], pBShorts[len - 3], pBShorts[len - 2], pBShorts[len - 1]);
 
 				env->ReleasePrimitiveArrayCritical(buffer, pBuffer, 0);
-				LOGI("Finished copying audio data to buffer");
+				//LOGI("Finished copying audio data to buffer");
 				env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mWrite, buffer, 0, mbufSize  );
-				LOGI("Finished Writing Data to jAudioTrack");
+				//LOGI("Finished Writing Data to jAudioTrack");
 			}
 			else
 			{
@@ -259,8 +258,6 @@ bool AudioTrack::Update()
 		LOGE("End of Audio Stream");
 		return false;
 	}
-
-
 
 	if (mediaBuffer != NULL)
 	{

@@ -190,7 +190,8 @@ status_t HLSPlayer::FeedSegment(const char* path, int quality, double time )
 	if (err != OK)
 	{
 		LOGE("append Failed: %s", strerror(-err));
-		return err;
+		LOGE("Provisionally continuing...");
+		//return err;
 	}
 
 	// I don't know if we still need this - might need to pass in the URL instead of the datasource
@@ -466,7 +467,6 @@ bool HLSPlayer::Play()
 				LOGI("Starting audio playback");
 
 #ifdef USE_AUDIO
-				//err = mAudioPlayer->start(true);
 				if (mJAudioTrack->Start())
 				{
 					if (pthread_create(&audioThread, NULL, audio_thread_func, (void*)mJAudioTrack  ) != 0)
@@ -554,9 +554,11 @@ int HLSPlayer::Update()
 				if (mVideoBuffer == NULL) return 0;
 				break;
 			case ERROR_END_OF_STREAM:
-				SetState(STOPPED);
+				//SetState(STOPPED);
 				//PlayNextSegment();
-				return -1;
+				//return -1;
+				LOGI("Saw end of stream but who really cares about that?");
+				return 0;
 				break;
 			default:
 				SetState(STOPPED);
@@ -585,8 +587,6 @@ int HLSPlayer::Update()
 #endif
 
 			LOGI("audioTime = %lld | videoTime = %lld | diff = %lld", audioTime, timeUs, audioTime - timeUs);
-
-
 
 			if (timeUs > mLastVideoTimeUs)
 			{
@@ -668,7 +668,7 @@ int HLSPlayer::Update()
 bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 {
 	//LOGI("Entered");
-	LOGI("Rendering Buffer size=%d", buffer->size());
+	//LOGI("Rendering Buffer size=%d", buffer->size());
 	if (!mWindow) { LOGI("mWindow is NULL"); return false; }
 	if (!buffer) { LOGI("the MediaBuffer is NULL"); return false; }
 
@@ -685,17 +685,17 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 		vbCropBottom = mCropHeight - 1;
 		vbCropRight = mCropWidth - 1;
 	}
-	LOGI("vbw=%d vbh=%d vbcl=%d vbct=%d vbcr=%d vbcb=%d", videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom);
+	//LOGI("vbw=%d vbh=%d vbcl=%d vbct=%d vbcr=%d vbcb=%d", videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom);
 
 	int colf = 0;
 	bool res = mVideoSource->getFormat()->findInt32(kKeyColorFormat, &colf);
-	LOGI("Found Frame Color Format: %s", res ? "true" : "false" );
+	//LOGI("Found Frame Color Format: %s", res ? "true" : "false" );
 
 	ColorConverter_Local lcc((OMX_COLOR_FORMATTYPE)colf, OMX_COLOR_Format16bitRGB565);
-	LOGI("ColorConversion from %x is valid: %s", colf, lcc.isValid() ? "true" : "false" );
+	//LOGI("ColorConversion from %x is valid: %s", colf, lcc.isValid() ? "true" : "false" );
 
 	ColorConverter cc((OMX_COLOR_FORMATTYPE)colf, OMX_COLOR_Format16bitRGB565); // Should be getting these from the formats, probably
-	LOGI("ColorConversion from %x is valid: %s", colf, cc.isValid() ? "true" : "false" );
+	//LOGI("ColorConversion from %x is valid: %s", colf, cc.isValid() ? "true" : "false" );
 
 	bool useLocalCC = lcc.isValid();
 
@@ -714,7 +714,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 		ANativeWindow_Buffer windowBuffer;
 		if (ANativeWindow_lock(mWindow, &windowBuffer, NULL) == 0)
 		{
-			LOGI("buffer locked (%d x %d stride=%d, format=%d)", windowBuffer.width, windowBuffer.height, windowBuffer.stride, windowBuffer.format);
+			//LOGI("buffer locked (%d x %d stride=%d, format=%d)", windowBuffer.width, windowBuffer.height, windowBuffer.stride, windowBuffer.format);
 
 			//MediaSource* vt = (MediaSource*)mVideoSource.get();
 
@@ -725,15 +725,15 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 			unsigned short *pixels = (unsigned short *)windowBuffer.bits;
 			memset(pixels, 0, windowBuffer.stride * windowBuffer.height * 2);
 
-			LOGI("mWidth=%d | mHeight=%d | mCropWidth=%d | mCropHeight=%d | buffer.width=%d | buffer.height=%d",
-							mWidth, mHeight, mCropWidth, mCropHeight, windowBuffer.width, windowBuffer.height);
+			//LOGI("mWidth=%d | mHeight=%d | mCropWidth=%d | mCropHeight=%d | buffer.width=%d | buffer.height=%d",
+			//				mWidth, mHeight, mCropWidth, mCropHeight, windowBuffer.width, windowBuffer.height);
 
 			int32_t offsetx = (windowBuffer.width - videoBufferWidth) / 2;
 			if (offsetx & 1 == 1) ++offsetx;
 			int32_t offsety = (windowBuffer.height - videoBufferHeight) / 2;
 
-			LOGV("converting source coords, %d, %d, %d, %d, %d, %d", videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom);
-			LOGV("converting target coords, %d, %d, %d, %d, %d, %d", targetWidth, targetHeight, vbCropLeft + offsetx, vbCropTop + offsety, vbCropRight + offsetx, vbCropBottom + offsety);
+			//LOGV("converting source coords, %d, %d, %d, %d, %d, %d", videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom);
+			//LOGV("converting target coords, %d, %d, %d, %d, %d, %d", targetWidth, targetHeight, vbCropLeft + offsetx, vbCropTop + offsety, vbCropRight + offsetx, vbCropBottom + offsety);
 			status_t ccres;
 			if (useLocalCC)
 				ccres = lcc.convert(buffer->data(), videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom,

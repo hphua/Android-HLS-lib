@@ -1589,32 +1589,52 @@ namespace android_video_shim
 
             off64_t adjoffset = offset - mOffsetAdjustment;  // get our adjusted offset. It should always be >= 0
 
-            if (adjoffset >= sourceSize && (mSourceIdx + 1 < mSources.size())) // The thinking here is that if we run out of sources, we should just let it pass through to read the last source at the invalid buffer, generating the proper return code
-                                                                               // However, this doesn't solve the problem of delayed fragment downloads... not sure what to do about that, yet
-                                                                               // This should at least prevent us from crashing
+            if (adjoffset >= sourceSize) // The thinking here is that if we run out of sources, we should just let it pass through to read the last source at the invalid buffer, generating the proper return code
+                                         // However, this doesn't solve the problem of delayed fragment downloads... not sure what to do about that, yet
+                                         // This should at least prevent us from crashing
             {
-            	LOGI("Changing Segments: curIdx=%d, nextIdx=%d", mSourceIdx, mSourceIdx + 1);
-                adjoffset -= sourceSize; // subtract the size of the current source from the offset
-                mOffsetAdjustment += sourceSize; // Add the size of the current source to our offset adjustment for the future
-                ++mSourceIdx;
+                if(mSourceIdx + 1 < mSources.size())
+                {
+                    LOGI("Changing Segments: curIdx=%d, nextIdx=%d", mSourceIdx, mSourceIdx + 1);
+                    adjoffset -= sourceSize; // subtract the size of the current source from the offset
+                    mOffsetAdjustment += sourceSize; // Add the size of the current source to our offset adjustment for the future
+                    ++mSourceIdx;
+                }
+                else
+                {
+                    LOGI("Reached end of segment list.");
+                }
             }
 
             ssize_t rsize = mSources[mSourceIdx]->readAt(adjoffset, data, size);
 
-            if (rsize < size && mSourceIdx + 1 < mSources.size())
+            if (rsize < size)
             {
-            	LOGI("Incomplete Read - Changing Segments : curIdx=%d, nextIdx=%d", mSourceIdx, mSourceIdx + 1);
-                adjoffset -= sourceSize; // subtract the size of the current source from the offset
-                mOffsetAdjustment += sourceSize; // Add the size of the current source to our offset adjustment for the future
-                ++mSourceIdx;
+                if(rsize < 0)
+                {
+                    LOGI("Saw error %ld from datasource; advancing!", rsize);
+                    rsize = 0;
+                }
 
-                LOGI("Reading At %lld | New ", adjoffset + rsize);
-                rsize += mSources[mSourceIdx]->readAt(adjoffset + rsize, (unsigned char*)data + rsize, size - rsize);
+                if(mSourceIdx + 1 < mSources.size())
+                {
+                    LOGI("Incomplete Read - Changing Segments : curIdx=%d, nextIdx=%d", mSourceIdx, mSourceIdx + 1);
+                    adjoffset -= sourceSize; // subtract the size of the current source from the offset
+                    mOffsetAdjustment += sourceSize; // Add the size of the current source to our offset adjustment for the future
+                    ++mSourceIdx;
+
+                    LOGI("Reading At %lld | New ", adjoffset + rsize);
+                    rsize += mSources[mSourceIdx]->readAt(adjoffset + rsize, (unsigned char*)data + rsize, size - rsize);                    
+                }
+                else
+                {
+                    LOGI("Wanted to read %ld more bytes, but no more sources.", (size - rsize));
+                }
             }
 
 
-            //LOGI("%p | getSize = %lld | offset=%lld | offsetAdjustment = %lld | adjustedOffset = %lld | requested size = %d | rsize = %ld",
-            //                this, sourceSize, offset, mOffsetAdjustment, adjoffset, size, rsize);
+            LOGI("%p | getSize = %lld | offset=%lld | offsetAdjustment = %lld | adjustedOffset = %lld | requested size = %d | rsize = %ld",
+                            this, sourceSize, offset, mOffsetAdjustment, adjoffset, size, rsize);
 
             pthread_mutex_unlock(&mutex);
             return rsize;
