@@ -34,6 +34,8 @@ void* audio_thread_func(void* arg)
 	{
 
 	}
+
+	LOGI("audio_thread_func ending");
 	return NULL;
 }
 
@@ -41,11 +43,11 @@ void* audio_thread_func(void* arg)
 HLSPlayer::HLSPlayer(JavaVM* jvm) : mExtractorFlags(0),
 mHeight(0), mWidth(0), mCropHeight(0), mCropWidth(0), mBitrate(0), mActiveAudioTrackIndex(-1),
 mVideoBuffer(NULL), mWindow(NULL), mSurface(NULL), mRenderedFrameCount(0),
-mTimeSource(NULL), //mAudioPlayer(NULL), mAudioSink(NULL),
 mDurationUs(0), mOffloadAudio(false), mStatus(STOPPED),
 mAudioTrack(NULL), mVideoTrack(NULL), mJvm(jvm), mPlayerViewClass(NULL),
 mNextSegmentMethodID(NULL), mSegmentTimeOffset(0), mVideoFrameDelta(0), mLastVideoTimeUs(0),
-mSegmentForTimeMethodID(NULL), mFrameCount(0), mDataSource(NULL)
+mSegmentForTimeMethodID(NULL), mFrameCount(0), mDataSource(NULL), audioThread(0),
+mScreenHeight(0), mScreenWidth(0), mJAudioTrack(NULL)
 {
 	status_t status = mClient.connect();
 	LOGI("OMXClient::Connect return %d", status);
@@ -86,16 +88,14 @@ void HLSPlayer::Reset()
 	mAudioTrack.clear();
 	mVideoTrack.clear();
 	mExtractor.clear();
-
-	//if (mAudioPlayer) mAudioPlayer->pause(true);
 	mAudioSource.clear();
 
-//	if (mAudioPlayer)
-//	{
-//		delete mAudioPlayer;
-//		mAudioPlayer = NULL;
-//	}
-
+	if (mJAudioTrack)
+	{
+		mJAudioTrack->Close(); // Stops the track internally, in case you were wondering.
+		delete mJAudioTrack;
+		mJAudioTrack = NULL;
+	}
 	LOGI("Killing the video buffer");
 	if (mVideoBuffer)
 	{

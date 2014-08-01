@@ -27,6 +27,22 @@ AudioTrack::~AudioTrack() {
 	// TODO Auto-generated destructor stub
 }
 
+void AudioTrack::Close()
+{
+	Stop();
+	if (mJvm)
+	{
+		JNIEnv* env = NULL;
+		mJvm->AttachCurrentThread(&env, NULL);
+		env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mStop);
+		env->DeleteGlobalRef(mTrack);
+		mTrack = NULL;
+		env->DeleteGlobalRef(mCAudioTrack);
+		mCAudioTrack = NULL;
+		mAudioSource->stop();
+	}
+}
+
 bool AudioTrack::Init()
 {
 	if (!mJvm)
@@ -202,7 +218,7 @@ int64_t AudioTrack::GetTimeStamp()
 
 bool AudioTrack::Update()
 {
-	if (mPlayState != PLAYING) return true; // We don't really want to add more stuff to the buffer
+	if (mPlayState != PLAYING) return false; // We don't really want to add more stuff to the buffer
 											// and potentially run past the end of buffered source data
 											// if we're not actively playing
 	JNIEnv* env;
@@ -256,8 +272,11 @@ bool AudioTrack::Update()
 	else if (res == ERROR_END_OF_STREAM)
 	{
 		LOGE("End of Audio Stream");
+		mJvm->DetachCurrentThread();
 		return false;
 	}
+
+	mJvm->DetachCurrentThread();
 
 	if (mediaBuffer != NULL)
 	{
