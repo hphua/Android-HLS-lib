@@ -17,6 +17,7 @@ public:
 	~AudioTrack();
 
 	bool Init();
+	void Close();
 
 	bool Start();
 	void Play();
