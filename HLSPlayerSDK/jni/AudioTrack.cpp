@@ -27,6 +27,21 @@ AudioTrack::~AudioTrack() {
 	// TODO Auto-generated destructor stub
 }
 
+void AudioTrack::Close()
+{
+	Stop();
+	if (mJvm)
+	{
+		JNIEnv* env = NULL;
+		mJvm->AttachCurrentThread(&env, NULL);
+		env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mStop);
+		env->DeleteGlobalRef(mTrack);
+		mTrack = NULL;
+		env->DeleteGlobalRef(mCAudioTrack);
+		mCAudioTrack = NULL;
+	}
+}
+
 bool AudioTrack::Init()
 {
 	if (!mJvm)

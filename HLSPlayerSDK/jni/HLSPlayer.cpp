@@ -82,19 +82,19 @@ void HLSPlayer::Reset()
 	mStatus = STOPPED;
 	LogState();
 
+	if (mJAudioTrack)
+	{
+		mJAudioTrack->Close(); // Stops the track internally, in case you were wondering.
+	}
+
+
 	mDataSource.clear();
 	mAudioTrack.clear();
 	mVideoTrack.clear();
 	mExtractor.clear();
 
-	//if (mAudioPlayer) mAudioPlayer->pause(true);
 	mAudioSource.clear();
 
-//	if (mAudioPlayer)
-//	{
-//		delete mAudioPlayer;
-//		mAudioPlayer = NULL;
-//	}
 
 	LOGI("Killing the video buffer");
 	if (mVideoBuffer)
