@@ -1542,20 +1542,21 @@ namespace android_video_shim
 
         status_t append(const char* uri)
         {
-            pthread_mutex_lock(&mutex);
-
             sp<DataSource> dataSource = DataSource::CreateFromURI(uri);
             if(!dataSource.get())
             {
                 LOGI("Failed to create DataSource for %s", uri);
-                pthread_mutex_unlock(&mutex);
                 return -1;
             }
 
             status_t rval = dataSource->initCheck();
             LOGE("DataSource initCheck() result: %s", strerror(-rval));
-            mSources.push_back(dataSource);
 
+            // If it's not OK, then what?!
+
+            // Stick it in our sources.
+            pthread_mutex_lock(&mutex);
+            mSources.push_back(dataSource);
             pthread_mutex_unlock(&mutex);
             return rval;
         }
