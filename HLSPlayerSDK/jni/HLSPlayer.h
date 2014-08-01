@@ -96,10 +96,7 @@ private:
 	android_video_shim::sp<android_video_shim::MediaExtractor> mExtractor;    // The object that pulls the initial data source apart into separate audio and video sources
 
 	AudioTrack* mJAudioTrack;
-	//android_video_shim::AudioPlayer* mAudioPlayer;
-	//android_video_shim::sp<android_video_shim::MediaPlayerBase::AudioSink> mAudioSink;
 
-	android_video_shim::TimeSource* mTimeSource;
 	bool mOffloadAudio;
 	int64_t mDurationUs;
 
