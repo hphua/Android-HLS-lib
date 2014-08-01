@@ -89,8 +89,8 @@ status_t ColorConverter_Local::convert(
         return ERROR_UNSUPPORTED;
     }
 
-	LOGI("source coords, %d, %d, %d, %d, %d, %d", srcWidth, srcHeight, srcCropLeft, srcCropTop, srcCropRight, srcCropBottom);
-	LOGI("dest coords, %d, %d, %d, %d, %d, %d", dstWidth, dstHeight, dstCropLeft, dstCropTop, dstCropRight, dstCropBottom);
+	LOGV("source coords, %d, %d, %d, %d, %d, %d", srcWidth, srcHeight, srcCropLeft, srcCropTop, srcCropRight, srcCropBottom);
+	LOGV("dest coords, %d, %d, %d, %d, %d, %d", dstWidth, dstHeight, dstCropLeft, dstCropTop, dstCropRight, dstCropBottom);
 
 
     BitmapParams src(
@@ -188,7 +188,7 @@ status_t ColorConverter_Local::convertCbYCrY(
 status_t ColorConverter_Local::convertYUV420Planar(
         const BitmapParams &src, const BitmapParams &dst) {
     
-    LOGI("D");
+    LOGV("D");
 
     if (!((src.mCropLeft & 1) == 0
             && src.cropWidth() == dst.cropWidth()
@@ -196,10 +196,10 @@ status_t ColorConverter_Local::convertYUV420Planar(
         return ERROR_UNSUPPORTED;
     }
 
-    LOGI("D1 adjusting %dx%d region", src.cropWidth(), src.cropHeight());
+    LOGV("D1 adjusting %dx%d region", src.cropWidth(), src.cropHeight());
     uint8_t *kAdjustedClip = initClip();
 
-    LOGI("D2 dst.bits=%p src.bits=%p", dst.mBits, src.mBits);
+    LOGV("D2 dst.bits=%p src.bits=%p", dst.mBits, src.mBits);
     uint16_t *dst_ptr = (uint16_t *)dst.mBits
         + dst.mCropTop * dst.mWidth + dst.mCropLeft;
 
@@ -211,7 +211,7 @@ status_t ColorConverter_Local::convertYUV420Planar(
     const uint8_t *src_v =
         src_u + (src.mWidth / 2) * (src.mHeight / 2);
 
-    LOGI("D6");
+    LOGV("D6");
     for (size_t y = 0; y < src.cropHeight(); ++y) {
         for (size_t x = 0; x < src.cropWidth(); x += 2) {
             // B = 1.164 * (Y - 16) + 2.018 * (U - 128)
@@ -264,13 +264,13 @@ status_t ColorConverter_Local::convertYUV420Planar(
         }
         dst_ptr += dst.mWidth;
     }
-    LOGI("D7");
+    LOGV("D7");
     return OK;
 }
 status_t ColorConverter_Local::convertQCOMYUV420SemiPlanar(
         const BitmapParams &src, const BitmapParams &dst) {
 
-    LOGI("C");
+    LOGV("C");
 
     uint8_t *kAdjustedClip = initClip();
     if (!((src.mCropLeft & 1) == 0
@@ -328,7 +328,7 @@ status_t ColorConverter_Local::convertQCOMYUV420SemiPlanar(
 status_t ColorConverter_Local::convertYUV420SemiPlanar(
         const BitmapParams &src, const BitmapParams &dst) {
 
-    LOGI("B");
+    LOGV("B");
 
     // XXX Untested
     uint8_t *kAdjustedClip = initClip();
@@ -388,7 +388,7 @@ status_t ColorConverter_Local::convertYUV420SemiPlanar(
 status_t ColorConverter_Local::convertTIYUV420PackedSemiPlanar(
         const BitmapParams &src, const BitmapParams &dst) {
 
-    LOGI("A");
+    LOGV("A");
 
     uint8_t *kAdjustedClip = initClip();
     if (!((src.mCropLeft & 1) == 0

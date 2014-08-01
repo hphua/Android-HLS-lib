@@ -797,7 +797,7 @@ namespace android_video_shim
             typedef status_t (*localFuncCast)(void *thiz, MediaBuffer **buffer, const ReadOptions *options);
             localFuncCast **fakeObj = (localFuncCast **)this;
             localFuncCast lfc = fakeObj[0][vtableOffset];
-            LOGI("virtual read=%p", lfc);
+            LOGV("virtual read=%p", lfc);
             return lfc(this, buffer, options);
         }
 
@@ -952,7 +952,7 @@ namespace android_video_shim
             typedef status_t (*localFuncCast)(void *thiz, MediaBuffer **buffer, const ReadOptions *options);
             localFuncCast **fakeObj = (localFuncCast **)this;
             localFuncCast lfc = fakeObj[0][vtableOffset];
-            LOGI("virtual read=%p", lfc);
+            LOGV("virtual read=%p", lfc);
             return lfc(this, buffer, options);
         }
 
@@ -1651,18 +1651,18 @@ Add 2 with int*
 
         status_t _getSize(off64_t* size)
         {
-            LOGI("Attempting _getSize");
+            LOGV("Attempting _getSize");
             //status_t rval = mSources[mSourceIdx]->getSize(size);
             *size = 0;
-            LOGI("getSize - %p | size = %lld",this, *size);
+            LOGV("getSize - %p | size = %lld",this, *size);
             return 0;
         }
 
         status_t _getSize_23(off_t* size)
         {
-            LOGI("Attempting _getSize");
+            LOGV("Attempting _getSize");
             status_t rval = mSources[mSourceIdx]->getSize_23(size);
-            LOGI("getSize - %p | size = %ld",this, *size);
+            LOGV("getSize - %p | size = %ld",this, *size);
             return rval;
         }
 

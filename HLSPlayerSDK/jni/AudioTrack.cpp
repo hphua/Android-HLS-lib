@@ -6,13 +6,15 @@
  */
 
 #include <jni.h>
+#include "constants.h"
 #include <AudioTrack.h>
 
 
 using namespace android_video_shim;
 
-AudioTrack::AudioTrack(JavaVM* jvm) : mJvm(jvm), mAudioTrack(NULL), mGetMinBufferSize(NULL), mPlay(NULL), mStop(NULL),
-										mRelease(NULL), mGetTimestamp(NULL), mCAudioTrack(NULL), mWrite(NULL), mSampleRate(0)
+AudioTrack::AudioTrack(JavaVM* jvm) : mJvm(jvm), mAudioTrack(NULL), mGetMinBufferSize(NULL), mPlay(NULL), mPause(NULL), mStop(NULL),
+										mRelease(NULL), mGetTimestamp(NULL), mCAudioTrack(NULL), mWrite(NULL), mGetPlaybackHeadPosition(NULL),
+										mSampleRate(0), mNumChannels(0), mBufferSizeInBytes(0), mChannelMask(0), mTrack(NULL), mPlayState(STOPPED)
 {
 	// TODO Auto-generated constructor stub
 	if (!mJvm)
@@ -56,6 +58,7 @@ bool AudioTrack::Init()
         mGetMinBufferSize = env->GetStaticMethodID(mCAudioTrack, "getMinBufferSize", "(III)I");
         mPlay = env->GetMethodID(mCAudioTrack, "play", "()V");
         mStop = env->GetMethodID(mCAudioTrack, "stop", "()V");
+        mPause = env->GetMethodID(mCAudioTrack, "pause", "()V");
         mRelease = env->GetMethodID(mCAudioTrack, "release", "()V");
         mWrite = env->GetMethodID(mCAudioTrack, "write", "([BII)I");
         mGetPlaybackHeadPosition = env->GetMethodID(mCAudioTrack, "getPlaybackHeadPosition", "()I");
@@ -116,7 +119,7 @@ bool AudioTrack::Set(sp<MediaSource> audioSource, bool alreadyStarted)
 #define ENCODING_PCM_16BIT 2
 #define MODE_STREAM 1
 
-bool AudioTrack::Play()
+bool AudioTrack::Start()
 {
 
 //	audio_format_t audioFormat = AUDIO_FORMAT_PCM_16_BIT;
@@ -153,13 +156,38 @@ bool AudioTrack::Play()
 
 	mTrack = env->NewGlobalRef(env->NewObject(mCAudioTrack, mAudioTrack, STREAM_MUSIC, mSampleRate, channelConfig, ENCODING_PCM_16BIT, mBufferSizeInBytes * 2, MODE_STREAM ));
 	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mPlay);
+	mPlayState = PLAYING;
 	return true;
+
+}
+
+void AudioTrack::Play()
+{
+	if (mPlayState == PLAYING) return;
+	mPlayState = PLAYING;
+	JNIEnv* env;
+	mJvm->AttachCurrentThread(&env, NULL);
+	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mPlay);
 
 }
 
 bool AudioTrack::Stop()
 {
-	return false;
+	if (mPlayState == STOPPED) return true;
+	mPlayState = STOPPED;
+	JNIEnv* env;
+	mJvm->AttachCurrentThread(&env, NULL);
+	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mStop);
+	return true;
+}
+
+void AudioTrack::Pause()
+{
+	if (mPlayState == PAUSED) return;
+	mPlayState = PAUSED;
+	JNIEnv* env;
+	mJvm->AttachCurrentThread(&env, NULL);
+	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mPause);
 }
 
 int64_t AudioTrack::GetTimeStamp()
@@ -167,7 +195,7 @@ int64_t AudioTrack::GetTimeStamp()
 	JNIEnv* env;
 	mJvm->AttachCurrentThread(&env, NULL);
 	double frames = env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mGetPlaybackHeadPosition);
-	double secs = frames / mSampleRate;
+	double secs = frames / (double)mSampleRate;
 	return (secs * 1000000);
 
 }
@@ -175,6 +203,9 @@ int64_t AudioTrack::GetTimeStamp()
 
 bool AudioTrack::Update()
 {
+	if (mPlayState != PLAYING) return true; // We don't really want to add more stuff to the buffer
+											// and potentially run past the end of buffered source data
+											// if we're not actively playing
 	JNIEnv* env;
 	mJvm->AttachCurrentThread(&env, NULL);
 
@@ -201,9 +232,9 @@ bool AudioTrack::Update()
 				LOGI("Writing data to jAudioTrack %d", mbufSize);
 				memcpy(pBuffer, mediaBuffer->data(), mbufSize);
 				unsigned short* pBShorts = (unsigned short*)pBuffer;
-				LOGI("%uhd %uhd %uhd %uhd", pBShorts[0], pBShorts[1], pBShorts[2], pBShorts[3]);
+				LOGV("%uhd %uhd %uhd %uhd", pBShorts[0], pBShorts[1], pBShorts[2], pBShorts[3]);
 				int len = mbufSize / 2;
-				LOGI("%uhd %uhd %uhd %uhd", pBShorts[len - 4], pBShorts[len - 3], pBShorts[len - 2], pBShorts[len - 1]);
+				LOGV("%uhd %uhd %uhd %uhd", pBShorts[len - 4], pBShorts[len - 3], pBShorts[len - 2], pBShorts[len - 1]);
 
 				env->ReleasePrimitiveArrayCritical(buffer, pBuffer, 0);
 				LOGI("Finished copying audio data to buffer");

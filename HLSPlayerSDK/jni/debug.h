@@ -16,7 +16,7 @@
 #define _DEBUG_W
 #define _DEBUG_I
 //#define _DEBUG_V
-//#define LOGV
+//#define _DEBUG_RUN
 
 //#define _VERBOSE
 #ifdef _DEBUG_E
@@ -43,7 +43,7 @@
 #define LOGV(...)
 #endif
 
-#ifdef LOGV
+#ifdef _DEBUG_RUN
 #define RUNDEBUG(x)  (x)
 #else
 #define RUNDEBUG(x)

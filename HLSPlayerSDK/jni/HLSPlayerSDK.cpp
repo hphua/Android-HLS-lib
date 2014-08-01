@@ -147,7 +147,7 @@ extern "C"
 		{
 			return gHLSPlayerSDK->GetPlayer()->GetState();
 		}
-		return 0;
+		return STOPPED;
 	}
 
 }

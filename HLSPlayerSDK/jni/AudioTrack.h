@@ -18,7 +18,9 @@ public:
 
 	bool Init();
 
-	bool Play();
+	bool Start();
+	void Play();
+	void Pause();
 	bool Stop();
 
 	bool Set(android_video_shim::sp<android_video_shim::MediaSource> audioSource, bool alreadyStarted = false);
@@ -32,6 +34,7 @@ private:
 	jmethodID mAudioTrack;
 	jmethodID mGetMinBufferSize;
 	jmethodID mPlay;
+	jmethodID mPause;
 	jmethodID mStop;
 	jmethodID mRelease;
 	jmethodID mGetTimestamp;
@@ -48,6 +51,8 @@ private:
 	int mNumChannels;
 	int mChannelMask;
 	int mBufferSizeInBytes;
+
+	int mPlayState;
 
 };
 

@@ -26,14 +26,6 @@ class HLSSegment;
 class HLSPlayer
 {
 public:
-	enum
-	{
-		STOPPED,
-		PAUSED,
-		PLAYING,
-		SEEKING
-	};
-
 	HLSPlayer(JavaVM* jvm);
 	~HLSPlayer();
 
@@ -58,14 +50,14 @@ public:
 	int GetState();
 
 private:
-	void SetStatus(int status);
+	void SetState(int status);
 	void SetNativeWindow(ANativeWindow* window);
 	bool InitAudio();
 	bool InitSources();
 	bool CreateAudioPlayer();
 	bool CreateVideoPlayer();
 	bool RenderBuffer(android_video_shim::MediaBuffer* buffer);
-	void LogStatus();
+	void LogState();
 
 	bool InitTracks();
 
@@ -104,8 +96,8 @@ private:
 	android_video_shim::sp<android_video_shim::MediaExtractor> mExtractor;    // The object that pulls the initial data source apart into separate audio and video sources
 
 	AudioTrack* mJAudioTrack;
-	android_video_shim::AudioPlayer* mAudioPlayer;
-	android_video_shim::sp<android_video_shim::MediaPlayerBase::AudioSink> mAudioSink;
+	//android_video_shim::AudioPlayer* mAudioPlayer;
+	//android_video_shim::sp<android_video_shim::MediaPlayerBase::AudioSink> mAudioSink;
 
 	android_video_shim::TimeSource* mTimeSource;
 	bool mOffloadAudio;
@@ -125,6 +117,9 @@ private:
 	int64_t mSegmentTimeOffset;
 	int64_t mVideoFrameDelta;
 	int64_t mFrameCount;
+
+	int32_t mScreenWidth;
+	int32_t mScreenHeight;
 
 
 };

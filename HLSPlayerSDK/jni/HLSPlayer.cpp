@@ -41,8 +41,8 @@ void* audio_thread_func(void* arg)
 HLSPlayer::HLSPlayer(JavaVM* jvm) : mExtractorFlags(0),
 mHeight(0), mWidth(0), mCropHeight(0), mCropWidth(0), mBitrate(0), mActiveAudioTrackIndex(-1),
 mVideoBuffer(NULL), mWindow(NULL), mSurface(NULL), mRenderedFrameCount(0),
-mAudioPlayer(NULL), mAudioSink(NULL), mTimeSource(NULL),
-mDurationUs(0), mOffloadAudio(false), mStatus(HLSPlayer::STOPPED),
+mTimeSource(NULL), //mAudioPlayer(NULL), mAudioSink(NULL),
+mDurationUs(0), mOffloadAudio(false), mStatus(STOPPED),
 mAudioTrack(NULL), mVideoTrack(NULL), mJvm(jvm), mPlayerViewClass(NULL),
 mNextSegmentMethodID(NULL), mSegmentTimeOffset(0), mVideoFrameDelta(0), mLastVideoTimeUs(0),
 mSegmentForTimeMethodID(NULL), mFrameCount(0), mDataSource(NULL)
@@ -80,21 +80,21 @@ void HLSPlayer::Reset()
 {
 	LOGI("Entered");
 	mStatus = STOPPED;
-	LogStatus();
+	LogState();
 
 	mDataSource.clear();
 	mAudioTrack.clear();
 	mVideoTrack.clear();
 	mExtractor.clear();
 
-	if (mAudioPlayer) mAudioPlayer->pause(true);
+	//if (mAudioPlayer) mAudioPlayer->pause(true);
 	mAudioSource.clear();
 
-	if (mAudioPlayer)
-	{
-		delete mAudioPlayer;
-		mAudioPlayer = NULL;
-	}
+//	if (mAudioPlayer)
+//	{
+//		delete mAudioPlayer;
+//		mAudioPlayer = NULL;
+//	}
 
 	LOGI("Killing the video buffer");
 	if (mVideoBuffer)
@@ -314,12 +314,12 @@ bool HLSPlayer::CreateAudioPlayer()
 		flags |= AudioPlayer::USE_OFFLOAD;
 	}
 
-	if (mAudioPlayer != NULL)
-	{
-		mAudioPlayer->pause(false);
-		delete mAudioPlayer;
-		mAudioPlayer = NULL;
-	}
+//	if (mAudioPlayer != NULL)
+//	{
+//		mAudioPlayer->pause(false);
+//		delete mAudioPlayer;
+//		mAudioPlayer = NULL;
+//	}
 
 	LOGI("Constructing JAudioTrack");
 	mJAudioTrack = new AudioTrack(mJvm);
@@ -334,12 +334,12 @@ bool HLSPlayer::CreateAudioPlayer()
 		mJAudioTrack->Set(mAudioSource);
 	}
 
-	LOGI("Constructing AudioPlayer");
-	mAudioPlayer = new AudioPlayer(NULL, flags, NULL);
-	LOGI("AudioPlayer::setSource with %p", mAudioSource.get());
-	mAudioPlayer->setSource(mAudioSource);
-	LOGI("Storing audio player");
-	mTimeSource = mAudioPlayer;
+//	LOGI("Constructing AudioPlayer");
+//	mAudioPlayer = new AudioPlayer(NULL, flags, NULL);
+//	LOGI("AudioPlayer::setSource with %p", mAudioSource.get());
+//	mAudioPlayer->setSource(mAudioSource);
+//	LOGI("Storing audio player");
+//	mTimeSource = mAudioPlayer;
 
 	return true;
 }
@@ -404,6 +404,12 @@ bool HLSPlayer::UpdateWindowBufferFormat()
 {
 	int32_t screenWidth = ANativeWindow_getWidth(mWindow);
 	int32_t screenHeight = ANativeWindow_getHeight(mWindow);
+
+	if (mScreenWidth == screenWidth && mScreenHeight == screenHeight)
+	{
+		// do nothing
+		return true;
+	}
 	LOGI("screenWidth=%d | screenHeight=%d", screenWidth, screenHeight);
 
 	int32_t bufferWidth = mWidth;
@@ -461,7 +467,7 @@ bool HLSPlayer::Play()
 
 #ifdef USE_AUDIO
 				//err = mAudioPlayer->start(true);
-				if (mJAudioTrack->Play())
+				if (mJAudioTrack->Start())
 				{
 					if (pthread_create(&audioThread, NULL, audio_thread_func, (void*)mJAudioTrack  ) != 0)
 						return false;
@@ -469,7 +475,7 @@ bool HLSPlayer::Play()
 #endif
 
 				LOGI("   OK! err=%d", err);
-				SetStatus(PLAYING);
+				SetState(PLAYING);
 				return true;
 			}
 			else
@@ -492,11 +498,14 @@ bool HLSPlayer::Play()
 
 int HLSPlayer::Update()
 {
-	//LOGI("Entered");
+	LOGI("Entered");
+	LogState();
 
-	if (mStatus != PLAYING)
+	UpdateWindowBufferFormat();
+
+	if (GetState() != PLAYING)
 	{
-		LogStatus();
+		LogState();
 		return -1;
 	}
 
@@ -545,12 +554,12 @@ int HLSPlayer::Update()
 				if (mVideoBuffer == NULL) return 0;
 				break;
 			case ERROR_END_OF_STREAM:
-				SetStatus(STOPPED);
+				SetState(STOPPED);
 				//PlayNextSegment();
 				return -1;
 				break;
 			default:
-				SetStatus(STOPPED);
+				SetState(STOPPED);
 				// deal with any errors
 				// in the sample code, they're sending the video event, anyway
 				return -1;
@@ -564,7 +573,7 @@ int HLSPlayer::Update()
 			if (!rval)
 			{
 				LOGI("Frame did not have time value: STOPPING");
-				SetStatus(STOPPED);
+				SetState(STOPPED);
 				return -1;
 			}
 
@@ -628,7 +637,7 @@ int HLSPlayer::Update()
 				else
 				{
 					LOGI("Render Buffer returned false: STOPPING");
-					SetStatus(STOPPED);
+					SetState(STOPPED);
 					rval=-1;
 				}
 				mVideoBuffer->release();
@@ -758,18 +767,33 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 
 }
 
-void HLSPlayer::SetStatus(int status)
+void HLSPlayer::SetState(int status)
 {
 	if (mStatus != status)
 	{
 		mStatus = status;
-		LOGI("Status Changed: %d", status);
+		LOGI("Status Changed");
+		LogState();
 	}
 }
 
-void HLSPlayer::LogStatus()
+void HLSPlayer::LogState()
 {
-	LOGI("Status = %d", mStatus);
+	switch (mStatus)
+	{
+	case STOPPED:
+		LOGI("State = STOPPED");
+		break;
+	case PAUSED:
+		LOGI("State = PAUSED");
+		break;
+	case PLAYING:
+		LOGI("State = PLAYING");
+		break;
+	case SEEKING:
+		LOGI("State = SEEKING");
+		break;
+	}
 }
 
 void HLSPlayer::RequestNextSegment()
@@ -853,27 +877,31 @@ int HLSPlayer::GetState()
 
 void HLSPlayer::TogglePause()
 {
-	LOGI("mStatus = %d", mStatus);
-	if (mStatus == PAUSED)
+	LogState();
+	if (GetState() == PAUSED)
 	{
-		mStatus = PLAYING;
-		status_t res = mAudioPlayer->resume();
-		LOGI("AudioPlayer->resume() result = %s", strerror(-res));
+		SetState(PLAYING);
+		mJAudioTrack->Play();
+//		status_t res = mAudioPlayer->resume();
+//		LOGI("AudioPlayer->resume() result = %s", strerror(-res));
 	}
-	else if (mStatus == PLAYING)
+	else if (GetState() == PLAYING)
 	{
-		mStatus = PAUSED;
-		mAudioPlayer->pause(false);
+		SetState(PAUSED);
+		mJAudioTrack->Pause();
+//		mAudioPlayer->pause(false);
 	}
 }
 
 void HLSPlayer::Stop()
 {
-	LOGI("STOPPING! mStatus = %d", mStatus);
-	if (mStatus == PLAYING)
+	LOGI("STOPPING!");
+	LogState();
+	if (GetState() == PLAYING)
 	{
-		mStatus = STOPPED;
-		mAudioPlayer->pause(false);
+		SetState(STOPPED);
+		mJAudioTrack->Stop();
+//		mAudioPlayer->pause(false);
 	}
 }
 

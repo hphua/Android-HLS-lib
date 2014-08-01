@@ -24,10 +24,10 @@ import android.widget.VideoView;
 public class PlayerView extends SurfaceView implements VideoPlayerInterface, MediaPlayerControl, OnParseCompleteListener, URLLoader.DownloadEventListener 
 {
 	
-	private final int STATE_STOPPED = 0;
-	private final int STATE_PAUSED = 1;
-	private final int STATE_PLAYING = 2;
-	private final int STATE_SEEKING = 3;
+	private final int STATE_STOPPED = 1;
+	private final int STATE_PAUSED = 2;
+	private final int STATE_PLAYING = 3;
+	private final int STATE_SEEKING = 4;
 	
 	// Native Methods
 	private native void InitNativeDecoder();
@@ -80,6 +80,7 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 	{
 		public void run()
 		{
+			Log.i("Runnable.run", "PlayState = " + GetState());
 			if (GetState() == STATE_PLAYING)
 			{
 				//Log.i("Runnable.run", "Running!");
@@ -234,6 +235,10 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 	public void pause()
 	{
 		TogglePause();
+		if (isPlaying())
+		{
+			postDelayed(runnable, frameDelay);
+		}
 	}
 	
 	@Override

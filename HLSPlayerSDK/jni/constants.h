@@ -10,5 +10,13 @@
 
 #define APP_NAME "HLSPlayerSDK"
 
+enum Playstate
+{
+	STOPPED = 1,
+	PAUSED,
+	PLAYING,
+	SEEKING
+};
+
 
 #endif /* CONSTANTS_H_ */
