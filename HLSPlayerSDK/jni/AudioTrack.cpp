@@ -40,6 +40,7 @@ void AudioTrack::Close()
 		env->DeleteGlobalRef(mCAudioTrack);
 		mCAudioTrack = NULL;
 		mAudioSource->stop();
+		sem_destroy(&semPause);
 	}
 }
 
@@ -169,6 +170,12 @@ bool AudioTrack::Start()
 
 	LOGI("mBufferSizeInBytes=%d", mBufferSizeInBytes);
 
+	int err = sem_init(&semPause, 0, 0);
+	if (err != 0)
+	{
+		LOGE("Failed to init audio pause semaphore : %d", err);
+		return false;
+	}
 
 	mTrack = env->NewGlobalRef(env->NewObject(mCAudioTrack, mAudioTrack, STREAM_MUSIC, mSampleRate, channelConfig, ENCODING_PCM_16BIT, mBufferSizeInBytes * 2, MODE_STREAM ));
 	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mPlay);
@@ -179,8 +186,13 @@ bool AudioTrack::Start()
 
 void AudioTrack::Play()
 {
+	if (mPlayState == PAUSED)
+	{
+		sem_post(&semPause);
+	}
 	if (mPlayState == PLAYING) return;
 	mPlayState = PLAYING;
+	sem_post(&semPause);
 	JNIEnv* env;
 	mJvm->AttachCurrentThread(&env, NULL);
 	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mPlay);
@@ -189,6 +201,10 @@ void AudioTrack::Play()
 
 bool AudioTrack::Stop()
 {
+	if (mPlayState == PAUSED)
+	{
+		sem_post(&semPause);
+	}
 	if (mPlayState == STOPPED) return true;
 	mPlayState = STOPPED;
 	JNIEnv* env;
@@ -219,9 +235,16 @@ int64_t AudioTrack::GetTimeStamp()
 
 bool AudioTrack::Update()
 {
-	if (mPlayState != PLAYING) return false; // We don't really want to add more stuff to the buffer
-											// and potentially run past the end of buffered source data
-											// if we're not actively playing
+	if (mPlayState != PLAYING)
+	{
+		while (mPlayState == PAUSED)
+			sem_wait(&semPause);
+
+		if (mPlayState == STOPPED)
+			return false; // We don't really want to add more stuff to the buffer
+							// and potentially run past the end of buffered source data
+							// if we're not actively playing
+	}
 	JNIEnv* env;
 	mJvm->AttachCurrentThread(&env, NULL);
 
