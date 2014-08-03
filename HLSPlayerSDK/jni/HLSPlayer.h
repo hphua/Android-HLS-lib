@@ -85,17 +85,22 @@ private:
 	// These are our video and audo tracks that we shove data into
 	android_video_shim::sp<android_video_shim::MediaSource> mVideoTrack;
 	android_video_shim::sp<android_video_shim::MediaSource> mAudioTrack;
-
+	android_video_shim::sp<android_video_shim::MediaSource23> mVideoTrack23;
+	android_video_shim::sp<android_video_shim::MediaSource23> mAudioTrack23;
 
 	// These are the codec converted sources that we get actual frames and audio from
 	android_video_shim::sp<android_video_shim::MediaSource> mVideoSource;
 	android_video_shim::sp<android_video_shim::MediaSource> mAudioSource;
+	android_video_shim::sp<android_video_shim::MediaSource23> mVideoSource23;
+	android_video_shim::sp<android_video_shim::MediaSource23> mAudioSource23;
 
+	// Our datasource that handles loading segments.
 	android_video_shim::sp<android_video_shim::HLSDataSource> mDataSource;
 
-	android_video_shim::sp<android_video_shim::MediaExtractor> mExtractor;    // The object that pulls the initial data source apart into separate audio and video sources
+	// The object that pulls the initial data stream apart into separate audio and video sources
+	android_video_shim::sp<android_video_shim::MediaExtractor> mExtractor;
 
-	AudioTrack* mJAudioTrack;
+	AudioTrack *mJAudioTrack;
 
 	bool mOffloadAudio;
 	int64_t mDurationUs;
@@ -117,8 +122,6 @@ private:
 
 	int32_t mScreenWidth;
 	int32_t mScreenHeight;
-
-
 };
 
 

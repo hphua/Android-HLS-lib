@@ -39,7 +39,11 @@ void AudioTrack::Close()
 		mTrack = NULL;
 		env->DeleteGlobalRef(mCAudioTrack);
 		mCAudioTrack = NULL;
-		mAudioSource->stop();
+
+		if(mAudioSource.get())
+			mAudioSource->stop();
+		if(mAudioSource23.get())
+			mAudioSource23->stop();
 	}
 }
 
@@ -85,6 +89,7 @@ bool AudioTrack::Init()
 
 bool AudioTrack::Set(sp<MediaSource> audioSource, bool alreadyStarted)
 {
+	LOGI("Set with %p", audioSource.get());
 	mAudioSource = audioSource;
 	if (!alreadyStarted) mAudioSource->start(NULL);
 
@@ -123,8 +128,50 @@ bool AudioTrack::Set(sp<MediaSource> audioSource, bool alreadyStarted)
 		}
 		mChannelMask = 0; // CHANNEL_MASK_USE_CHANNEL_ORDER
 	}
+}
 
 
+bool AudioTrack::Set23(sp<MediaSource23> audioSource, bool alreadyStarted)
+{
+	LOGI("Set23 with %p", audioSource.get());
+	mAudioSource23 = audioSource;
+	if (!alreadyStarted) mAudioSource23->start(NULL);
+
+	sp<MetaData> format = mAudioSource23->getFormat();
+	RUNDEBUG(format->dumpToLog());
+	const char* mime;
+	bool success = format->findCString(kKeyMIMEType, &mime);
+	if (!success)
+	{
+		LOGE("Could not find mime type");
+		return false;
+	}
+	if (strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_RAW))
+	{
+		LOGE("Mime Type was not audio/raw. Was: %s", mime);
+		return false;
+	}
+	success = format->findInt32(kKeySampleRate, &mSampleRate);
+	if (!success)
+	{
+		LOGE("Could not find audio sample rate");
+		return false;
+	}
+
+	success = format->findInt32(kKeyChannelCount, &mNumChannels);
+	if (!success)
+	{
+		LOGE("Could not find channel count");
+		return false;
+	}
+	if (!format->findInt32(kKeyChannelMask, &mChannelMask))
+	{
+		if (mNumChannels > 2)
+		{
+			LOGI("Source format didn't specify channel mask. Using (%d) channel order", mNumChannels);
+		}
+		mChannelMask = 0; // CHANNEL_MASK_USE_CHANNEL_ORDER
+	}
 }
 
 #define STREAM_MUSIC 3
@@ -227,7 +274,14 @@ bool AudioTrack::Update()
 	MediaBuffer* mediaBuffer = NULL;
 
 	//LOGI("Reading to the media buffer");
-	status_t res = mAudioSource->read(&mediaBuffer, NULL);
+	status_t res;
+	
+	if(mAudioSource.get())
+		res = mAudioSource->read(&mediaBuffer, NULL);
+	
+	if(mAudioSource23.get())
+		res = mAudioSource23->read(&mediaBuffer, NULL);
+
 	//LOGI("Finished reading from the media buffer");
 	if (res == OK)
 	{

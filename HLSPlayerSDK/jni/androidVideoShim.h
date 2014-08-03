@@ -511,10 +511,10 @@ namespace android_video_shim
             return r;
         }
 
-        ssize_t readAt_23(off_t offset, void *data, size_t size)
+        ssize_t readAt_23(int64_t offset, void *data, size_t size)
         {
             const int vtableOffset = 7;
-            typedef ssize_t (*localFuncCast)(void *thiz, off_t offset, void *data, size_t size);
+            typedef ssize_t (*localFuncCast)(void *thiz, int64_t offset, void *data, size_t size);
             localFuncCast **fakeObj = (localFuncCast**)this;
 
             /*for(int i=0; i<17; i++)
@@ -561,14 +561,16 @@ namespace android_video_shim
             localFuncCast **fakeObj = (localFuncCast**)this;
 
             /*for(int i=0; i<17; i++)
-                LOGI("virtual layout[%d]=%p", i, fakeObj[0][i]); */
+            {
+                LOGV("virtual layout[%d]=%p", i, fakeObj[0][i]);
+            }
 
-            //LOGI("FileSource::getSize should be %p", searchSymbol("_ZN7android10FileSource7getSizeEPx"));
+            LOGV("FileSource::getSize should be %p", searchSymbol("_ZN7android10FileSource7getSizeEPx")); */
 
             localFuncCast lfc = (localFuncCast)fakeObj[0][vtableOffset];
-            //LOGI("virtual getSize=%p", lfc);
+            //LOGV("virtual getSize=%p", lfc);
             status_t r = lfc((void*)this, size);
-            //LOGI("    o got %d", r);
+            //LOGV("    o got %d", r);
             return r;
         }
 
@@ -799,7 +801,7 @@ namespace android_video_shim
             typedef status_t (*localFuncCast)(void *thiz, MediaBuffer **buffer, const ReadOptions *options);
             localFuncCast **fakeObj = (localFuncCast **)this;
             localFuncCast lfc = fakeObj[0][vtableOffset];
-            LOGV("virtual read=%p", lfc);
+            //LOGV("virtual read=%p", lfc);
             return lfc(this, buffer, options);
         }
 
@@ -876,13 +878,12 @@ namespace android_video_shim
             localFuncCast lfc = fakeObj[0][vtableOffset];
 
             // Dump the vtable.
-            for(int i=0; i<16; i++)
-                LOGI("   vtable[%d] = %p", i, fakeObj[0][i]);
-            LOGI("MPEG4Source::getFormat should be %p", searchSymbol("_ZN7android13MPEG2TSSource5startEPNS_8MetaDataE"));
-            LOGI("AnotherPacketSource::getFormat should be %p", searchSymbol("_ZN7android19AnotherPacketSource5startEPNS_8MetaDataE"));
-            LOGI("AACSource::getFormat should be %p", searchSymbol("_ZN7android9AACSource9getFormatEv"));
-            LOGI("MPEG2TSSource::getFormat should be %p", searchSymbol("_ZN7android13MPEG2TSSource9getFormatEv"));
-            LOGI("OMXCodec::getFormat might be %p", searchSymbol("_ZN7android8OMXCodec5startEPNS_8MetaDataE"));
+            //for(int i=0; i<16; i++)
+            //    LOGI("   vtable[%d] = %p", i, fakeObj[0][i]);
+            LOGI("MPEG4Source::start should be %p", searchSymbol("_ZN7android13MPEG2TSSource5startEPNS_8MetaDataE"));
+            LOGI("AnotherPacketSource::start should be %p", searchSymbol("_ZN7android19AnotherPacketSource5startEPNS_8MetaDataE"));
+            LOGI("OMXCodec::start might be %p", searchSymbol("_ZN7android8OMXCodec5startEPNS_8MetaDataE"));
+            LOGI("AACDecoder::start might be %p", searchSymbol("_ZN7android10AACDecoder5startEPNS_8MetaDataE"));
 
             LOGI("virtual start=%p", lfc);
             return lfc(this, params);
@@ -954,7 +955,7 @@ namespace android_video_shim
             typedef status_t (*localFuncCast)(void *thiz, MediaBuffer **buffer, const ReadOptions *options);
             localFuncCast **fakeObj = (localFuncCast **)this;
             localFuncCast lfc = fakeObj[0][vtableOffset];
-            LOGV("virtual read=%p", lfc);
+            //LOGV("virtual read=%p", lfc);
             return lfc(this, buffer, options);
         }
 
@@ -1066,9 +1067,9 @@ namespace android_video_shim
             const int vtableOffset = 6;
             typedef status_t (*localFuncCast)(void *thiz);
 
-            LOGI("this = %p", this);
-            LOGI("*this = %p", *(void**)this);
-            LOGI("Mpeg2TSExtractor::countTracks should be %p", searchSymbol("_ZN7android16MPEG2TSExtractor11countTracksEv"));
+            //LOGI("this = %p", this);
+            //LOGI("*this = %p", *(void**)this);
+            //LOGI("Mpeg2TSExtractor::countTracks should be %p", searchSymbol("_ZN7android16MPEG2TSExtractor11countTracksEv"));
 
             localFuncCast **fakeObj = *((localFuncCast***)this);
 
@@ -1077,7 +1078,7 @@ namespace android_video_shim
 
 
             localFuncCast lfc = (localFuncCast)fakeObj[vtableOffset];
-            LOGI("virtual countTracks=%p", lfc);
+            //LOGI("virtual countTracks=%p", lfc);
             return lfc(this);
         }
 
@@ -1086,9 +1087,9 @@ namespace android_video_shim
             const int vtableOffset = 7;
             typedef sp<MediaSource> (*localFuncCast)(void *thiz, size_t idx);
 
-            LOGI("this = %p", this);
-            LOGI("*this = %p", *(void**)this);
-            LOGI("Mpeg2TSExtractor::getTrack should be %p", searchSymbol("_ZN7android16MPEG2TSExtractor8getTrackEj"));
+            //LOGI("this = %p", this);
+            //LOGI("*this = %p", *(void**)this);
+            //LOGI("Mpeg2TSExtractor::getTrack should be %p", searchSymbol("_ZN7android16MPEG2TSExtractor8getTrackEj"));
 
             localFuncCast **fakeObj = *((localFuncCast***)this);
 
@@ -1096,7 +1097,7 @@ namespace android_video_shim
             //    LOGI("virtual layout[%d]=%p", i, fakeObj[i]);
 
             localFuncCast lfc = (localFuncCast)fakeObj[vtableOffset];
-            LOGI("virtual getTrack=%p", lfc);
+            //LOGI("virtual getTrack=%p", lfc);
             return lfc(this, index);
         }
 
@@ -1105,9 +1106,9 @@ namespace android_video_shim
             const int vtableOffset = 7;
             typedef sp<MediaSource23> (*localFuncCast)(void *thiz, size_t idx);
 
-            LOGI("this = %p", this);
-            LOGI("*this = %p", *(void**)this);
-            LOGI("Mpeg2TSExtractor::getTrack should be %p", searchSymbol("_ZN7android16MPEG2TSExtractor8getTrackEj"));
+            //LOGI("this = %p", this);
+            //LOGI("*this = %p", *(void**)this);
+            //LOGI("Mpeg2TSExtractor::getTrack should be %p", searchSymbol("_ZN7android16MPEG2TSExtractor8getTrackEj"));
 
             localFuncCast **fakeObj = *((localFuncCast***)this);
 
@@ -1115,7 +1116,7 @@ namespace android_video_shim
             //    LOGI("virtual layout[%d]=%p", i, fakeObj[i]);
 
             localFuncCast lfc = (localFuncCast)fakeObj[vtableOffset];
-            LOGI("virtual getTrack=%p", lfc);
+            //LOGI("virtual getTrack=%p", lfc);
             return lfc(this, index);
         }
 
@@ -1125,9 +1126,9 @@ namespace android_video_shim
             const int vtableOffset = 8;
             typedef sp<MetaData> (*localFuncCast)(void *thiz, size_t idx, uint32_t flags);
 
-            LOGI("this = %p", this);
-            LOGI("*this = %p", *(void**)this);
-            LOGI("Mpeg2TSExtractor::getTrackMetaData should be %p", searchSymbol("_ZN7android16MPEG2TSExtractor16getTrackMetaDataEjj"));
+            //LOGI("this = %p", this);
+            //LOGI("*this = %p", *(void**)this);
+            //LOGI("Mpeg2TSExtractor::getTrackMetaData should be %p", searchSymbol("_ZN7android16MPEG2TSExtractor16getTrackMetaDataEjj"));
 
             localFuncCast **fakeObj = *((localFuncCast***)this);
 
@@ -1135,7 +1136,7 @@ namespace android_video_shim
             //    LOGI("virtual layout[%d]=%p", i, fakeObj[i]);
 
             localFuncCast lfc = (localFuncCast)fakeObj[vtableOffset];
-            LOGI("virtual getTrackMetaData=%p", lfc);
+            //LOGI("virtual getTrackMetaData=%p", lfc);
             return lfc(this, index, flags);
 		}
 
@@ -1447,18 +1448,6 @@ namespace android_video_shim
         }
     };
 
-    class TimeSource {
-    public:
-        TimeSource() {}
-        virtual ~TimeSource() {}
-
-         int64_t getRealTimeUs();
-
-    private:
-        TimeSource(const TimeSource &);
-        TimeSource &operator=(const TimeSource &);
-    };
-
     // How do we override a DataSource?
     class HLSDataSource : public DataSource
     {
@@ -1512,10 +1501,13 @@ namespace android_video_shim
             LOGI(" _readAt=%p", (void*)&HLSDataSource::_readAt);
             LOGI(" _getSize=%p", (void*)&HLSDataSource::_getSize);
 
+            LOGI(" _readAt_23=%p", (void*)&HLSDataSource::_readAt_23);
+            LOGI(" _getSize_23=%p", (void*)&HLSDataSource::_getSize_23);
+
             // And override the pointers as appropriate.
             if(ANDROID_VIDEO_SHIM_CHECK_IS_4x)
             {
-                // 4.x
+                // 4.x entry points
                 fakeObj[0][6] = (void*)&HLSDataSource::_initCheck;
                 fakeObj[0][7] = (void*)&HLSDataSource::_readAt;
                 fakeObj[0][8] = (void*)&HLSDataSource::_getSize;
@@ -1524,9 +1516,10 @@ namespace android_video_shim
             {
                 // Confirm what we can that we're doing this right...
                 void *oldGetSize = searchSymbol("_ZN7android10DataSource7getSizeEPl");
-                LOGI("  oldGetSize=%p fakeObj[0][8]=%p", oldGetSize, fakeObj[0][8]);
+                void *oldGetSize2 = searchSymbol("_ZN7android10DataSource7getSizeEPx");
+                LOGI("  oldGetSize_l=%p oldGetSize_x=%p fakeObj[0][8]=%p", oldGetSize, oldGetSize2, fakeObj[0][8]);
 
-                // 2.3
+                // 2.3 entry points
                 fakeObj[0][6] = (void*)&HLSDataSource::_initCheck;
                 fakeObj[0][7] = (void*)&HLSDataSource::_readAt_23;
                 fakeObj[0][8] = (void*)&HLSDataSource::_getSize_23;
@@ -1581,8 +1574,14 @@ namespace android_video_shim
 
         ssize_t _readAt(off64_t offset, void* data, size_t size)
         {
-            //LOGV("Attempting _readAt");
+            LOGV("Attempting _readAt");
             pthread_mutex_lock(&mutex);
+
+            if(mSources.size() == 0)
+            {
+                LOGE("No sources in HLSDataSource! Aborting...");
+                return 0;
+            }
 
             off64_t sourceSize = 0;
             mSources[mSourceIdx]->getSize(&sourceSize);
@@ -1640,30 +1639,75 @@ namespace android_video_shim
             return rsize;
         }
 
-        ssize_t _readAt_23(off_t offset, void* data, size_t size)
+        ssize_t _readAt_23(int64_t offset, void* data, unsigned int size)
         {
-            LOGV("Attempting _readAt");
+            //LOGV("Attempting _readAt_23 this=%x offset=%x data=%x size=%x", this, offset, data, size);
             pthread_mutex_lock(&mutex);
 
+            if(mSources.size() == 0)
+            {
+                LOGE("No sources in HLSDataSource! Aborting...");
+                return 0;
+            }
+
             off_t sourceSize = 0;
+            //LOGV("Get source %d size", mSourceIdx);
             mSources[mSourceIdx]->getSize_23(&sourceSize);
+            //LOGV("OK sourceSize=%d offset=%x mOffsetAdjustment=%ld", sourceSize, offset, mOffsetAdjustment);
 
             off_t adjoffset = offset - mOffsetAdjustment;  // get our adjusted offset. It should always be >= 0
 
-            if (adjoffset >= sourceSize && (mSourceIdx + 1 < mSources.size())) // The thinking here is that if we run out of sources, we should just let it pass through to read the last source at the invalid buffer, generating the proper return code
-                                                                               // However, this doesn't solve the problem of delayed fragment downloads... not sure what to do about that, yet
-                                                                               // This should at least prevent us from crashing
+            if (adjoffset >= sourceSize) // The thinking here is that if we run out of sources, we should just let it pass through to read the last source at the invalid buffer, generating the proper return code
+                                         // However, this doesn't solve the problem of delayed fragment downloads... not sure what to do about that, yet
+                                         // This should at least prevent us from crashing
             {
-                adjoffset -= sourceSize; // subtract the size of the current source from the offset
-                mOffsetAdjustment += sourceSize; // Add the size of the current source to our offset adjustment for the future
-                ++mSourceIdx;
+                if(mSourceIdx + 1 < mSources.size())
+                {
+                    LOGI("Changing Segments: curIdx=%d, nextIdx=%d", mSourceIdx, mSourceIdx + 1);
+                    adjoffset -= sourceSize; // subtract the size of the current source from the offset
+                    mOffsetAdjustment += sourceSize; // Add the size of the current source to our offset adjustment for the future
+                    ++mSourceIdx;
+                }
+                else
+                {
+                    LOGI("Reached end of segment list.");
+                }
             }
 
+            //LOGV("Reading from source %d - adjoffset=%ld data=%ld size=%ld", mSourceIdx, adjoffset, data, size);
             ssize_t rsize = mSources[mSourceIdx]->readAt_23(adjoffset, data, size);
+            //LOGV("OK %ld", rsize);
 
-            LOGV("%p | getSize = %ld | offset=%ld | offsetAdjustment = %lld | adjustedOffset = %ld | requested size = %d | rsize = %ld",
-                            this, sourceSize, offset, mOffsetAdjustment, adjoffset, size, rsize);
+            if (rsize < size)
+            {
+                if(rsize < 0)
+                {
+                    LOGI("Saw error %ld from datasource; advancing!", rsize);
+                    rsize = 0;
+                }
+
+                if(mSourceIdx + 1 < mSources.size())
+                {
+                    LOGI("Incomplete Read - Changing Segments : curIdx=%d, nextIdx=%d", mSourceIdx, mSourceIdx + 1);
+                    adjoffset -= sourceSize; // subtract the size of the current source from the offset
+                    mOffsetAdjustment += sourceSize; // Add the size of the current source to our offset adjustment for the future
+                    ++mSourceIdx;
+
+                    LOGI("Reading At %lld | New ", adjoffset + rsize);
+                    rsize += mSources[mSourceIdx]->readAt_23(adjoffset + rsize, (unsigned char*)data + rsize, size - rsize);                    
+                }
+                else
+                {
+                    LOGI("Wanted to read %ld more bytes, but no more sources.", (size - rsize));
+                }
+            }
+
+
+            //LOGI("%p | getSize = %lld | offset=%lld | offsetAdjustment = %lld | adjustedOffset = %lld | requested size = %d | rsize = %ld",
+            //                this, sourceSize, offset, mOffsetAdjustment, adjoffset, size, rsize);
+
             pthread_mutex_unlock(&mutex);
+
             return rsize;
         }
 
@@ -1678,7 +1722,7 @@ namespace android_video_shim
 
         status_t _getSize_23(off_t* size)
         {
-            LOGV("Attempting _getSize");
+            LOGV("Attempting _getSize_23 %x", size);
             status_t rval = mSources[mSourceIdx]->getSize_23(size);
             LOGV("getSize - %p | size = %ld",this, *size);
             return rval;
@@ -1807,6 +1851,8 @@ namespace android_video_shim
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android14ColorConverter7convertEPKvjjjjjjPvjjjjjj");
             //localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android14ColorConverter7convertEPKvjjjjjjPvjjjjjj");
 
+            LOGI("color convert = %p", lfc);
+
             assert(lfc);
             return lfc(this, srcBits,
                  srcWidth,  srcHeight,
@@ -1838,156 +1884,6 @@ namespace android_video_shim
         AUDIO_STREAM_MAX              = AUDIO_STREAM_CNT - 1,
     } audio_stream_type_t;
 
-    class MediaPlayerBase : public RefBase
-    {
-    public:
-        // AudioSink: abstraction layer for audio output
-        class AudioSink : public RefBase {
-//        public:
-//            enum cb_event_t {
-//                CB_EVENT_FILL_BUFFER,   // Request to write more data to buffer.
-//                CB_EVENT_STREAM_END,    // Sent after all the buffers queued in AF and HW are played
-//                                        // back (after stop is called)
-//                CB_EVENT_TEAR_DOWN      // The AudioTrack was invalidated due to use case change:
-//                                        // Need to re-evaluate offloading options
-//            };
-//
-//            // Callback returns the number of bytes actually written to the buffer.
-//            typedef size_t (*AudioCallback)(
-//                    AudioSink *audioSink, void *buffer, size_t size, void *cookie,
-//                            cb_event_t event);
-//
-//            virtual             ~AudioSink() {}
-//            virtual bool        ready() const = 0; // audio output is open and ready
-//            virtual bool        realtime() const = 0; // audio output is real-time output
-//            virtual ssize_t     bufferSize() const = 0;
-//            virtual ssize_t     frameCount() const = 0;
-//            virtual ssize_t     channelCount() const = 0;
-//            virtual ssize_t     frameSize() const = 0;
-//            virtual uint32_t    latency() const = 0;
-//            virtual float       msecsPerFrame() const = 0;
-//            virtual status_t    getPosition(uint32_t *position) const = 0;
-//            virtual status_t    getFramesWritten(uint32_t *frameswritten) const = 0;
-//            virtual int         getSessionId() const = 0;
-//            virtual audio_stream_type_t getAudioStreamType() const = 0;
-//
-//            // If no callback is specified, use the "write" API below to submit
-//            // audio data.
-//            virtual status_t    open(
-//                    uint32_t sampleRate, int channelCount, audio_channel_mask_t channelMask,
-//                    audio_format_t format=AUDIO_FORMAT_PCM_16_BIT,
-//                    int bufferCount=DEFAULT_AUDIOSINK_BUFFERCOUNT,
-//                    AudioCallback cb = NULL,
-//                    void *cookie = NULL,
-//                    audio_output_flags_t flags = AUDIO_OUTPUT_FLAG_NONE,
-//                    const audio_offload_info_t *offloadInfo = NULL) = 0;
-//
-//            virtual status_t    start() = 0;
-//            virtual ssize_t     write(const void* buffer, size_t size) = 0;
-//            virtual void        stop() = 0;
-//            virtual void        flush() = 0;
-//            virtual void        pause() = 0;
-//            virtual void        close() = 0;
-//
-//            virtual status_t    setPlaybackRatePermille(int32_t rate) { return INVALID_OPERATION; }
-//            virtual bool        needsTrailingPadding() { return true; }
-//
-//            virtual status_t    setParameters(const String8& keyValuePairs) { return NO_ERROR; };
-//            virtual String8     getParameters(const String8& keys) { return String8::empty(); };
-        };
-
-//                            MediaPlayerBase() : mCookie(0), mNotify(0) {}
-//        virtual             ~MediaPlayerBase() {}
-//        virtual status_t    initCheck() = 0;
-//        virtual bool        hardwareOutput() = 0;
-//
-//        virtual status_t    setUID(uid_t uid) {
-//            return INVALID_OPERATION;
-//        }
-//
-//        virtual status_t    setDataSource(
-//                const char *url,
-//                const KeyedVector<String8, String8> *headers = NULL) = 0;
-//
-//        virtual status_t    setDataSource(int fd, int64_t offset, int64_t length) = 0;
-//
-//        virtual status_t    setDataSource(const sp<IStreamSource> &source) {
-//            return INVALID_OPERATION;
-//        }
-//
-//        // pass the buffered IGraphicBufferProducer to the media player service
-//        virtual status_t    setVideoSurfaceTexture(
-//                                    const sp<IGraphicBufferProducer>& bufferProducer) = 0;
-//
-//        virtual status_t    prepare() = 0;
-//        virtual status_t    prepareAsync() = 0;
-//        virtual status_t    start() = 0;
-//        virtual status_t    stop() = 0;
-//        virtual status_t    pause() = 0;
-//        virtual bool        isPlaying() = 0;
-//        virtual status_t    seekTo(int msec) = 0;
-//        virtual status_t    getCurrentPosition(int *msec) = 0;
-//        virtual status_t    getDuration(int *msec) = 0;
-//        virtual status_t    reset() = 0;
-//        virtual status_t    setLooping(int loop) = 0;
-//        virtual player_type playerType() = 0;
-//        virtual status_t    setParameter(int key, const Parcel &request) = 0;
-//        virtual status_t    getParameter(int key, Parcel *reply) = 0;
-//
-//        // default no-op implementation of optional extensions
-//        virtual status_t setRetransmitEndpoint(const struct sockaddr_in* endpoint) {
-//            return INVALID_OPERATION;
-//        }
-//        virtual status_t getRetransmitEndpoint(struct sockaddr_in* endpoint) {
-//            return INVALID_OPERATION;
-//        }
-//        virtual status_t setNextPlayer(const sp<MediaPlayerBase>& next) {
-//            return OK;
-//        }
-//
-//        // Invoke a generic method on the player by using opaque parcels
-//        // for the request and reply.
-//        //
-//        // @param request Parcel that is positioned at the start of the
-//        //                data sent by the java layer.
-//        // @param[out] reply Parcel to hold the reply data. Cannot be null.
-//        // @return OK if the call was successful.
-//        virtual status_t    invoke(const Parcel& request, Parcel *reply) = 0;
-//
-//        // The Client in the MetadataPlayerService calls this method on
-//        // the native player to retrieve all or a subset of metadata.
-//        //
-//        // @param ids SortedList of metadata ID to be fetch. If empty, all
-//        //            the known metadata should be returned.
-//        // @param[inout] records Parcel where the player appends its metadata.
-//        // @return OK if the call was successful.
-//        virtual status_t    getMetadata(const media::Metadata::Filter& ids,
-//                                        Parcel *records) {
-//            return INVALID_OPERATION;
-//        };
-//
-//        void        setNotifyCallback(
-//                void* cookie, notify_callback_f notifyFunc) {
-//            Mutex::Autolock autoLock(mNotifyLock);
-//            mCookie = cookie; mNotify = notifyFunc;
-//        }
-//
-//        void        sendEvent(int msg, int ext1=0, int ext2=0,
-//                              const Parcel *obj=NULL) {
-//            Mutex::Autolock autoLock(mNotifyLock);
-//            if (mNotify) mNotify(mCookie, msg, ext1, ext2, obj);
-//        }
-//
-//        virtual status_t dump(int fd, const Vector<String16> &args) const {
-//            return INVALID_OPERATION;
-//        }
-//
-//        virtual status_t updateProxyConfig(
-//                const char *host, int32_t port, const char *exclusionList) {
-//            return INVALID_OPERATION;
-//        }
-    };
-
     // Check whether the stream defined by meta can be offloaded to hardware
     inline bool canOffloadStream(const sp<MetaData>& meta, bool hasVideo,
                           bool isStreaming, audio_stream_type_t streamType)
@@ -2004,171 +1900,6 @@ namespace android_video_shim
         return lfc(meta, hasVideo, isStreaming, streamType);
     }
 
-    class AudioPlayer : public TimeSource {
-    public:
-
-    	char buffer[8192]; // Space for members we don't directly access.
-        enum {
-            REACHED_EOS,
-            SEEK_COMPLETE
-        };
-
-        enum {
-            ALLOW_DEEP_BUFFERING = 0x01,
-            USE_OFFLOAD = 0x02,
-            HAS_VIDEO   = 0x1000,
-            IS_STREAMING = 0x2000
-
-        };
-
-        AudioPlayer(const sp<MediaPlayerBase::AudioSink> &audioSink,
-                    uint32_t flags = 0,
-                    void *audioObserver = NULL)
-        {
-            typedef void (*localFuncCast)(void *thiz, const sp<MediaPlayerBase::AudioSink> &audioSink,
-                    uint32_t flags,
-                    void *audioObserver);
-            typedef void (*localFuncCast2)(void *thiz, const sp<MediaPlayerBase::AudioSink> &audioSink,
-                    bool flags,
-                    void *audioObserver);
-
-            typedef void (*localFuncCast3)(void *thiz, const sp<MediaPlayerBase::AudioSink> &audioSink, 
-                    void *audioObserver);
-
-            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android11AudioPlayerC1ERKNS_2spINS_15MediaPlayerBase9AudioSinkEEEjPNS_13AwesomePlayerE");
-            localFuncCast2 lfc2 = (localFuncCast2)searchSymbol("_ZN7android11AudioPlayerC1ERKNS_2spINS_15MediaPlayerBase9AudioSinkEEEbPNS_13AwesomePlayerE");
-            localFuncCast3 lfc3 = (localFuncCast3)searchSymbol("_ZN7android11AudioPlayerC1ERKNS_2spINS_15MediaPlayerBase9AudioSinkEEEPNS_13AwesomePlayerE");
-
-            LOGI("Using C1 Not C2");
-            if(lfc)
-            {
-                LOGI("AudioPlayer ctor 1");
-                lfc(this, audioSink, flags, audioObserver);
-            }
-            else if(lfc2)
-            {
-                LOGI("AudioPlayer ctor 2, ignoring flags=%x", flags);
-                lfc2(this, audioSink, false, audioObserver);
-            }
-            else if(lfc3)
-            {
-                LOGI("AudioPlayer ctor 3 variant 2, ignoring flags=%x", flags);
-                lfc3(this, audioSink, audioObserver);                
-            }
-            else
-            {
-                LOGI("No AudioPlayer ctor found");
-                assert(0);
-            }
-        }
-
-        ~AudioPlayer()
-        {
-
-        }
-
-        // Caller retains ownership of "source".
-        void setSource(const sp<MediaSource> &source)
-        {
-            typedef void (*localFuncCast)(void *thiz, const sp<MediaSource> &source);
-            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android11AudioPlayer9setSourceERKNS_2spINS_11MediaSourceEEE");
-            assert(lfc);
-            lfc(this, source);
-
-        }
-
-        // Return time in us.
-        //virtual
-        int64_t getRealTimeUs()
-        {
-            typedef int64_t (*localFuncCast)(void *thiz);
-            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android11AudioPlayer13getRealTimeUsEv");
-            assert(lfc);
-            return lfc(this);
-        }
-
-        status_t start(bool sourceAlreadyStarted = false)
-        {
-            typedef status_t (*localFuncCast)(void *thiz, bool sourceAlreadyStarted);
-            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android11AudioPlayer5startEb");
-            assert(lfc);
-            return lfc(this, sourceAlreadyStarted);
-
-        }
-
-        void pause(bool playPendingSamples = false)
-        {
-            typedef void (*localFuncCast)(void *thiz, bool playPendingSamples);
-            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android11AudioPlayer5pauseEb");
-            assert(lfc);
-            lfc(this, playPendingSamples);
-        }
-        status_t resume()
-        {
-            typedef status_t (*localFuncCast)(void *thiz);
-            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android11AudioPlayer6resumeEv");
-            assert(lfc);
-            return lfc(this);
-        }
-
-        // Returns the timestamp of the last buffer played (in us).
-        int64_t getMediaTimeUs()
-        {
-            typedef int64_t (*localFuncCast)(void *thiz);
-            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android11AudioPlayer14getMediaTimeUsEv");
-            assert(lfc);
-            return lfc(this);
-        }
-
-        // Returns true iff a mapping is established, i.e. the AudioPlayer
-        // has played at least one frame of audio.
-        bool getMediaTimeMapping(int64_t *realtime_us, int64_t *mediatime_us)
-        {
-            typedef bool (*localFuncCast)(void *thiz, int64_t *realtime_us, int64_t *mediatime_us);
-            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android11AudioPlayer19getMediaTimeMappingEPxS1_");
-            assert(lfc);
-            return lfc(this, realtime_us, mediatime_us);
-        }
-
-        status_t seekTo(int64_t time_us)
-        {
-            typedef status_t (*localFuncCast)(void *thiz, int64_t time_us);
-            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android11AudioPlayer6seekToEx");
-            assert(lfc);
-            return lfc(this, time_us);
-        }
-
-        bool isSeeking()
-        {
-            typedef bool (*localFuncCast)(void *thiz);
-            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android11AudioPlayer9isSeekingEv");
-            assert(lfc);
-            return lfc(this);
-        }
-        bool reachedEOS(status_t *finalStatus)
-        {
-            typedef bool (*localFuncCast)(void *thiz, status_t *finalStatus);
-            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android11AudioPlayer10reachedEOSEPi");
-            assert(lfc);
-            return lfc(this, finalStatus);
-        }
-
-        status_t setPlaybackRatePermille(int32_t ratePermille)
-        {
-            typedef status_t (*localFuncCast)(void *thiz, int32_t ratePermille);
-            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android11AudioPlayer23setPlaybackRatePermilleEi");
-            assert(lfc);
-            return lfc(this, ratePermille);
-        }
-
-        void notifyAudioEOS()
-        {
-            typedef void (*localFuncCast)(void *thiz);
-            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android11AudioPlayer14notifyAudioEOSEv");
-            assert(lfc);
-            lfc(this);
-        }
-    };
 }
 
 #endif

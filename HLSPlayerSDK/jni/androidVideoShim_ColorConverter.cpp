@@ -45,6 +45,7 @@ bool ColorConverter_Local::isValid() const {
         return false;
     }
     switch (mSrcFormat) {
+        case OMX_COLOR_Format16bitRGB565:
         case OMX_COLOR_FormatYUV420Planar:
         case OMX_COLOR_FormatCbYCrY:
         case OMX_QCOM_COLOR_FormatYVU420SemiPlanar:
@@ -97,12 +98,19 @@ status_t ColorConverter_Local::convert(
             const_cast<void *>(srcBits),
             srcWidth, srcHeight,
             srcCropLeft, srcCropTop, srcCropRight, srcCropBottom);
+ 
     BitmapParams dst(
             dstBits,
             dstWidth, dstHeight,
             dstCropLeft, dstCropTop, dstCropRight, dstCropBottom);
+ 
     status_t err;
-    switch (mSrcFormat) {
+    switch (mSrcFormat) 
+    {
+        case OMX_COLOR_Format16bitRGB565:
+            // This is a copy!
+            memcpy(dstBits, srcBits, 2 * srcWidth * srcHeight);
+            break;
         case OMX_COLOR_FormatYUV420Planar:
             err = convertYUV420Planar(src, dst);
             break;

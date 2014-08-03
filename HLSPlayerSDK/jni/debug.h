@@ -15,7 +15,7 @@
 #define _DEBUG_E
 #define _DEBUG_W
 #define _DEBUG_I
-//#define _DEBUG_V
+#define _DEBUG_V
 //#define _DEBUG_RUN
 
 //#define _VERBOSE

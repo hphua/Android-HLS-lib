@@ -25,6 +25,7 @@ public:
 	bool Stop();
 
 	bool Set(android_video_shim::sp<android_video_shim::MediaSource> audioSource, bool alreadyStarted = false);
+	bool Set23(android_video_shim::sp<android_video_shim::MediaSource23> audioSource, bool alreadyStarted = false);
 
 	bool Update();
 
@@ -47,6 +48,7 @@ private:
 	JavaVM* mJvm;
 
 	android_video_shim::sp<android_video_shim::MediaSource> mAudioSource;
+	android_video_shim::sp<android_video_shim::MediaSource23> mAudioSource23;
 
 	int mSampleRate;
 	int mNumChannels;
