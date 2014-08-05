@@ -10,6 +10,7 @@
 
 #include <jni.h>
 #include <androidVideoShim.h>
+#include <semaphore.h>
 
 class AudioTrack {
 public:
@@ -56,6 +57,8 @@ private:
 	int mBufferSizeInBytes;
 
 	int mPlayState;
+
+	sem_t semPause;
 
 };
 

@@ -44,6 +44,8 @@ void AudioTrack::Close()
 			mAudioSource->stop();
 		if(mAudioSource23.get())
 			mAudioSource23->stop();
+
+		sem_destroy(&semPause);
 	}
 }
 
@@ -216,6 +218,12 @@ bool AudioTrack::Start()
 
 	LOGI("mBufferSizeInBytes=%d", mBufferSizeInBytes);
 
+	int err = sem_init(&semPause, 0, 0);
+	if (err != 0)
+	{
+		LOGE("Failed to init audio pause semaphore : %d", err);
+		return false;
+	}
 
 	mTrack = env->NewGlobalRef(env->NewObject(mCAudioTrack, mAudioTrack, STREAM_MUSIC, mSampleRate, channelConfig, ENCODING_PCM_16BIT, mBufferSizeInBytes * 2, MODE_STREAM ));
 	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mPlay);
@@ -226,8 +234,13 @@ bool AudioTrack::Start()
 
 void AudioTrack::Play()
 {
+	if (mPlayState == PAUSED)
+	{
+		sem_post(&semPause);
+	}
 	if (mPlayState == PLAYING) return;
 	mPlayState = PLAYING;
+	sem_post(&semPause);
 	JNIEnv* env;
 	mJvm->AttachCurrentThread(&env, NULL);
 	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mPlay);
@@ -236,6 +249,10 @@ void AudioTrack::Play()
 
 bool AudioTrack::Stop()
 {
+	if (mPlayState == PAUSED)
+	{
+		sem_post(&semPause);
+	}
 	if (mPlayState == STOPPED) return true;
 	mPlayState = STOPPED;
 	JNIEnv* env;
@@ -265,9 +282,16 @@ int64_t AudioTrack::GetTimeStamp()
 
 bool AudioTrack::Update()
 {
-	if (mPlayState != PLAYING) return false; // We don't really want to add more stuff to the buffer
-											// and potentially run past the end of buffered source data
-											// if we're not actively playing
+	if (mPlayState != PLAYING)
+	{
+		while (mPlayState == PAUSED)
+			sem_wait(&semPause);
+
+		if (mPlayState == STOPPED)
+			return false; // We don't really want to add more stuff to the buffer
+							// and potentially run past the end of buffered source data
+							// if we're not actively playing
+	}
 	JNIEnv* env;
 	mJvm->AttachCurrentThread(&env, NULL);
 
@@ -301,9 +325,9 @@ bool AudioTrack::Update()
 				//LOGI("Writing data to jAudioTrack %d", mbufSize);
 				memcpy(pBuffer, mediaBuffer->data(), mbufSize);
 				unsigned short* pBShorts = (unsigned short*)pBuffer;
-				LOGV("%hd %hd %hd %hd", pBShorts[0], pBShorts[1], pBShorts[2], pBShorts[3]);
+				//LOGV("%hd %hd %hd %hd", pBShorts[0], pBShorts[1], pBShorts[2], pBShorts[3]);
 				int len = mbufSize / 2;
-				LOGV("%hd %hd %hd %hd", pBShorts[len - 4], pBShorts[len - 3], pBShorts[len - 2], pBShorts[len - 1]);
+				//LOGV("%hd %hd %hd %hd", pBShorts[len - 4], pBShorts[len - 3], pBShorts[len - 2], pBShorts[len - 1]);
 
 				env->ReleasePrimitiveArrayCritical(buffer, pBuffer, 0);
 				//LOGI("Finished copying audio data to buffer");
