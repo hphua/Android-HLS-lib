@@ -554,10 +554,10 @@ namespace android_video_shim
             return r;
         }
 
-        status_t getSize_23(off_t *size)
+        status_t getSize_23(off64_t *size)
         {
             const int vtableOffset = 8;
-            typedef status_t (*localFuncCast)(void *thiz, off_t *size);
+            typedef status_t (*localFuncCast)(void *thiz, off64_t *size);
             localFuncCast **fakeObj = (localFuncCast**)this;
 
             /*for(int i=0; i<17; i++)
@@ -1650,12 +1650,12 @@ namespace android_video_shim
                 return 0;
             }
 
-            off_t sourceSize = 0;
+            off64_t sourceSize = 0;
             //LOGV("Get source %d size", mSourceIdx);
             mSources[mSourceIdx]->getSize_23(&sourceSize);
             //LOGV("OK sourceSize=%d offset=%x mOffsetAdjustment=%ld", sourceSize, offset, mOffsetAdjustment);
 
-            off_t adjoffset = offset - mOffsetAdjustment;  // get our adjusted offset. It should always be >= 0
+            off64_t adjoffset = offset - mOffsetAdjustment;  // get our adjusted offset. It should always be >= 0
 
             if (adjoffset >= sourceSize) // The thinking here is that if we run out of sources, we should just let it pass through to read the last source at the invalid buffer, generating the proper return code
                                          // However, this doesn't solve the problem of delayed fragment downloads... not sure what to do about that, yet
@@ -1720,7 +1720,7 @@ namespace android_video_shim
             return 0;
         }
 
-        status_t _getSize_23(off_t* size)
+        status_t _getSize_23(off64_t* size)
         {
             LOGV("Attempting _getSize_23 %x", size);
             status_t rval = mSources[mSourceIdx]->getSize_23(size);

@@ -49,6 +49,8 @@ public:
 
 	int GetState();
 
+	void SetScreenSize(int w, int h);
+
 private:
 	void SetState(int status);
 	void SetNativeWindow(ANativeWindow* window);

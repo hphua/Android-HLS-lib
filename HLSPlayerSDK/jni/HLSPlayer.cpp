@@ -32,7 +32,7 @@ void* audio_thread_func(void* arg)
 
 	while (audioTrack->Update())
 	{
-
+		sched_yield();
 	}
 
 	LOGI("audio_thread_func ending");
@@ -379,7 +379,13 @@ bool HLSPlayer::InitSources()
 	meta->findInt32(kKeyWidth, &mWidth);
 	meta->findInt32(kKeyHeight, &mHeight);
 	int32_t left, top;
-	meta->findRect(kKeyCropRect, &left, &top, &mCropWidth, &mCropHeight);
+	if(!meta->findRect(kKeyCropRect, &left, &top, &mCropWidth, &mCropHeight))
+	{
+		LOGW("Could not get crop rect, assuming full video size.");
+		left = top = 0;
+		mCropWidth = mWidth;
+		mCropHeight = mHeight;
+	}
 
 	UpdateWindowBufferFormat();
 
@@ -419,17 +425,16 @@ bool HLSPlayer::InitSources()
 }
 
 
+void HLSPlayer::SetScreenSize(int w, int h)
+{
+	mScreenWidth = w;
+	mScreenHeight = h;
+	LOGI("SET screenWidth=%d | screenHeight=%d", mScreenWidth, mScreenHeight);
+}
+
 bool HLSPlayer::UpdateWindowBufferFormat()
 {
-	int32_t screenWidth = ANativeWindow_getWidth(mWindow);
-	int32_t screenHeight = ANativeWindow_getHeight(mWindow);
-
-	if (mScreenWidth == screenWidth && mScreenHeight == screenHeight)
-	{
-		// do nothing
-		return true;
-	}
-	LOGI("screenWidth=%d | screenHeight=%d", screenWidth, screenHeight);
+	LOGI("screenWidth=%d | screenHeight=%d", mScreenWidth, mScreenHeight);
 
 	int32_t bufferWidth = mWidth;
 	int32_t bufferHeight = mHeight;
@@ -444,20 +449,57 @@ bool HLSPlayer::UpdateWindowBufferFormat()
 		mVideoSource23->getFormat()->findInt32(kKeyWidth, &bufferWidth);
 		mVideoSource23->getFormat()->findInt32(kKeyHeight, &bufferHeight);
 	}
+	else
+	{
+		LOGE("Failed to get buffer width/height.");
+		return false;
+	}
 
 	LOGI("bufferWidth=%d | bufferHeight=%d", bufferWidth, bufferHeight);
 
-	double screenScale = (double)screenWidth / (double)screenHeight;
+	// We want to fit our buffer to the screen aspect ratio, but only by
+	// increasing its dimensions. We consider several cases:
+	//
+	//    A) Mapping 480x256 to 320x240
+	//    B) Mapping 480x256 to 240x320
+	//    C) Mapping 256x480 to 1920x1080
+	//    D) Mapping 256x480 to 1080x1920
+	//
+	// We want to minimize the size of the buffer, so we'll always take the
+	// smaller dimension and increase it to fit the desired aspect ratio.
+	//
+	// 		aspect = width/height
+	//
+	// In the case of A, the screen aspect is 1.3 and the buffer aspect is
+	// 1.875. We want to modify A to have the same aspect, which we can do
+	// by increasing its height to be 360px. This results in an aspect of
+	// 1.3, allowing correct display.
+	//
+	// In the case of B, the screen aspect is 0.75 and the buffer aspect is
+	// 1.875. We want to modify B to have the same aspect, which we can do
+	// by increasing its height to be 640px. This results in an aspect of
+	// 0.75, allowing correct display.
+	//
+	// In the case of C, the screen aspect is 1.77, and the buffer aspect is
+	// 0.53. We increase the width of C to 853px to match aspect.
+	//
+	// In the case of D, the screen aspect is 0.5625 and the buffer aspect is
+	// 0.53. We increase the width of D to 270px to match aspect.
+	
+	double screenAspect = (double)mScreenWidth / (double)mScreenHeight;
+	double bufferAspect = (double)bufferWidth / (double)bufferHeight;
 
-	LOGI("screenScale=%f", screenScale);
-	if (screenWidth > screenHeight)
+	LOGI("screenAspect=%f bufferAspect=%f", screenAspect, bufferAspect);
+
+	if(bufferWidth < bufferHeight)
 	{
-		double vidScale = (double)mWidth / (double)mHeight;
-		bufferWidth = ((double)mWidth / vidScale) * screenScale; // width / bufferScale * screenScale
+		// Increase width to match screen aspect.
+		bufferWidth = bufferHeight * screenAspect;
 	}
-	else if (screenHeight > screenWidth)
+	else
 	{
-		bufferHeight = (double)mWidth / screenScale;
+		// Increase height to match screen aspect.
+		bufferHeight = bufferWidth / screenAspect;
 	}
 
 	LOGI("bufferWidth=%d | bufferHeight=%d", bufferWidth, bufferHeight);
@@ -725,16 +767,48 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 	if(mVideoSource23.get())
 		vidFormat = mVideoSource23->getFormat();
 
-	vidFormat->findInt32(kKeyWidth, &videoBufferWidth);
-	vidFormat->findInt32(kKeyHeight, &videoBufferHeight);
+	if(!vidFormat->findInt32(kKeyWidth, &videoBufferWidth) || !buffer->meta_data()->findInt32(kKeyHeight, &videoBufferHeight))
+	{
+		LOGV("Falling back to source dimensions.");
+		if(!buffer->meta_data()->findInt32(kKeyWidth, &videoBufferWidth) || !vidFormat->findInt32(kKeyHeight, &videoBufferHeight))
+		{
+			// I hope we're right!
+			LOGV("Setting best guess width/height");
+			videoBufferWidth = mWidth;
+			videoBufferHeight = mHeight;			
+		}
+	}
+
+	int stride = -1;
+	if(!buffer->meta_data()->findInt32(kKeyStride, &stride))
+	{
+		LOGV("Trying source stride");
+		if(!vidFormat->findInt32(kKeyStride, &stride))
+		{
+			LOGV("Got no source");
+		}
+	}
+
+	int x = -1;
+	buffer->meta_data()->findInt32(kKeyDisplayWidth, &x);
+	LOGV("dwidth = %d", x);
+
+	if(stride != -1)
+	{
+		LOGV("Got stride %d", stride);
+	}
+
 	if(!vidFormat->findRect(kKeyCropRect, &vbCropLeft, &vbCropTop, &vbCropRight, &vbCropBottom))
 	{
-		vbCropTop = 0;
-		vbCropLeft = 0;
-		vbCropBottom = mCropHeight - 1;
-		vbCropRight = mCropWidth - 1;
+		if(!buffer->meta_data()->findRect(kKeyCropRect, &vbCropLeft, &vbCropTop, &vbCropRight, &vbCropBottom))
+		{
+			vbCropTop = 0;
+			vbCropLeft = 0;
+			vbCropBottom = videoBufferHeight - 1;
+			vbCropRight = videoBufferWidth - 1;
+		}
 	}
-	//LOGI("vbw=%d vbh=%d vbcl=%d vbct=%d vbcr=%d vbcb=%d", videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom);
+	LOGI("vbw=%d vbh=%d vbcl=%d vbct=%d vbcr=%d vbcb=%d", videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom);
 
 	int colf = 0;
 	bool res = vidFormat->findInt32(kKeyColorFormat, &colf);
@@ -771,7 +845,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 
 			// Clear to black.
 			unsigned short *pixels = (unsigned short *)windowBuffer.bits;
-			memset(pixels, 0, windowBuffer.stride * windowBuffer.height * 2);
+			//memset(pixels, 0, windowBuffer.stride * windowBuffer.height * 2);
 
 			//LOGI("mWidth=%d | mHeight=%d | mCropWidth=%d | mCropHeight=%d | buffer.width=%d | buffer.height=%d",
 			//				mWidth, mHeight, mCropWidth, mCropHeight, windowBuffer.width, windowBuffer.height);
@@ -786,14 +860,15 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 			if (useLocalCC)
 				ccres = lcc.convert(buffer->data(), videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom,
 						windowBuffer.bits, targetWidth, targetHeight, vbCropLeft + offsetx, vbCropTop + offsety, vbCropRight + offsetx, vbCropBottom + offsety);
-						//windowBuffer.bits, targetWidth, targetHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom);
 			else
-				ccres = cc.convert(buffer->data(), mWidth, mHeight, 0, 0, mCropWidth, mCropHeight,
-						windowBuffer.bits, targetWidth, targetHeight, offsetx, offsety,mCropWidth + offsetx, mCropHeight + offsety);
+				ccres = cc.convert(buffer->data(), videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom,
+						windowBuffer.bits, targetWidth, targetHeight, vbCropLeft + offsetx, vbCropTop + offsety, vbCropRight + offsetx, vbCropBottom + offsety);
 
 			if (ccres != OK) LOGE("ColorConversion error: %s (%d)", strerror(-ccres), -ccres);
 
 			ANativeWindow_unlockAndPost(mWindow);
+
+			sched_yield();
 		}
 
 

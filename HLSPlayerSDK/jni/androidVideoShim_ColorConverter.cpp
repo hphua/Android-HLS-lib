@@ -108,9 +108,19 @@ status_t ColorConverter_Local::convert(
     switch (mSrcFormat) 
     {
         case OMX_COLOR_Format16bitRGB565:
-            // This is a copy!
-            memcpy(dstBits, srcBits, 2 * srcWidth * srcHeight);
+        {
+            // Copy the cropped region.
+            unsigned short *dstShort = (unsigned short *)dstBits;
+            unsigned short *srcShort = (unsigned short *)srcBits;
+            memcpy(dstShort + dstCropLeft + (dstCropTop)*dstWidth,
+                   srcShort, 
+                   srcWidth*srcHeight*sizeof(short));
+
+            for(int i=0; i<dstHeight; i++)
+                dstShort[i*dstWidth + (srcWidth-1)] = 0xF00F;
+
             break;
+        }
         case OMX_COLOR_FormatYUV420Planar:
             err = convertYUV420Planar(src, dst);
             break;

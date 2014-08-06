@@ -4,24 +4,21 @@ import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Timer;
 
-import com.kaltura.hlsplayersdk.events.OnPlayerStateChangeListener;
-import com.kaltura.hlsplayersdk.events.OnPlayheadUpdateListener;
-import com.kaltura.hlsplayersdk.events.OnProgressListener;
 import com.kaltura.hlsplayersdk.manifest.ManifestParser;
 import com.kaltura.hlsplayersdk.manifest.ManifestSegment;
 import com.kaltura.hlsplayersdk.manifest.events.OnParseCompleteListener;
 
 import android.content.Context;
-import android.media.MediaPlayer.OnErrorListener;
-import android.media.MediaPlayer.OnPreparedListener;
 import android.os.Handler;
 import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceView;
 import android.widget.MediaController.MediaPlayerControl;
 import android.widget.VideoView;
+import android.widget.RelativeLayout;
 
-public class PlayerView extends SurfaceView implements VideoPlayerInterface, MediaPlayerControl, OnParseCompleteListener, URLLoader.DownloadEventListener 
+public class PlayerView extends SurfaceView implements
+	OnParseCompleteListener, URLLoader.DownloadEventListener
 {
 	
 	private final int STATE_STOPPED = 1;
@@ -41,7 +38,7 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 	private native void FeedSegment(String url, int quality, double startTime);
 	private native void SeekTo(double time); // seconds, not miliseconds - I'll change this later if it
 	private native int GetState();
-	//private native double CurTim
+	private native void SetScreenSize(int width, int height);
 	
 	private static PlayerView currentPlayerView = null;
 	
@@ -74,7 +71,6 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 	private URLLoader manifestLoader;
 	private StreamHandler mStreamHandler = null;
 	
-	
 	private Handler handler = new Handler();
 	private Runnable runnable = new Runnable()
 	{
@@ -92,7 +88,7 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 	
 	// setVideoUrl()
 	// Sets the video URL and initiates the download of the manifest
-	@Override
+	
 	public void setVideoUrl(String url) {
 		Log.i("PlayerView.setVideoUrl", url);
 		//layoutParams lp = this.getLayoutParams();
@@ -102,9 +98,18 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 		manifestLoader.get(url);
 	}
 	
+	@Override
+	protected void onSizeChanged (int w, int h, int oldw, int oldh)
+	{
+		super.onSizeChanged(w, h, oldw, oldh);
+
+		Log.i("PlayerView.setVideoUrl", "Set size to " + w + "x" + h);
+		SetScreenSize(w, h);
+		getHolder().setFixedSize(w, h);
+	}
 	
 	// Called when the manifest parser is complete. Once this is done, play can actually start
-	@Override
+	
 	public void onParserComplete(ManifestParser parser)
 	{
 		Log.i("PlayerView.onParserComplete", "Entered");
@@ -126,7 +131,7 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 		mManifest.parse(response, loader.getRequestURI().toString());
 	}
 	
-	@Override
+	
 	public void onDownloadFailed(URLLoader loader, String response)
 	{
 		
@@ -146,17 +151,18 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 		{
 			
 		}
+
 		currentPlayerView = this;
 	}
 	
-	@Override
+	
 	public void close()
 	{
 		CloseNativeDecoder();
 	}
 	
 	
-	@Override
+	
 	public String getVideoUrl()
 	{
 		return "Not Implemented";
@@ -178,22 +184,17 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 		return GetState() == STATE_PLAYING;
 	}
 	
-	@Override
+
 	public boolean getIsPlaying()
 	{
 		return isPlaying();
 	}
 	
-	@Override
 	public void play()
 	{
 		SetSurface(getHolder().getSurface());
 		PlayFile();
 		this.postDelayed(runnable, frameDelay);
-//		if (!this.isPlaying())
-//		{
-//			super.start();
-//		}
 	}
 	
 	public boolean canPause()
@@ -241,7 +242,7 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 		}
 	}
 	
-	@Override
+	
 	public void stop()
 	{
 		StopPlayer();
@@ -254,7 +255,7 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 		//super.stopPlayback();
 	}
 	
-	@Override
+
 	public void seek(int msec)
 	{
 		//super.seekTo(msec);
@@ -265,38 +266,6 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 		return mStreamHandler;
 	}
 
-	
-
-	@Override
-	public void registerPlayerStateChange(OnPlayerStateChangeListener listener) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public void registerReadyToPlay(OnPreparedListener listener) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public void registerError(OnErrorListener listener) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public void registerPlayheadUpdate(OnPlayheadUpdateListener listener) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public void registerProgressUpdate(OnProgressListener listener) {
-		// TODO Auto-generated method stub
-		
-	}
-	
 	
 	
 

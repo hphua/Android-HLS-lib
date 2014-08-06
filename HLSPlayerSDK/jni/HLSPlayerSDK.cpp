@@ -101,6 +101,16 @@ extern "C"
 		}
 	}
 
+
+	void Java_com_kaltura_hlsplayersdk_PlayerView_SetScreenSize(JNIEnv* env, jobject jcaller, jint width, jint height)
+	{
+		//LOGI("Entered");
+		if (!gHLSPlayerSDK || !gHLSPlayerSDK->GetPlayer())
+			return;
+
+		gHLSPlayerSDK->GetPlayer()->SetScreenSize(width, height);
+	}
+
 	void Java_com_kaltura_hlsplayersdk_PlayerView_NextFrame(JNIEnv* env, jobject jcaller)
 	{
 		bool rval = false;
