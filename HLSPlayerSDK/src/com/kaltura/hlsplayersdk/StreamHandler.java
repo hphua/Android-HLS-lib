@@ -483,6 +483,26 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 //		return null;
 //	}
 	
+	
+	// Returns duration in ms
+	public int getDuration()
+	{
+		double accum = 0.0f;
+		
+		if (manifest == null) return -1;
+		
+		Vector<ManifestSegment> segments = getSegmentsForQuality( lastQuality );
+		ManifestParser activeManifest = getManifestForQuality(lastQuality);
+		int i = segments.size() - 1;
+		if (i >= 0 && (activeManifest.allowCache || activeManifest.streamEnds))
+		{
+			accum = (segments.get(i).startTime + segments.get(i).duration) - lastKnownPlaylistStartTime;
+		}
+		
+		return (int) (accum * 1000);
+		
+	}
+	
 	private void updateTotalDuration()
 	{
 		

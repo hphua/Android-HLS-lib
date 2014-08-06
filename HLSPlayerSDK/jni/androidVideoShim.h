@@ -1540,6 +1540,15 @@ namespace android_video_shim
 
         virtual void foo() { assert(0); }
 
+        void clear()
+        {
+        	pthread_mutex_lock(&mutex);
+        	mSources.clear();
+        	mSourceIdx = 0;
+        	mOffsetAdjustment = 0;
+        	pthread_mutex_unlock(&mutex);
+        }
+
         status_t append(const char* uri)
         {
             sp<DataSource> dataSource = DataSource::CreateFromURI(uri);

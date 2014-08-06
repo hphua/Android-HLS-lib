@@ -48,6 +48,7 @@ public:
 	void TogglePause();
 
 	int GetState();
+	int32_t GetCurrentTimeMS();
 
 private:
 	void SetState(int status);
