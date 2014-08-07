@@ -101,18 +101,20 @@ extern "C"
 		}
 	}
 
-	void Java_com_kaltura_hlsplayersdk_PlayerView_NextFrame(JNIEnv* env, jobject jcaller)
+	jint Java_com_kaltura_hlsplayersdk_PlayerView_NextFrame(JNIEnv* env, jobject jcaller)
 	{
-		bool rval = false;
 		//LOGI("Entered");
 		if (gHLSPlayerSDK != NULL)
 		{
 			if (gHLSPlayerSDK->GetPlayer())
 			{
-				if (gHLSPlayerSDK->GetPlayer()->Update() >= 0) rval = true;
+				if (gHLSPlayerSDK->GetPlayer()->Update() >= 0)
+				{
+					return gHLSPlayerSDK->GetPlayer()->GetCurrentTimeMS();
+				}
 			}
-
 		}
+		return 0;
 	}
 
 	void Java_com_kaltura_hlsplayersdk_PlayerView_FeedSegment(JNIEnv* env, jobject jcaller, jstring jurl, jint quality, jdouble startTime )

@@ -185,7 +185,7 @@ public class PlayerViewController extends RelativeLayout
 
     public void seek(int msec) {
         if (mPlayerView != null) {
-            mPlayerView.seek(msec);
+            mPlayerView.seek(mPlayerView.getCurrentPosition() + msec);
         }
     }
     

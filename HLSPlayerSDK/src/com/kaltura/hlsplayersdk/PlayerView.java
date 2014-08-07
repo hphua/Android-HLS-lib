@@ -18,10 +18,8 @@ import android.os.Handler;
 import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceView;
-import android.widget.MediaController.MediaPlayerControl;
-import android.widget.VideoView;
 
-public class PlayerView extends SurfaceView implements VideoPlayerInterface, MediaPlayerControl, OnParseCompleteListener, URLLoader.DownloadEventListener 
+public class PlayerView extends SurfaceView implements VideoPlayerInterface, OnParseCompleteListener, URLLoader.DownloadEventListener 
 {
 	
 	private final int STATE_STOPPED = 1;
@@ -37,7 +35,7 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 	private native void StopPlayer();
 	private native void TogglePause();
 	private native void SetSurface(Surface surface);
-	private native void NextFrame();
+	private native int NextFrame();
 	private native void FeedSegment(String url, int quality, double startTime);
 	private native void SeekTo(double time); // seconds, not miliseconds - I'll change this later if it
 	private native int GetState();
@@ -74,6 +72,8 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 	private URLLoader manifestLoader;
 	private StreamHandler mStreamHandler = null;
 	
+	private int mTimeMS = 0;
+	
 	
 	private Handler handler = new Handler();
 	private Runnable runnable = new Runnable()
@@ -83,8 +83,11 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 			Log.i("Runnable.run", "PlayState = " + GetState());
 			if (GetState() == STATE_PLAYING)
 			{
+				
 				//Log.i("Runnable.run", "Running!");
-				NextFrame();
+				mTimeMS = NextFrame();
+				if (mPlayheadUpdateListener != null)
+					mPlayheadUpdateListener.onPlayheadUpdated(mTimeMS);
 				postDelayed(runnable, frameDelay);
 			}
 		}
@@ -164,13 +167,15 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 	
 	public int getDuration()
 	{
-		return 10;
+		if (mStreamHandler != null)
+			return mStreamHandler.getDuration();
+		return -1;
 	}
 	
 	
 	public int getCurrentPosition()
 	{
-		return 0;
+		return mTimeMS;
 	}
 	
 	public boolean isPlaying()
@@ -190,10 +195,6 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 		SetSurface(getHolder().getSurface());
 		PlayFile();
 		this.postDelayed(runnable, frameDelay);
-//		if (!this.isPlaying())
-//		{
-//			super.start();
-//		}
 	}
 	
 	public boolean canPause()
@@ -203,12 +204,12 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 	
 	public boolean canSeekBackward()
 	{
-		return true;
+		return false;
 	}
 	
 	public boolean canSeekForward()
 	{
-		return true;		
+		return false;		
 	}
 	
 	public int getAudioSessionId()
@@ -220,17 +221,6 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 	{
 		return 0;
 	}
-	
-	public void seekTo(int pos)
-	{
-		
-	}
-	
-	public void start()
-	{
-		
-	}
-	
 	
 	public void pause()
 	{
@@ -251,13 +241,12 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		//super.stopPlayback();
 	}
 	
 	@Override
 	public void seek(int msec)
 	{
-		//super.seekTo(msec);
+		SeekTo(msec / 1000);
 	}
 
 	public StreamHandler getStreamHandler()
@@ -265,39 +254,43 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, Med
 		return mStreamHandler;
 	}
 
-	
+
+	private OnPlayerStateChangeListener mPlayerStateChangeListener = null;
 
 	@Override
 	public void registerPlayerStateChange(OnPlayerStateChangeListener listener) {
-		// TODO Auto-generated method stub
+		mPlayerStateChangeListener = listener;
 		
 	}
+	
+	private OnPreparedListener mPreparedListener = null;
 
 	@Override
 	public void registerReadyToPlay(OnPreparedListener listener) {
-		// TODO Auto-generated method stub
-		
+
+		mPreparedListener = listener;
 	}
 
+	private OnErrorListener mErrorListener = null;
+	
 	@Override
 	public void registerError(OnErrorListener listener) {
-		// TODO Auto-generated method stub
+		mErrorListener = listener;
 		
 	}
+	
+	private OnPlayheadUpdateListener mPlayheadUpdateListener = null;
 
 	@Override
 	public void registerPlayheadUpdate(OnPlayheadUpdateListener listener) {
-		// TODO Auto-generated method stub
-		
+		mPlayheadUpdateListener = listener;		
 	}
+	
+	private OnProgressListener mProgressListener = null;
 
 	@Override
 	public void registerProgressUpdate(OnProgressListener listener) {
-		// TODO Auto-generated method stub
-		
+		mProgressListener = listener;
 	}
 	
-	
-	
-
 }
