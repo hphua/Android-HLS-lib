@@ -263,7 +263,7 @@ bool HLSPlayer::InitTracks()
 		{
 			if (!haveVideo && !strncasecmp(cmime, "video/", 6))
 			{
-				if(ANDROID_VIDEO_SHIM_CHECK_IS_4x)
+				if(AVSHIM_USE_NEWMEDIASOURCE)
 					mVideoTrack = mExtractor->getTrack(i);
 				else
 					mVideoTrack23 = mExtractor->getTrack23(i);
@@ -283,10 +283,12 @@ bool HLSPlayer::InitTracks()
 					mHeight = height;
 					LOGI("Video Track Width = %d, Height = %d, %d", width, height, __LINE__);
 				}
+
+				mVideoTrack_md = meta;
 			}
 			else if (!haveAudio && !strncasecmp(cmime /*mime.string()*/, "audio/", 6))
 			{
-				if(ANDROID_VIDEO_SHIM_CHECK_IS_4x)
+				if(AVSHIM_USE_NEWMEDIASOURCE)
 					mAudioTrack = mExtractor->getTrack(i);
 				else
 					mAudioTrack23 = mExtractor->getTrack23(i);
@@ -294,6 +296,7 @@ bool HLSPlayer::InitTracks()
 
 				mActiveAudioTrackIndex = i;
 
+				mAudioTrack_md = meta;
 			}
 //			else if (!strcasecmp(cmime /*mime.string()*/, MEDIA_MIMETYPE_TEXT_3GPP))
 //			{
@@ -339,9 +342,10 @@ bool HLSPlayer::InitSources()
 {
 	if (!InitTracks())
 		return false;
+	
 	LOGI("Entered");
 	
-	if(ANDROID_VIDEO_SHIM_CHECK_IS_4x)
+	if(AVSHIM_USE_NEWMEDIASOURCE)
 	{
 		if (mVideoTrack == NULL || mAudioTrack == NULL)
 			return false;
@@ -352,29 +356,71 @@ bool HLSPlayer::InitSources()
 			return false;		
 	}
 
+	LOGV("Past initial sanity check...");
+
 	// Video
 	sp<IOMX> iomx = mClient.interface();
+
 	sp<MetaData> vidFormat;
-	if(ANDROID_VIDEO_SHIM_CHECK_IS_4x)
+	if(mVideoTrack_md.get() != NULL)
+	{
+		LOGV("    o Path C");
+		vidFormat = mVideoTrack_md;
+	}
+	else if(AVSHIM_USE_NEWMEDIASOURCE)
+	{
+		LOGV("    o Path A");
 		vidFormat = mVideoTrack->getFormat();
-	else
+	}
+	else if (!AVSHIM_USE_NEWMEDIASOURCE)
+	{
+		LOGV("    o Path B");
 		vidFormat = mVideoTrack23->getFormat();
-	
-	if(ANDROID_VIDEO_SHIM_CHECK_IS_4x)
-		mVideoSource = OMXCodec::Create(iomx, vidFormat, false, mVideoTrack, NULL, 0);
+	}
 	else
 	{
+		LOGV("No path found!");
+	}
+	
+	LOGV("vidFormat look up round 1 complete");
+
+	if(vidFormat.get() == NULL)
+	{
+		LOGE("No format available from the video track.");
+		return false;
+	}
+	
+	LOGI("Creating hardware video decoder...");
+
+	if(AVSHIM_USE_NEWMEDIASOURCE)
+	{
+		LOGV("   - taking 4.x path");
+		LOGV("OMXCodec::Create - format=%p track=%p", vidFormat.get(), mVideoTrack.get());
+		mVideoSource = OMXCodec::Create(iomx, vidFormat, false, mVideoTrack, NULL, 0);
+		LOGV("   - got %p back", mVideoSource.get());
+	}
+	else
+	{
+		LOGV("   - taking 2.3 path");
+
 		LOGV("OMXCodec::Create - format=%p track=%p", vidFormat.get(), mVideoTrack23.get());
 		mVideoSource23 = OMXCodec::Create23(iomx, vidFormat, false, mVideoTrack23, NULL, 0);
+		LOGV("   - got %p back", mVideoSource23.get());
 	}
 	
 	LOGI("OMXCodec::Create() (video) returned %p", mVideoSource.get());
 
 	sp<MetaData> meta;
-	if(ANDROID_VIDEO_SHIM_CHECK_IS_4x)
+	if(AVSHIM_USE_NEWMEDIASOURCE)
 		meta = mVideoSource->getFormat();
 	else
 		meta = mVideoSource23->getFormat();
+
+	if(!meta.get())
+	{
+		LOGE("No format available from the video source.");
+		return false;
+	}
 
 	meta->findInt32(kKeyWidth, &mWidth);
 	meta->findInt32(kKeyHeight, &mHeight);
@@ -390,7 +436,7 @@ bool HLSPlayer::InitSources()
 	UpdateWindowBufferFormat();
 
 	// Audio
-	if(ANDROID_VIDEO_SHIM_CHECK_IS_4x)
+	if(AVSHIM_USE_NEWMEDIASOURCE)
 		mOffloadAudio = canOffloadStream(mAudioTrack->getFormat(), (mVideoTrack != NULL), false /*streaming http */, AUDIO_STREAM_MUSIC);
 	else
 		mOffloadAudio = canOffloadStream(mAudioTrack23->getFormat(), (mVideoTrack23 != NULL), false /*streaming http */, AUDIO_STREAM_MUSIC);				
@@ -398,14 +444,24 @@ bool HLSPlayer::InitSources()
 	LOGI("mOffloadAudio == %s", mOffloadAudio ? "true" : "false");
 
 	sp<MetaData> audioFormat;
-	if(ANDROID_VIDEO_SHIM_CHECK_IS_4x)
+	if(AVSHIM_USE_NEWMEDIASOURCE)
 		audioFormat = mAudioTrack->getFormat();
 	else
 		audioFormat = mAudioTrack23->getFormat();
 
+	// Fall back to the MediaExtractor value for 3.x devices..
+	if(audioFormat.get() == NULL)
+		audioFormat = mAudioTrack_md;
+
+	if(!audioFormat.get())
+	{
+		LOGE("No format available from the audio track.");
+		return false;
+	}
+
 	audioFormat->dumpToLog();
 
-	if(ANDROID_VIDEO_SHIM_CHECK_IS_4x)
+	if(AVSHIM_USE_NEWMEDIASOURCE)
 		mAudioSource = OMXCodec::Create(iomx, audioFormat, false, mAudioTrack, NULL, 0);
 	else
 		mAudioSource23 = OMXCodec::Create23(iomx, audioFormat, false, mAudioTrack23, NULL, 0);
@@ -415,7 +471,7 @@ bool HLSPlayer::InitSources()
 	if (mOffloadAudio)
 	{
 		LOGI("Bypass OMX (offload) Line: %d", __LINE__);
-		if(ANDROID_VIDEO_SHIM_CHECK_IS_4x)
+		if(AVSHIM_USE_NEWMEDIASOURCE)
 			mAudioSource = mAudioTrack;
 		else
 			mAudioSource23 = mAudioTrack23;

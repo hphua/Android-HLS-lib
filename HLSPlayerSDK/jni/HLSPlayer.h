@@ -90,6 +90,9 @@ private:
 	android_video_shim::sp<android_video_shim::MediaSource23> mVideoTrack23;
 	android_video_shim::sp<android_video_shim::MediaSource23> mAudioTrack23;
 
+	android_video_shim::sp<android_video_shim::MetaData> mVideoTrack_md;
+	android_video_shim::sp<android_video_shim::MetaData> mAudioTrack_md;
+
 	// These are the codec converted sources that we get actual frames and audio from
 	android_video_shim::sp<android_video_shim::MediaSource> mVideoSource;
 	android_video_shim::sp<android_video_shim::MediaSource> mAudioSource;

@@ -120,7 +120,9 @@ namespace android_video_shim
 
     // API to switch logic/vtables by OS version.
     extern int gAPILevel;
-    #define ANDROID_VIDEO_SHIM_CHECK_IS_4x (android_video_shim::gAPILevel > 10)
+    #define AVSHIM_USE_NEWMEDIASOURCE (android_video_shim::gAPILevel >= 14)
+    #define AVSHIM_USE_NEWMEDIASOURCEVTABLE (android_video_shim::gAPILevel > 14)
+    #define AVSHIM_USE_NEWDATASOURCEVTABLE (android_video_shim::gAPILevel > 14)
 
    // Duplicates of many Android libstagefright classes with their innard rewritten
     // to load and call symbols dynamically.
@@ -253,7 +255,7 @@ namespace android_video_shim
         {
             typedef void (*localFuncCast)(void *thiz, void *id);
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZNK7android7RefBase9incStrongEPKv");
-            LOGV("RefBase - Inc'ing %p %p %p", (void*)this, id, lfc);
+            LOGV("RefBase - Inc'ing this=%p id=%p func=%p", (void*)this, id, lfc);
             assert(lfc);
             lfc(this, id);
         }
@@ -262,7 +264,7 @@ namespace android_video_shim
         {
             typedef void (*localFuncCast)(void *thiz, void *id);
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZNK7android7RefBase9decStrongEPKv");
-            LOGV("RefBase - Dec'ing %p %p %p", (void*)this, id, lfc);
+            LOGV("RefBase - Dec'ing this=%p id=%p func=%p", (void*)this, id, lfc);
             assert(lfc);
             lfc(this, id);
         }
@@ -289,6 +291,8 @@ namespace android_video_shim
         void *mRefs;
     };
 
+    template<typename T> class wp;
+    // ---------------------------------------------------------------------------
     #define COMPARE(_op_)                                           \
     inline bool operator _op_ (const sp<T>& o) const {              \
         return m_ptr _op_ o.m_ptr;                                  \
@@ -304,10 +308,16 @@ namespace android_video_shim
     inline bool operator _op_ (const U* o) const {                  \
         return m_ptr _op_ o;                                        \
     }                                                               \
+    inline bool operator _op_ (const wp<T>& o) const {              \
+        return m_ptr _op_ o.m_ptr;                                  \
+    }                                                               \
+    template<typename U>                                            \
+    inline bool operator _op_ (const wp<U>& o) const {              \
+        return m_ptr _op_ o.m_ptr;                                  \
+    }
     // ---------------------------------------------------------------------------
-    template <typename T>
-    class sp
-    {
+    template<typename T>
+    class sp {
     public:
         inline sp() : m_ptr(0) { }
         sp(T* other);
@@ -335,86 +345,89 @@ namespace android_video_shim
         COMPARE(<)
         COMPARE(<=)
         COMPARE(>=)
-
-    private:
+    private:    
         template<typename Y> friend class sp;
+        template<typename Y> friend class wp;
         void set_pointer(T* ptr);
         T* m_ptr;
     };
     #undef COMPARE
-
     // ---------------------------------------------------------------------------
     // No user serviceable parts below here.
     template<typename T>
     sp<T>::sp(T* other)
-    : m_ptr(other)
-      {
-        if (other) other->incStrong(this);
-      }
+            : m_ptr(other) {
+        if (other)
+            other->incStrong(this);
+    }
     template<typename T>
     sp<T>::sp(const sp<T>& other)
-    : m_ptr(other.m_ptr)
-      {
-        if (m_ptr) m_ptr->incStrong(this);
-      }
+            : m_ptr(other.m_ptr) {
+        if (m_ptr)
+            m_ptr->incStrong(this);
+    }
     template<typename T> template<typename U>
-    sp<T>::sp(U* other) : m_ptr(other)
-    {
-        if (other) ((T*)other)->incStrong(this);
+    sp<T>::sp(U* other)
+            : m_ptr(other) {
+        if (other)
+            ((T*) other)->incStrong(this);
     }
     template<typename T> template<typename U>
     sp<T>::sp(const sp<U>& other)
-    : m_ptr(other.m_ptr)
-      {
-        if (m_ptr) m_ptr->incStrong(this);
-      }
-    template<typename T>
-    sp<T>::~sp()
-    {
-        if (m_ptr) m_ptr->decStrong(this);
+            : m_ptr(other.m_ptr) {
+        if (m_ptr)
+            m_ptr->incStrong(this);
     }
     template<typename T>
-    sp<T>& sp<T>::operator = (const sp<T>& other) {
+    sp<T>::~sp() {
+        if (m_ptr)
+            m_ptr->decStrong(this);
+    }
+    template<typename T>
+    sp<T>& sp<T>::operator =(const sp<T>& other) {
         T* otherPtr(other.m_ptr);
-        if (otherPtr) otherPtr->incStrong(this);
-        if (m_ptr) m_ptr->decStrong(this);
+        if (otherPtr)
+            otherPtr->incStrong(this);
+        if (m_ptr)
+            m_ptr->decStrong(this);
         m_ptr = otherPtr;
         return *this;
     }
     template<typename T>
-    sp<T>& sp<T>::operator = (T* other)
-    {
-        if (other) other->incStrong(this);
-        if (m_ptr) m_ptr->decStrong(this);
+    sp<T>& sp<T>::operator =(T* other) {
+        if (other)
+            other->incStrong(this);
+        if (m_ptr)
+            m_ptr->decStrong(this);
         m_ptr = other;
         return *this;
     }
     template<typename T> template<typename U>
-    sp<T>& sp<T>::operator = (const sp<U>& other)
-    {
+    sp<T>& sp<T>::operator =(const sp<U>& other) {
         T* otherPtr(other.m_ptr);
-        if (otherPtr) otherPtr->incStrong(this);
-        if (m_ptr) m_ptr->decStrong(this);
+        if (otherPtr)
+            otherPtr->incStrong(this);
+        if (m_ptr)
+            m_ptr->decStrong(this);
         m_ptr = otherPtr;
         return *this;
     }
     template<typename T> template<typename U>
-    sp<T>& sp<T>::operator = (U* other)
-    {
-        if (other) ((T*)other)->incStrong(this);
-        if (m_ptr) m_ptr->decStrong(this);
+    sp<T>& sp<T>::operator =(U* other) {
+        if (other)
+            ((T*) other)->incStrong(this);
+        if (m_ptr)
+            m_ptr->decStrong(this);
         m_ptr = other;
         return *this;
     }
     template<typename T>
-    void sp<T>::force_set(T* other)
-    {
+    void sp<T>::force_set(T* other) {
         other->forceIncStrong(this);
         m_ptr = other;
     }
     template<typename T>
-    void sp<T>::clear()
-    {
+    void sp<T>::clear() {
         if (m_ptr) {
             m_ptr->decStrong(this);
             m_ptr = 0;
@@ -432,6 +445,9 @@ namespace android_video_shim
     };
 
     struct AMessage;
+    class DrmManagerClient;
+    class HLSDataSource;
+
     class String8
     {
     public:
@@ -439,8 +455,6 @@ namespace android_video_shim
         const char *data;
          String8(const char *d = NULL) : data(d) {}
     };
-    class DrmManagerClient;
-    class HLSDataSource;
 
     class DataSource : public RefBase {
     public:
@@ -502,10 +516,10 @@ namespace android_video_shim
             /*for(int i=0; i<17; i++)
                 LOGI("virtual layout[%d]=%p", i, fakeObj[0][i]); */
 
-            LOGV("FileSource::readAt should be %p", searchSymbol("_ZN7android10FileSource9readAtDRMExPvj"));
+            LOGV2("FileSource::readAt should be %p", searchSymbol("_ZN7android10FileSource9readAtDRMExPvj"));
 
             localFuncCast lfc = (localFuncCast)fakeObj[0][vtableOffset];
-            LOGV("virtual readAt=%p", lfc);
+            LOGV2("virtual readAt=%p", lfc);
             ssize_t r = lfc((void*)this, offset, data, size);
             //LOGI("    o got %ld", r);
             return r;
@@ -523,9 +537,9 @@ namespace android_video_shim
             //LOGI("FileSource::readAt should be %p", searchSymbol("_ZN7android10FileSource9readAtDRMExPvj"));
 
             localFuncCast lfc = (localFuncCast)fakeObj[0][vtableOffset];
-            //LOGI("virtual readAt=%p", lfc);
+            LOGV2("virtual readAt=%p", lfc);
             ssize_t r = lfc((void*)this, offset, data, size);
-            //LOGI("    o got %ld", r);
+            LOGV2("    o got %ld", r);
             return r;
         }
 
@@ -603,26 +617,6 @@ namespace android_video_shim
     class MediaBuffer
     {
     public:
-        // The underlying data remains the responsibility of the caller!
-        /*MediaBuffer(void *data, size_t size)
-        {
-            assert(0);
-        }
-
-        MediaBuffer(size_t size)
-        {
-            assert(0);
-        }
-
-        MediaBuffer(const sp<GraphicBuffer>& graphicBuffer)
-        {
-            assert(0);
-        }
-
-        MediaBuffer(const sp<ABuffer> &buffer)
-        {
-            assert(0);
-        }*/
 
         // Decrements the reference count and returns the buffer to its
         // associated MediaBufferGroup if the reference count drops to 0.
@@ -659,6 +653,7 @@ namespace android_video_shim
             //LOGI("MediaBuffer::size = %p this=%p", lfc, this);
             return lfc(this);
         }
+
         size_t range_offset() const
         {
             assert(0);
@@ -699,11 +694,6 @@ namespace android_video_shim
         {
             assert(0);
         }
-
-        /*void setObserver(MediaBufferObserver *group)
-        {
-            assert(0);
-        }*/
 
         // Returns a clone of this MediaBuffer increasing its reference count.
         // The clone references the same data but has its own range and
@@ -754,7 +744,7 @@ namespace android_video_shim
         // Returns the format of the data output by this media source.
         sp<MetaData> getFormat()
         {
-            const int vtableOffset = ANDROID_VIDEO_SHIM_CHECK_IS_4x ? 2 : 8;
+            const int vtableOffset = AVSHIM_USE_NEWMEDIASOURCEVTABLE ? 2 : 8;
             typedef sp<MetaData> (*localFuncCast)(void *thiz);
             localFuncCast **fakeObj = (localFuncCast **)this;
 
@@ -908,7 +898,7 @@ namespace android_video_shim
         // Returns the format of the data output by this media source.
         sp<MetaData> getFormat()
         {
-            const int vtableOffset = ANDROID_VIDEO_SHIM_CHECK_IS_4x ? 2 : 8;
+            const int vtableOffset = AVSHIM_USE_NEWMEDIASOURCEVTABLE ? 2 : 8;
             typedef sp<MetaData> (*localFuncCast)(void *thiz);
             localFuncCast **fakeObj = (localFuncCast **)this;
 
@@ -1404,6 +1394,7 @@ namespace android_video_shim
             else if(lfc_23)
                 return lfc_23(iomx, metadata, flag, mediaSource, string, value);
 
+            LOGE("Unable to resolve OMXCodec::Create");
             assert(0);
             return NULL;
         }
@@ -1443,6 +1434,7 @@ namespace android_video_shim
             else if(lfc_23)
                 return lfc_23(iomx, metadata, flag, mediaSource, string, value);
 
+            LOGE("Unable to resolve OMXCodec::Create");
             assert(0);
             return NULL;
         }
@@ -1505,7 +1497,7 @@ namespace android_video_shim
             LOGI(" _getSize_23=%p", (void*)&HLSDataSource::_getSize_23);
 
             // And override the pointers as appropriate.
-            if(ANDROID_VIDEO_SHIM_CHECK_IS_4x)
+            if(AVSHIM_USE_NEWDATASOURCEVTABLE)
             {
                 // 4.x entry points
                 fakeObj[0][6] = (void*)&HLSDataSource::_initCheck;
@@ -1632,7 +1624,7 @@ namespace android_video_shim
             }
 
 
-            LOGI("%p | getSize = %lld | offset=%lld | offsetAdjustment = %lld | adjustedOffset = %lld | requested size = %d | rsize = %ld",
+            LOGV2("%p | getSize = %lld | offset=%lld | offsetAdjustment = %lld | adjustedOffset = %lld | requested size = %d | rsize = %ld",
                             this, sourceSize, offset, mOffsetAdjustment, adjoffset, size, rsize);
 
             pthread_mutex_unlock(&mutex);
@@ -1703,8 +1695,8 @@ namespace android_video_shim
             }
 
 
-            //LOGI("%p | getSize = %lld | offset=%lld | offsetAdjustment = %lld | adjustedOffset = %lld | requested size = %d | rsize = %ld",
-            //                this, sourceSize, offset, mOffsetAdjustment, adjoffset, size, rsize);
+            LOGV2("%p | getSize = %lld | offset=%lld | offsetAdjustment = %lld | adjustedOffset = %lld | requested size = %d | rsize = %ld",
+                            this, sourceSize, offset, mOffsetAdjustment, adjoffset, size, rsize);
 
             pthread_mutex_unlock(&mutex);
 

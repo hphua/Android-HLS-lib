@@ -13,9 +13,10 @@
 #define USE_AUDIO
 
 #define _DEBUG_E
-//#define _DEBUG_W
-//#define _DEBUG_I
-//#define _DEBUG_V
+#define _DEBUG_W
+#define _DEBUG_I
+#define _DEBUG_V
+//#define _DEBUG_V2
 //#define _DEBUG_RUN
 
 //#define _VERBOSE
@@ -41,6 +42,12 @@
 #define LOGV(...) __android_log_print(ANDROID_LOG_VERBOSE, __func__, __VA_ARGS__)
 #else
 #define LOGV(...)
+#endif
+
+#ifdef _DEBUG_V2
+#define LOGV2(...) __android_log_print(ANDROID_LOG_VERBOSE, __func__, __VA_ARGS__)
+#else
+#define LOGV2(...)
 #endif
 
 #ifdef _DEBUG_RUN
