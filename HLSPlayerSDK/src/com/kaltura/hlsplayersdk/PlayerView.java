@@ -1,23 +1,28 @@
 package com.kaltura.hlsplayersdk;
 
+
+
+import android.content.Context;
+import android.graphics.PixelFormat;
+import android.os.Handler;
+import android.util.Log;
+
+import android.view.Surface;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
+
+import android.widget.MediaController.MediaPlayerControl;
+import android.widget.RelativeLayout;
+import android.widget.VideoView;
+
+import com.kaltura.hlsplayersdk.manifest.events.OnParseCompleteListener;
+import com.kaltura.hlsplayersdk.manifest.ManifestParser;
+import com.kaltura.hlsplayersdk.manifest.ManifestSegment;
+
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Timer;
 
-import com.kaltura.hlsplayersdk.manifest.ManifestParser;
-import com.kaltura.hlsplayersdk.manifest.ManifestSegment;
-import com.kaltura.hlsplayersdk.manifest.events.OnParseCompleteListener;
-
-import android.content.Context;
-import android.os.Handler;
-import android.util.Log;
-import android.graphics.PixelFormat;
-import android.view.Surface;
-import android.view.SurfaceView;
-import android.view.SurfaceHolder;
-import android.widget.MediaController.MediaPlayerControl;
-import android.widget.VideoView;
-import android.widget.RelativeLayout;
 
 public class PlayerView extends SurfaceView implements
 	OnParseCompleteListener, URLLoader.DownloadEventListener
@@ -36,7 +41,7 @@ public class PlayerView extends SurfaceView implements
 	private native void StopPlayer();
 	private native void TogglePause();
 	private native void SetSurface(Surface surface);
-	private native void NextFrame();
+	private native int NextFrame();
 	private native void FeedSegment(String url, int quality, double startTime);
 	private native void SeekTo(double time); // seconds, not miliseconds - I'll change this later if it
 	private native int GetState();
@@ -73,6 +78,8 @@ public class PlayerView extends SurfaceView implements
 	private URLLoader manifestLoader;
 	private StreamHandler mStreamHandler = null;
 	
+	private int mTimeMS = 0;
+		
 	private Handler handler = new Handler();
 	private Runnable runnable = new Runnable()
 	{
@@ -81,8 +88,11 @@ public class PlayerView extends SurfaceView implements
 			Log.i("Runnable.run", "PlayState = " + GetState());
 			if (GetState() == STATE_PLAYING)
 			{
+				
 				//Log.i("Runnable.run", "Running!");
-				NextFrame();
+				mTimeMS = NextFrame();
+				if (mPlayheadUpdateListener != null)
+					mPlayheadUpdateListener.onPlayheadUpdated(mTimeMS);
 				postDelayed(runnable, frameDelay);
 			}
 		}
@@ -178,13 +188,15 @@ public class PlayerView extends SurfaceView implements
 	
 	public int getDuration()
 	{
-		return 10;
+		if (mStreamHandler != null)
+			return mStreamHandler.getDuration();
+		return -1;
 	}
 	
 	
 	public int getCurrentPosition()
 	{
-		return 0;
+		return mTimeMS;
 	}
 	
 	public boolean isPlaying()
@@ -212,12 +224,12 @@ public class PlayerView extends SurfaceView implements
 	
 	public boolean canSeekBackward()
 	{
-		return true;
+		return false;
 	}
 	
 	public boolean canSeekForward()
 	{
-		return true;		
+		return false;		
 	}
 	
 	public int getAudioSessionId()
@@ -229,17 +241,6 @@ public class PlayerView extends SurfaceView implements
 	{
 		return 0;
 	}
-	
-	public void seekTo(int pos)
-	{
-		
-	}
-	
-	public void start()
-	{
-		
-	}
-	
 	
 	public void pause()
 	{
@@ -260,21 +261,17 @@ public class PlayerView extends SurfaceView implements
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		//super.stopPlayback();
 	}
 	
 
 	public void seek(int msec)
 	{
-		//super.seekTo(msec);
+		SeekTo(msec / 1000);
 	}
 
 	public StreamHandler getStreamHandler()
 	{
 		return mStreamHandler;
 	}
-
-	
-	
 
 }

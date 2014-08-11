@@ -48,6 +48,7 @@ public:
 	void TogglePause();
 
 	int GetState();
+	int32_t GetCurrentTimeMS();
 
 	void SetScreenSize(int w, int h);
 

@@ -709,6 +709,16 @@ int HLSPlayer::Update()
 
 	UpdateWindowBufferFormat();
 
+	if (GetState() == SEEKING)
+	{
+		int segCount = ((HLSDataSource*) mDataSource.get())->getPreloadedSegmentCount();
+		LOGI("Segment Count %d", segCount);
+		if (segCount < 1) // (current segment + 2)
+			return 0; // keep going!
+		SetState(PLAYING);
+		if (mJAudioTrack)
+			mJAudioTrack->Play();
+	}
 	if (GetState() != PLAYING)
 	{
 		LogState();
@@ -1175,21 +1185,31 @@ void HLSPlayer::Stop()
 	}
 }
 
+int32_t HLSPlayer::GetCurrentTimeMS()
+{
+	if (mJAudioTrack != NULL)
+	{
+		return mJAudioTrack->GetTimeStamp() / 1000;
+	}
+	return 0;
+}
+
 
 void HLSPlayer::Seek(double time)
 {
-//	// Set seeking flag
-//	mStatus = SEEKING;
-//
-//	// pause the audio player? Or do we reset it?
-//	if (mAudioPlayer) mAudioPlayer->pause(false);
-//
-//	// Clear our data???
+	SetState(SEEKING);
+
+	if (mJAudioTrack)
+	{
+		mJAudioTrack->Pause();
+	}
+
+	mDataSource->clear();
 //	stlwipe(mSegments);
 //	((HLSMediaSourceAdapter*)mVideoTrack.get())->clear();
 //	((HLSMediaSourceAdapter*)mAudioTrack.get())->clear();
 //
-//	RequestSegmentForTime(time);
+	RequestSegmentForTime(time);
 //
 //	mVideoTrack->start();
 //	mAudioTrack->start();
