@@ -66,6 +66,8 @@ private:
 
 	void RequestNextSegment();
 	void RequestSegmentForTime(double time);
+	void NoteVideoDimensions();
+	void NoteHWRendererMode(bool enabled);
 
 	std::list<HLSSegment* > mSegments;
 
@@ -77,6 +79,8 @@ private:
 	JavaVM* mJvm;
 	jmethodID mNextSegmentMethodID;
 	jmethodID mSegmentForTimeMethodID;
+	jmethodID mSetVideoResolutionID;
+	jmethodID mEnableHWRendererModeID;
 	jclass mPlayerViewClass;
 
 	jobject mSurface;

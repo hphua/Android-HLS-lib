@@ -123,6 +123,7 @@ namespace android_video_shim
     #define AVSHIM_USE_NEWMEDIASOURCE (android_video_shim::gAPILevel >= 14)
     #define AVSHIM_USE_NEWMEDIASOURCEVTABLE (android_video_shim::gAPILevel > 14)
     #define AVSHIM_USE_NEWDATASOURCEVTABLE (android_video_shim::gAPILevel > 14)
+    #define AVSHIM_HAS_OMXRENDERERPATH (android_video_shim::gAPILevel < 11)
 
    // Duplicates of many Android libstagefright classes with their innard rewritten
     // to load and call symbols dynamically.
