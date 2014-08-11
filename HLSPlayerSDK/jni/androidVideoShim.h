@@ -699,8 +699,10 @@ namespace android_video_shim
             typedef status_t (*localFuncCast)(void *thiz);
             localFuncCast **fakeObj = (localFuncCast**)this;
 
-            //for(int i=0; i<24; i++)
-            //    LOGI("virtual layout[%d]=%p", i, fakeObj[0][i]);
+            for(int i=0; i<24; i++)
+            {
+                LOGV2("virtual layout[%d]=%p", i, fakeObj[0][i]);
+            }
 
             LOGI("FileSource::initCheck should be %p", searchSymbol("_ZNK7android10FileSource9initCheckEv"));
             LOGI("NuCachedSource2::initCheck should be %p", searchSymbol("_ZNK7android15NuCachedSource29initCheckEv"));
@@ -718,8 +720,10 @@ namespace android_video_shim
             typedef ssize_t (*localFuncCast)(void *thiz, off64_t offset, void *data, size_t size);
             localFuncCast **fakeObj = (localFuncCast**)this;
 
-            /*for(int i=0; i<17; i++)
-                LOGI("virtual layout[%d]=%p", i, fakeObj[0][i]); */
+            for(int i=0; i<17; i++)
+            {
+                LOGV2("virtual layout[%d]=%p", i, fakeObj[0][i]); 
+            }
 
             LOGV2("FileSource::readAt should be %p", searchSymbol("_ZN7android10FileSource9readAtDRMExPvj"));
 
@@ -737,7 +741,9 @@ namespace android_video_shim
             localFuncCast **fakeObj = (localFuncCast**)this;
 
             for(int i=0; i<17; i++)
+            {
                 LOGV2("virtual layout[%d]=%p", i, fakeObj[0][i]);
+            }
 
             //LOGI("FileSource::readAt should be %p", searchSymbol("_ZN7android10FileSource9readAtDRMExPvj"));
 
@@ -762,7 +768,9 @@ namespace android_video_shim
             localFuncCast **fakeObj = (localFuncCast**)this;
 
             for(int i=0; i<17; i++)
+            {
                 LOGV2("virtual layout[%d]=%p", i, fakeObj[0][i]);
+            }
 
             LOGV2("FileSource::getSize should be %p", searchSymbol("_ZN7android10FileSource7getSizeEPx"));
 
@@ -1074,7 +1082,9 @@ namespace android_video_shim
 
             // Dump the vtable.
             for(int i=0; i<16; i++)
+            {
                 LOGV2("   vtable[%d] = %p", i, fakeObj[0][i]);
+            }
             LOGV("MPEG4Source::start should be %p", searchSymbol("_ZN7android13MPEG2TSSource5startEPNS_8MetaDataE"));
             LOGV("AnotherPacketSource::start should be %p", searchSymbol("_ZN7android19AnotherPacketSource5startEPNS_8MetaDataE"));
             LOGV("OMXCodec::start might be %p", searchSymbol("_ZN7android8OMXCodec5startEPNS_8MetaDataE"));
@@ -1269,8 +1279,9 @@ namespace android_video_shim
             localFuncCast **fakeObj = *((localFuncCast***)this);
 
             for(int i=0; i<10; i++)
+            {
                 LOGV2("virtual layout[%d]=%p", i, fakeObj[i]);
-
+            }
 
             localFuncCast lfc = (localFuncCast)fakeObj[vtableOffset];
             LOGV2("virtual countTracks=%p", lfc);
@@ -1701,7 +1712,9 @@ namespace android_video_shim
 
             // Dump the vtable.
             for(int i=0; i<16; i++)
+            {
               LOGV2("vtable[%d] = %p", i, fakeObj[0][i]);
+            }
 
             // The compiler may complain about these as we are getting into
             // pointer-to-member-function (pmf) territory. However, we aren't
