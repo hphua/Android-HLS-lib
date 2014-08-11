@@ -63,13 +63,15 @@ public class PlayerView extends SurfaceView implements
 		}
 	}
 	
-	public static void requestSegmentForTime(double time)
+	public static double requestSegmentForTime(double time)
 	{
 		if (currentPlayerView != null)
 		{
 			ManifestSegment seg = currentPlayerView.getStreamHandler().getFileForTime(time, 0);
 			currentPlayerView.FeedSegment(seg.uri, 0, seg.startTime);
+			return seg.startTime;
 		}
+		return 0;
 	}
 	
 	public static void enableHWRendererMode(boolean enable)
@@ -109,14 +111,20 @@ public class PlayerView extends SurfaceView implements
 	{
 		public void run()
 		{
-			Log.i("Runnable.run", "PlayState = " + GetState());
-			if (GetState() == STATE_PLAYING)
+			int state = GetState();
+			Log.i("Runnable.run", "PlayState = " + state);
+			if (state == STATE_PLAYING)
 			{
 				
 				//Log.i("Runnable.run", "Running!");
 				mTimeMS = NextFrame();
 				if (mPlayheadUpdateListener != null)
 					mPlayheadUpdateListener.onPlayheadUpdated(mTimeMS);
+				postDelayed(runnable, frameDelay);
+			}
+			else if (state == STATE_SEEKING)
+			{
+				//NextFrame();
 				postDelayed(runnable, frameDelay);
 			}
 		}

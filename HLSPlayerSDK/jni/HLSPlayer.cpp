@@ -1079,7 +1079,7 @@ void HLSPlayer::RequestNextSegment()
 	}
 }
 
-void HLSPlayer::RequestSegmentForTime(double time)
+double HLSPlayer::RequestSegmentForTime(double time)
 {
 	LOGI("Requesting segment for time %lf", time);
 	JNIEnv* env = NULL;
@@ -1091,7 +1091,7 @@ void HLSPlayer::RequestSegmentForTime(double time)
 		if ( env->ExceptionCheck() || c == NULL) {
 			LOGI("Could not find class com/kaltura/hlsplayersdk/PlayerView" );
 			mPlayerViewClass = NULL;
-			return;
+			return 0;
 		}
 
 		mPlayerViewClass = (jclass)env->NewGlobalRef((jobject)c);
@@ -1100,20 +1100,21 @@ void HLSPlayer::RequestSegmentForTime(double time)
 
 	if (mSegmentForTimeMethodID == NULL)
 	{
-		mSegmentForTimeMethodID = env->GetStaticMethodID(mPlayerViewClass, "requestSegmentForTime", "(D)V" );
+		mSegmentForTimeMethodID = env->GetStaticMethodID(mPlayerViewClass, "requestSegmentForTime", "(D)D" );
 		if (env->ExceptionCheck())
 		{
 			mSegmentForTimeMethodID = NULL;
 			LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerView.requestSegmentForTime()" );
-			return;
+			return 0;
 		}
 	}
 
-	env->CallStaticVoidMethod(mPlayerViewClass, mSegmentForTimeMethodID, time);
+	jdouble segTime = env->CallStaticDoubleMethod(mPlayerViewClass, mSegmentForTimeMethodID, time);
 	if (env->ExceptionCheck())
 	{
 		LOGI("Call to method  com/kaltura/hlsplayersdk/PlayerView.requestSegmentForTime() FAILED" );
 	}
+	return segTime;
 }
 
 void HLSPlayer::NoteVideoDimensions()
@@ -1241,19 +1242,22 @@ void HLSPlayer::Seek(double time)
 	if (mJAudioTrack)
 	{
 		mJAudioTrack->Pause();
+		mJAudioTrack->Flush();
 	}
 
-	mDataSource->clear();
-//	stlwipe(mSegments);
-//	((HLSMediaSourceAdapter*)mVideoTrack.get())->clear();
-//	((HLSMediaSourceAdapter*)mAudioTrack.get())->clear();
-//
-	RequestSegmentForTime(time);
-//
-//	mVideoTrack->start();
-//	mAudioTrack->start();
-//	mAudioPlayer->start(true);
+	mDataSource->clearsources();
+
+	double segTime = RequestSegmentForTime(time);
 
 
+
+	int segCount = ((HLSDataSource*) mDataSource.get())->getPreloadedSegmentCount();
+	LOGI("Segment Count %d", segCount);
+	SetState(PLAYING);
+	if (mJAudioTrack)
+	{
+		mJAudioTrack->SetTimeStampOffset(segTime * 1000000);
+		mJAudioTrack->Play();
+	}
 }
 

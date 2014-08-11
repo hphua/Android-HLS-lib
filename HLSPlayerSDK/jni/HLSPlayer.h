@@ -65,7 +65,8 @@ private:
 	bool InitTracks();
 
 	void RequestNextSegment();
-	void RequestSegmentForTime(double time);
+
+	double RequestSegmentForTime(double time);
 	void NoteVideoDimensions();
 	void NoteHWRendererMode(bool enabled);
 

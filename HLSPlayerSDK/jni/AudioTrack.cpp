@@ -12,9 +12,10 @@
 
 using namespace android_video_shim;
 
-AudioTrack::AudioTrack(JavaVM* jvm) : mJvm(jvm), mAudioTrack(NULL), mGetMinBufferSize(NULL), mPlay(NULL), mPause(NULL), mStop(NULL),
+AudioTrack::AudioTrack(JavaVM* jvm) : mJvm(jvm), mAudioTrack(NULL), mGetMinBufferSize(NULL), mPlay(NULL), mPause(NULL), mStop(NULL), mFlush(NULL),
 										mRelease(NULL), mGetTimestamp(NULL), mCAudioTrack(NULL), mWrite(NULL), mGetPlaybackHeadPosition(NULL),
-										mSampleRate(0), mNumChannels(0), mBufferSizeInBytes(0), mChannelMask(0), mTrack(NULL), mPlayState(STOPPED)
+										mSampleRate(0), mNumChannels(0), mBufferSizeInBytes(0), mChannelMask(0), mTrack(NULL), mPlayState(STOPPED),
+										mTimeStampOffset(0)
 {
 	// TODO Auto-generated constructor stub
 	if (!mJvm)
@@ -81,6 +82,7 @@ bool AudioTrack::Init()
         mPlay = env->GetMethodID(mCAudioTrack, "play", "()V");
         mStop = env->GetMethodID(mCAudioTrack, "stop", "()V");
         mPause = env->GetMethodID(mCAudioTrack, "pause", "()V");
+        mFlush = env->GetMethodID(mCAudioTrack, "flush", "()V");
         mRelease = env->GetMethodID(mCAudioTrack, "release", "()V");
         mWrite = env->GetMethodID(mCAudioTrack, "write", "([BII)I");
         mGetPlaybackHeadPosition = env->GetMethodID(mCAudioTrack, "getPlaybackHeadPosition", "()I");
@@ -270,13 +272,27 @@ void AudioTrack::Pause()
 	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mPause);
 }
 
+void AudioTrack::Flush()
+{
+	if (mPlayState == PLAYING) return;
+	JNIEnv* env;
+	mJvm->AttachCurrentThread(&env, NULL);
+	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mFlush);
+}
+
+void AudioTrack::SetTimeStampOffset(int64_t offset)
+{
+	mTimeStampOffset = offset;
+}
+
+
 int64_t AudioTrack::GetTimeStamp()
 {
 	JNIEnv* env;
 	mJvm->AttachCurrentThread(&env, NULL);
 	double frames = env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mGetPlaybackHeadPosition);
 	double secs = frames / (double)mSampleRate;
-	return (secs * 1000000);
+	return (secs * 1000000) + mTimeStampOffset;
 }
 
 
@@ -299,16 +315,18 @@ bool AudioTrack::Update()
 
 	//LOGI("Reading to the media buffer");
 	status_t res;
-	
+
 	if(mAudioSource.get())
 		res = mAudioSource->read(&mediaBuffer, NULL);
-	
+
 	if(mAudioSource23.get())
 		res = mAudioSource23->read(&mediaBuffer, NULL);
 
 	//LOGI("Finished reading from the media buffer");
 	if (res == OK)
 	{
+
+
 		RUNDEBUG(mediaBuffer->meta_data()->dumpToLog());
 		env->PushLocalFrame(2);
 

@@ -530,6 +530,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 	
 	private ManifestSegment getSegmentForTime(double time)
 	{
+		Log.i("StreamHandler.getSegmentForTime(" + time + ")", "Time == " + time);
 		if (manifest == null)
 			return null;
 		
