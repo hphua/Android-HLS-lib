@@ -965,7 +965,7 @@ namespace android_video_shim
             LOGV2("OMXCodec::getFormat might be %p", searchSymbol("_ZN7android8OMXCodec9getFormatEv"));
 
 
-            LOGI("Listing layout:");
+            LOGV2("Listing layout:");
             for(int i=-2; i<20; i++)
             {
                 LOGV2("virtual layout[%d]=%p", i, fakeObj[0][i]);  
