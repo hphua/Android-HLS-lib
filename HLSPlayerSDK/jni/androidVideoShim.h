@@ -320,7 +320,7 @@ namespace android_video_shim
         {
             typedef void (*localFuncCast)(void *thiz, void *id);
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZNK7android7RefBase9incStrongEPKv");
-            LOGV("RefBase - Inc'ing this=%p id=%p func=%p", (void*)this, id, lfc);
+            LOGV2("RefBase - Inc'ing this=%p id=%p func=%p", (void*)this, id, lfc);
             assert(lfc);
             lfc(this, id);
         }
@@ -329,7 +329,7 @@ namespace android_video_shim
         {
             typedef void (*localFuncCast)(void *thiz, void *id);
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZNK7android7RefBase9decStrongEPKv");
-            LOGV("RefBase - Dec'ing this=%p id=%p func=%p", (void*)this, id, lfc);
+            LOGV2("RefBase - Dec'ing this=%p id=%p func=%p", (void*)this, id, lfc);
             assert(lfc);
             lfc(this, id);
         }
@@ -337,7 +337,7 @@ namespace android_video_shim
         RefBase()
         {
             // Call our c'tor.
-            LOGV("RefBase - ctor %p", this);
+            LOGV2("RefBase - ctor %p", this);
             typedef void (*localFuncCast)(void *thiz);
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android7RefBaseC2Ev");
             assert(lfc);
@@ -623,7 +623,7 @@ namespace android_video_shim
                 LOGE("Can't find android/view/Surface");
                 return NULL;
             }
-            //LOGV2("   o Got %d", jclass);
+            LOGV2("   o Got %d", jclass);
 
             LOGV2("Resolving android.view.Surface field ID");
             jfieldID surfaceID = env->GetFieldID(surfaceClass, ANDROID_VIEW_SURFACE_JNI_ID, "I");
@@ -736,8 +736,8 @@ namespace android_video_shim
             typedef ssize_t (*localFuncCast)(void *thiz, int64_t offset, void *data, size_t size);
             localFuncCast **fakeObj = (localFuncCast**)this;
 
-            /*for(int i=0; i<17; i++)
-                LOGI("virtual layout[%d]=%p", i, fakeObj[0][i]); */
+            for(int i=0; i<17; i++)
+                LOGV2("virtual layout[%d]=%p", i, fakeObj[0][i]);
 
             //LOGI("FileSource::readAt should be %p", searchSymbol("_ZN7android10FileSource9readAtDRMExPvj"));
 
@@ -761,15 +761,15 @@ namespace android_video_shim
             typedef status_t (*localFuncCast)(void *thiz, off64_t *size);
             localFuncCast **fakeObj = (localFuncCast**)this;
 
-            /*for(int i=0; i<17; i++)
-                LOGI("virtual layout[%d]=%p", i, fakeObj[0][i]); */
+            for(int i=0; i<17; i++)
+                LOGV2("virtual layout[%d]=%p", i, fakeObj[0][i]);
 
-            //LOGI("FileSource::getSize should be %p", searchSymbol("_ZN7android10FileSource7getSizeEPx"));
+            LOGV2("FileSource::getSize should be %p", searchSymbol("_ZN7android10FileSource7getSizeEPx"));
 
             localFuncCast lfc = (localFuncCast)fakeObj[0][vtableOffset];
-            //LOGI("virtual getSize=%p", lfc);
+            LOGV2("virtual getSize=%p", lfc);
             status_t r = lfc((void*)this, size);
-            //LOGI("    o got %d", r);
+            LOGV2("    o got %d", r);
             return r;
         }
 
@@ -779,17 +779,17 @@ namespace android_video_shim
             typedef status_t (*localFuncCast)(void *thiz, off64_t *size);
             localFuncCast **fakeObj = (localFuncCast**)this;
 
-            /*for(int i=0; i<17; i++)
+            for(int i=0; i<17; i++)
             {
-                LOGV("virtual layout[%d]=%p", i, fakeObj[0][i]);
+                LOGV2("virtual layout[%d]=%p", i, fakeObj[0][i]);
             }
 
-            LOGV("FileSource::getSize should be %p", searchSymbol("_ZN7android10FileSource7getSizeEPx")); */
+            LOGV2("FileSource::getSize should be %p", searchSymbol("_ZN7android10FileSource7getSizeEPx")); */
 
             localFuncCast lfc = (localFuncCast)fakeObj[0][vtableOffset];
-            //LOGV("virtual getSize=%p", lfc);
+            LOGV2("virtual getSize=%p", lfc);
             status_t r = lfc((void*)this, size);
-            //LOGV("    o got %d", r);
+            LOGV2("    o got %d", r);
             return r;
         }
 
@@ -830,7 +830,7 @@ namespace android_video_shim
             typedef void (*localFuncCast)(void *thiz);
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android11MediaBuffer7releaseEv");
             assert(lfc);
-            //LOGI("MediaBuffer::release = %p", lfc);
+            LOGV2("MediaBuffer::release = %p", lfc);
 
             lfc(this);
         }
@@ -846,7 +846,7 @@ namespace android_video_shim
             typedef void *(*localFuncCast)(void *thiz);
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZNK7android11MediaBuffer4dataEv");
             assert(lfc);
-            //LOGI("MediaBuffer::data = %p this=%p", lfc, this);
+            LOGV2("MediaBuffer::data = %p this=%p", lfc, this);
             return lfc(this);
         }
 
@@ -855,7 +855,7 @@ namespace android_video_shim
             typedef size_t (*localFuncCast)(void *thiz);
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZNK7android11MediaBuffer4sizeEv");
             assert(lfc);
-            //LOGI("MediaBuffer::size = %p this=%p", lfc, this);
+            LOGV2("MediaBuffer::size = %p this=%p", lfc, this);
             return lfc(this);
         }
 
@@ -869,7 +869,7 @@ namespace android_video_shim
             typedef size_t (*localFuncCast)(void *thiz);
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZNK7android11MediaBuffer12range_lengthEv");
             assert(lfc);
-            //LOGI("MediaBuffer::range_length = %p this=%p", lfc, this);
+            LOGV2("MediaBuffer::range_length = %p this=%p", lfc, this);
             return lfc(this);
         }
 
@@ -954,22 +954,22 @@ namespace android_video_shim
             localFuncCast **fakeObj = (localFuncCast **)this;
 
             //test_dlsym();
-            #if 0
-            LOGI("_getFormat");
-            LOGI("this = %p", this);
-            LOGI("*this = %p", *(void**)this);
-            LOGI("**this = %p", **(void***)this);
-            LOGI("MPEG4Source::getFormat should be %p", searchSymbol("_ZN7android11MPEG4Source9getFormatEv"));
-            LOGI("AnotherPacketSource::getFormat should be %p", searchSymbol("_ZN7android19AnotherPacketSource9getFormatEv"));
-            LOGI("AACSource::getFormat should be %p", searchSymbol("_ZN7android9AACSource9getFormatEv"));
-            LOGI("MPEG2TSSource::getFormat should be %p", searchSymbol("_ZN7android13MPEG2TSSource9getFormatEv"));
-            LOGI("OMXCodec::getFormat might be %p", searchSymbol("_ZN7android8OMXCodec9getFormatEv"));
+            LOGV2("_getFormat");
+            LOGV2("this = %p", this);
+            LOGV2("*this = %p", *(void**)this);
+            LOGV2("**this = %p", **(void***)this);
+            LOGV2("MPEG4Source::getFormat should be %p", searchSymbol("_ZN7android11MPEG4Source9getFormatEv"));
+            LOGV2("AnotherPacketSource::getFormat should be %p", searchSymbol("_ZN7android19AnotherPacketSource9getFormatEv"));
+            LOGV2("AACSource::getFormat should be %p", searchSymbol("_ZN7android9AACSource9getFormatEv"));
+            LOGV2("MPEG2TSSource::getFormat should be %p", searchSymbol("_ZN7android13MPEG2TSSource9getFormatEv"));
+            LOGV2("OMXCodec::getFormat might be %p", searchSymbol("_ZN7android8OMXCodec9getFormatEv"));
 
 
             LOGI("Listing layout:");
-            for(int i=-2; i<20; i++) LOGI("virtual layout[%d]=%p", i, fakeObj[0][i]);
-
-            #endif
+            for(int i=-2; i<20; i++)
+            {
+                LOGV2("virtual layout[%d]=%p", i, fakeObj[0][i]);  
+            } 
 
             // Attempt log type name.
             /* type_info *whatIsIt = (type_info *)fakeObj[0][-1];
@@ -996,7 +996,7 @@ namespace android_video_shim
             typedef status_t (*localFuncCast)(void *thiz, MediaBuffer **buffer, const ReadOptions *options);
             localFuncCast **fakeObj = (localFuncCast **)this;
             localFuncCast lfc = fakeObj[0][vtableOffset];
-            //LOGV("virtual read=%p", lfc);
+            LOGV2("virtual read=%p", lfc);
             return lfc(this, buffer, options);
         }
 
@@ -1073,14 +1073,14 @@ namespace android_video_shim
             localFuncCast lfc = fakeObj[0][vtableOffset];
 
             // Dump the vtable.
-            //for(int i=0; i<16; i++)
-            //    LOGI("   vtable[%d] = %p", i, fakeObj[0][i]);
-            LOGI("MPEG4Source::start should be %p", searchSymbol("_ZN7android13MPEG2TSSource5startEPNS_8MetaDataE"));
-            LOGI("AnotherPacketSource::start should be %p", searchSymbol("_ZN7android19AnotherPacketSource5startEPNS_8MetaDataE"));
-            LOGI("OMXCodec::start might be %p", searchSymbol("_ZN7android8OMXCodec5startEPNS_8MetaDataE"));
-            LOGI("AACDecoder::start might be %p", searchSymbol("_ZN7android10AACDecoder5startEPNS_8MetaDataE"));
+            for(int i=0; i<16; i++)
+                LOGV2("   vtable[%d] = %p", i, fakeObj[0][i]);
+            LOGV("MPEG4Source::start should be %p", searchSymbol("_ZN7android13MPEG2TSSource5startEPNS_8MetaDataE"));
+            LOGV("AnotherPacketSource::start should be %p", searchSymbol("_ZN7android19AnotherPacketSource5startEPNS_8MetaDataE"));
+            LOGV("OMXCodec::start might be %p", searchSymbol("_ZN7android8OMXCodec5startEPNS_8MetaDataE"));
+            LOGV("AACDecoder::start might be %p", searchSymbol("_ZN7android10AACDecoder5startEPNS_8MetaDataE"));
 
-            LOGI("virtual start=%p", lfc);
+            LOGV("virtual start=%p", lfc);
             return lfc(this, params);
         }
 
@@ -1262,18 +1262,18 @@ namespace android_video_shim
             const int vtableOffset = 6;
             typedef status_t (*localFuncCast)(void *thiz);
 
-            //LOGI("this = %p", this);
-            //LOGI("*this = %p", *(void**)this);
-            //LOGI("Mpeg2TSExtractor::countTracks should be %p", searchSymbol("_ZN7android16MPEG2TSExtractor11countTracksEv"));
+            LOGV2("this = %p", this);
+            LOGV2("*this = %p", *(void**)this);
+            LOGV2("Mpeg2TSExtractor::countTracks should be %p", searchSymbol("_ZN7android16MPEG2TSExtractor11countTracksEv"));
 
             localFuncCast **fakeObj = *((localFuncCast***)this);
 
-            //for(int i=0; i<10; i++)
-            //    LOGI("virtual layout[%d]=%p", i, fakeObj[i]);
+            for(int i=0; i<10; i++)
+                LOGV2("virtual layout[%d]=%p", i, fakeObj[i]);
 
 
             localFuncCast lfc = (localFuncCast)fakeObj[vtableOffset];
-            //LOGI("virtual countTracks=%p", lfc);
+            LOGV2("virtual countTracks=%p", lfc);
             return lfc(this);
         }
 
@@ -1282,17 +1282,19 @@ namespace android_video_shim
             const int vtableOffset = 7;
             typedef sp<MediaSource> (*localFuncCast)(void *thiz, size_t idx);
 
-            //LOGI("this = %p", this);
-            //LOGI("*this = %p", *(void**)this);
-            //LOGI("Mpeg2TSExtractor::getTrack should be %p", searchSymbol("_ZN7android16MPEG2TSExtractor8getTrackEj"));
+            LOGV2("this = %p", this);
+            LOGV2("*this = %p", *(void**)this);
+            LOGV2("Mpeg2TSExtractor::getTrack should be %p", searchSymbol("_ZN7android16MPEG2TSExtractor8getTrackEj"));
 
             localFuncCast **fakeObj = *((localFuncCast***)this);
 
-            //for(int i=0; i<10; i++)
-            //    LOGI("virtual layout[%d]=%p", i, fakeObj[i]);
+            for(int i=0; i<10; i++)
+            {
+                LOGV2("virtual layout[%d]=%p", i, fakeObj[i]);
+            }
 
             localFuncCast lfc = (localFuncCast)fakeObj[vtableOffset];
-            //LOGI("virtual getTrack=%p", lfc);
+            LOGV2("virtual getTrack=%p", lfc);
             return lfc(this, index);
         }
 
@@ -1301,17 +1303,19 @@ namespace android_video_shim
             const int vtableOffset = 7;
             typedef sp<MediaSource23> (*localFuncCast)(void *thiz, size_t idx);
 
-            //LOGI("this = %p", this);
-            //LOGI("*this = %p", *(void**)this);
-            //LOGI("Mpeg2TSExtractor::getTrack should be %p", searchSymbol("_ZN7android16MPEG2TSExtractor8getTrackEj"));
+            LOGV2("this = %p", this);
+            LOGV2("*this = %p", *(void**)this);
+            LOGV2("Mpeg2TSExtractor::getTrack should be %p", searchSymbol("_ZN7android16MPEG2TSExtractor8getTrackEj"));
 
             localFuncCast **fakeObj = *((localFuncCast***)this);
 
-            //for(int i=0; i<10; i++)
-            //    LOGI("virtual layout[%d]=%p", i, fakeObj[i]);
+            for(int i=0; i<10; i++)
+            {
+                LOGV2("virtual layout[%d]=%p", i, fakeObj[i]);
+            }
 
             localFuncCast lfc = (localFuncCast)fakeObj[vtableOffset];
-            //LOGI("virtual getTrack=%p", lfc);
+            LOGV2("virtual getTrack=%p", lfc);
             return lfc(this, index);
         }
 
@@ -1321,17 +1325,19 @@ namespace android_video_shim
             const int vtableOffset = 8;
             typedef sp<MetaData> (*localFuncCast)(void *thiz, size_t idx, uint32_t flags);
 
-            //LOGI("this = %p", this);
-            //LOGI("*this = %p", *(void**)this);
-            //LOGI("Mpeg2TSExtractor::getTrackMetaData should be %p", searchSymbol("_ZN7android16MPEG2TSExtractor16getTrackMetaDataEjj"));
+            LOGV2("this = %p", this);
+            LOGV2("*this = %p", *(void**)this);
+            LOGV2("Mpeg2TSExtractor::getTrackMetaData should be %p", searchSymbol("_ZN7android16MPEG2TSExtractor16getTrackMetaDataEjj"));
 
             localFuncCast **fakeObj = *((localFuncCast***)this);
 
-            //for(int i=0; i<10; i++)
-            //    LOGI("virtual layout[%d]=%p", i, fakeObj[i]);
+            for(int i=0; i<10; i++)
+            {
+                LOGV2("virtual layout[%d]=%p", i, fakeObj[i]);
+            }
 
             localFuncCast lfc = (localFuncCast)fakeObj[vtableOffset];
-            //LOGI("virtual getTrackMetaData=%p", lfc);
+            LOGV2("virtual getTrackMetaData=%p", lfc);
             return lfc(this, index, flags);
 		}
 
@@ -1695,7 +1701,7 @@ namespace android_video_shim
 
             // Dump the vtable.
             for(int i=0; i<16; i++)
-              LOGV("vtable[%d] = %p", i, fakeObj[0][i]);
+              LOGV2("vtable[%d] = %p", i, fakeObj[0][i]);
 
             // The compiler may complain about these as we are getting into
             // pointer-to-member-function (pmf) territory. However, we aren't
