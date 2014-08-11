@@ -4,7 +4,8 @@
 
 <target name="all">
     <!-- Build JNI. -->
-    <exec dir="HLSPlayerSDK/" executable="C:\Users\jeni\Downloads\android-ndk-r9d-windows-x86_64\android-ndk-r9d\ndk-build.cmd" failonerror="true">
+    <exec dir="HLSPlayerSDK/" executable="/Users/bengarney/android/android-ndk-r8e/ndk-build" failonerror="true">
+    	<arg line="NDK_DEBUG=1"/>
     </exec>
 
 	<ant dir="appcompat_v7/" antfile="build.xml" target="debug"/>

@@ -7,20 +7,14 @@
 
 #include <jni.h>
 
-#include "HLSPlayer.h"
-#include "HLSPlayerSDK.h"
-
-
 #include <android/native_window.h>
 #include <android/native_window_jni.h>
 
-
-
+#include "HLSPlayer.h"
+#include "HLSPlayerSDK.h"
 #include "debug.h"
 #include "constants.h"
 #include "androidVideoShim.h"
-
-
 
 HLSPlayerSDK* gHLSPlayerSDK = NULL;
 
@@ -101,20 +95,25 @@ extern "C"
 		}
 	}
 
-	jint Java_com_kaltura_hlsplayersdk_PlayerView_NextFrame(JNIEnv* env, jobject jcaller)
+	void Java_com_kaltura_hlsplayersdk_PlayerView_SetScreenSize(JNIEnv* env, jobject jcaller, jint width, jint height)
 	{
 		//LOGI("Entered");
-		if (gHLSPlayerSDK != NULL)
-		{
-			if (gHLSPlayerSDK->GetPlayer())
-			{
-				if (gHLSPlayerSDK->GetPlayer()->Update() >= 0)
-				{
-					return gHLSPlayerSDK->GetPlayer()->GetCurrentTimeMS();
-				}
-			}
-		}
-		return 0;
+		if (!gHLSPlayerSDK || !gHLSPlayerSDK->GetPlayer())
+			return;
+
+		gHLSPlayerSDK->GetPlayer()->SetScreenSize(width, height);
+	}
+
+	int Java_com_kaltura_hlsplayersdk_PlayerView_NextFrame(JNIEnv* env, jobject jcaller)
+	{
+		//LOGI("Entered");
+		if (gHLSPlayerSDK == NULL)
+			return 0;
+		if (!gHLSPlayerSDK->GetPlayer())
+			return 0;
+		if (gHLSPlayerSDK->GetPlayer()->Update() >= 0)
+			return 0;
+		return gHLSPlayerSDK->GetPlayer()->GetCurrentTimeMS();
 	}
 
 	void Java_com_kaltura_hlsplayersdk_PlayerView_FeedSegment(JNIEnv* env, jobject jcaller, jstring jurl, jint quality, jdouble startTime )
@@ -210,7 +209,7 @@ void HLSPlayerSDK::PlayFile()
 	{
 		while (mPlayer->Update() == 0)
 		{
-			LOGI(CLASS_NAME, "Decoded a frame!");
+			LOGI("Decoded a frame!");
 		}
 	}
 }

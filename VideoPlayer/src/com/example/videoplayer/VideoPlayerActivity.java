@@ -6,6 +6,7 @@ import android.support.v4.app.Fragment;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.res.Configuration;
 import android.net.Uri;
 import android.os.Bundle;
 import android.util.Log;
@@ -31,32 +32,24 @@ public class VideoPlayerActivity extends ActionBarActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_video_player);
         
-      
-        //Uri uri=Uri.parse("http://www.ebookfrenzy.com/android_book/movie.mp4");
-        
-        
         try
         {
-        	
         	playerView = (PlayerViewController)findViewById(R.id.custom_player);
         	playerView.addComponents("", this);
-
         }
         catch (Exception e)
         {
         	Log.e("KalturaTestApp", e.getMessage());
         }
-        
-
     }
     
     @Override
     public void onStop()
     {
-    	if (playerView != null) playerView.close();
+    	if (playerView != null) 
+            playerView.close();
     	super.onStop();
     }
-
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -147,7 +140,4 @@ public class VideoPlayerActivity extends ActionBarActivity {
         }
         return super.onOptionsItemSelected(item);
     }
-
-
-
 }

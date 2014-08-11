@@ -1,25 +1,33 @@
 package com.kaltura.hlsplayersdk;
 
+
+
+import android.content.Context;
+import android.graphics.PixelFormat;
+import android.os.Handler;
+import android.util.Log;
+
+import android.view.Surface;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
+
+import android.widget.MediaController.MediaPlayerControl;
+import android.widget.RelativeLayout;
+import android.widget.VideoView;
+
+import com.kaltura.hlsplayersdk.manifest.events.OnParseCompleteListener;
+import com.kaltura.hlsplayersdk.manifest.ManifestParser;
+import com.kaltura.hlsplayersdk.manifest.ManifestSegment;
+
+import com.kaltura.hlsplayersdk.events.OnPlayheadUpdateListener;
+
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Timer;
 
-import com.kaltura.hlsplayersdk.events.OnPlayerStateChangeListener;
-import com.kaltura.hlsplayersdk.events.OnPlayheadUpdateListener;
-import com.kaltura.hlsplayersdk.events.OnProgressListener;
-import com.kaltura.hlsplayersdk.manifest.ManifestParser;
-import com.kaltura.hlsplayersdk.manifest.ManifestSegment;
-import com.kaltura.hlsplayersdk.manifest.events.OnParseCompleteListener;
 
-import android.content.Context;
-import android.media.MediaPlayer.OnErrorListener;
-import android.media.MediaPlayer.OnPreparedListener;
-import android.os.Handler;
-import android.util.Log;
-import android.view.Surface;
-import android.view.SurfaceView;
-
-public class PlayerView extends SurfaceView implements VideoPlayerInterface, OnParseCompleteListener, URLLoader.DownloadEventListener 
+public class PlayerView extends SurfaceView implements
+	OnParseCompleteListener, URLLoader.DownloadEventListener
 {
 	
 	private final int STATE_STOPPED = 1;
@@ -39,7 +47,7 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, OnP
 	private native void FeedSegment(String url, int quality, double startTime);
 	private native void SeekTo(double time); // seconds, not miliseconds - I'll change this later if it
 	private native int GetState();
-	//private native double CurTim
+	private native void SetScreenSize(int width, int height);
 	
 	private static PlayerView currentPlayerView = null;
 	
@@ -64,6 +72,26 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, OnP
 		}
 	}
 	
+	public static void enableHWRendererMode(boolean enable)
+	{
+		if(currentPlayerView != null)
+		{
+			currentPlayerView.getHolder().setFixedSize(320, 240);
+			currentPlayerView.getHolder().setFormat(19);
+			currentPlayerView.getHolder().setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);			
+		}
+	}
+	
+	public static void setVideoResolution(int w, int h)
+	{
+		if(currentPlayerView != null)
+		{
+			currentPlayerView.mVideoWidth = w;
+			currentPlayerView.mVideoHeight = h;
+			currentPlayerView.requestLayout();
+		}
+	}
+
 	private int frameDelay = 10;
 
 	// This is our root manifest
@@ -74,7 +102,8 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, OnP
 	
 	private int mTimeMS = 0;
 	
-	
+	public OnPlayheadUpdateListener mPlayheadUpdateListener;
+
 	private Handler handler = new Handler();
 	private Runnable runnable = new Runnable()
 	{
@@ -95,7 +124,7 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, OnP
 	
 	// setVideoUrl()
 	// Sets the video URL and initiates the download of the manifest
-	@Override
+	
 	public void setVideoUrl(String url) {
 		Log.i("PlayerView.setVideoUrl", url);
 		//layoutParams lp = this.getLayoutParams();
@@ -105,9 +134,84 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, OnP
 		manifestLoader.get(url);
 	}
 	
+	public int mVideoWidth = 640, mVideoHeight = 480;
+
+    @Override
+    protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
+        //Log.i("@@@@", "onMeasure(" + MeasureSpec.toString(widthMeasureSpec) + ", "
+        //        + MeasureSpec.toString(heightMeasureSpec) + ")");
+
+        int width = getDefaultSize(mVideoWidth, widthMeasureSpec);
+        int height = getDefaultSize(mVideoHeight, heightMeasureSpec);
+        if (mVideoWidth > 0 && mVideoHeight > 0) {
+
+            int widthSpecMode = MeasureSpec.getMode(widthMeasureSpec);
+            int widthSpecSize = MeasureSpec.getSize(widthMeasureSpec);
+            int heightSpecMode = MeasureSpec.getMode(heightMeasureSpec);
+            int heightSpecSize = MeasureSpec.getSize(heightMeasureSpec);
+
+            if (widthSpecMode == MeasureSpec.EXACTLY && heightSpecMode == MeasureSpec.EXACTLY) {
+                // the size is fixed
+                width = widthSpecSize;
+                height = heightSpecSize;
+
+                // for compatibility, we adjust size based on aspect ratio
+                if ( mVideoWidth * height  < width * mVideoHeight ) {
+                    //Log.i("@@@", "image too wide, correcting");
+                    width = height * mVideoWidth / mVideoHeight;
+                } else if ( mVideoWidth * height  > width * mVideoHeight ) {
+                    //Log.i("@@@", "image too tall, correcting");
+                    height = width * mVideoHeight / mVideoWidth;
+                }
+            } else if (widthSpecMode == MeasureSpec.EXACTLY) {
+                // only the width is fixed, adjust the height to match aspect ratio if possible
+                width = widthSpecSize;
+                height = width * mVideoHeight / mVideoWidth;
+                if (heightSpecMode == MeasureSpec.AT_MOST && height > heightSpecSize) {
+                    // couldn't match aspect ratio within the constraints
+                    height = heightSpecSize;
+                }
+            } else if (heightSpecMode == MeasureSpec.EXACTLY) {
+                // only the height is fixed, adjust the width to match aspect ratio if possible
+                height = heightSpecSize;
+                width = height * mVideoWidth / mVideoHeight;
+                if (widthSpecMode == MeasureSpec.AT_MOST && width > widthSpecSize) {
+                    // couldn't match aspect ratio within the constraints
+                    width = widthSpecSize;
+                }
+            } else {
+                // neither the width nor the height are fixed, try to use actual video size
+                width = mVideoWidth;
+                height = mVideoHeight;
+                if (heightSpecMode == MeasureSpec.AT_MOST && height > heightSpecSize) {
+                    // too tall, decrease both width and height
+                    height = heightSpecSize;
+                    width = height * mVideoWidth / mVideoHeight;
+                }
+                if (widthSpecMode == MeasureSpec.AT_MOST && width > widthSpecSize) {
+                    // too wide, decrease both width and height
+                    width = widthSpecSize;
+                    height = width * mVideoHeight / mVideoWidth;
+                }
+            }
+        } else {
+            // no size yet, just adopt the given spec sizes
+        }
+        setMeasuredDimension(width, height);
+    }
+
+	@Override
+	protected void onSizeChanged (int w, int h, int oldw, int oldh)
+	{
+		super.onSizeChanged(w, h, oldw, oldh);
+
+		Log.i("PlayerView.setVideoUrl", "Set size to " + w + "x" + h);
+		SetScreenSize(w, h);
+		//getHolder().setFixedSize(w, h);
+	}
 	
 	// Called when the manifest parser is complete. Once this is done, play can actually start
-	@Override
+	
 	public void onParserComplete(ManifestParser parser)
 	{
 		Log.i("PlayerView.onParserComplete", "Entered");
@@ -129,7 +233,7 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, OnP
 		mManifest.parse(response, loader.getRequestURI().toString());
 	}
 	
-	@Override
+	
 	public void onDownloadFailed(URLLoader loader, String response)
 	{
 		
@@ -149,17 +253,18 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, OnP
 		{
 			
 		}
+
 		currentPlayerView = this;
+
+		// Set some properties on the SurfaceHolder.
+		getHolder().setKeepScreenOn(true);
 	}
 	
-	@Override
 	public void close()
 	{
 		CloseNativeDecoder();
 	}
 	
-	
-	@Override
 	public String getVideoUrl()
 	{
 		return "Not Implemented";
@@ -172,7 +277,6 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, OnP
 		return -1;
 	}
 	
-	
 	public int getCurrentPosition()
 	{
 		return mTimeMS;
@@ -183,13 +287,12 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, OnP
 		return GetState() == STATE_PLAYING;
 	}
 	
-	@Override
+
 	public boolean getIsPlaying()
 	{
 		return isPlaying();
 	}
 	
-	@Override
 	public void play()
 	{
 		SetSurface(getHolder().getSurface());
@@ -231,7 +334,7 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, OnP
 		}
 	}
 	
-	@Override
+	
 	public void stop()
 	{
 		StopPlayer();
@@ -242,8 +345,7 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, OnP
 			e.printStackTrace();
 		}
 	}
-	
-	@Override
+
 	public void seek(int msec)
 	{
 		SeekTo(msec / 1000);
@@ -253,44 +355,4 @@ public class PlayerView extends SurfaceView implements VideoPlayerInterface, OnP
 	{
 		return mStreamHandler;
 	}
-
-
-	private OnPlayerStateChangeListener mPlayerStateChangeListener = null;
-
-	@Override
-	public void registerPlayerStateChange(OnPlayerStateChangeListener listener) {
-		mPlayerStateChangeListener = listener;
-		
-	}
-	
-	private OnPreparedListener mPreparedListener = null;
-
-	@Override
-	public void registerReadyToPlay(OnPreparedListener listener) {
-
-		mPreparedListener = listener;
-	}
-
-	private OnErrorListener mErrorListener = null;
-	
-	@Override
-	public void registerError(OnErrorListener listener) {
-		mErrorListener = listener;
-		
-	}
-	
-	private OnPlayheadUpdateListener mPlayheadUpdateListener = null;
-
-	@Override
-	public void registerPlayheadUpdate(OnPlayheadUpdateListener listener) {
-		mPlayheadUpdateListener = listener;		
-	}
-	
-	private OnProgressListener mProgressListener = null;
-
-	@Override
-	public void registerProgressUpdate(OnProgressListener listener) {
-		mProgressListener = listener;
-	}
-	
 }

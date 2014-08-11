@@ -50,6 +50,8 @@ public:
 	int GetState();
 	int32_t GetCurrentTimeMS();
 
+	void SetScreenSize(int w, int h);
+
 private:
 	void SetState(int status);
 	void SetNativeWindow(ANativeWindow* window);
@@ -64,6 +66,8 @@ private:
 
 	void RequestNextSegment();
 	void RequestSegmentForTime(double time);
+	void NoteVideoDimensions();
+	void NoteHWRendererMode(bool enabled);
 
 	std::list<HLSSegment* > mSegments;
 
@@ -75,6 +79,8 @@ private:
 	JavaVM* mJvm;
 	jmethodID mNextSegmentMethodID;
 	jmethodID mSegmentForTimeMethodID;
+	jmethodID mSetVideoResolutionID;
+	jmethodID mEnableHWRendererModeID;
 	jclass mPlayerViewClass;
 
 	jobject mSurface;
@@ -86,22 +92,32 @@ private:
 	// These are our video and audo tracks that we shove data into
 	android_video_shim::sp<android_video_shim::MediaSource> mVideoTrack;
 	android_video_shim::sp<android_video_shim::MediaSource> mAudioTrack;
+	android_video_shim::sp<android_video_shim::MediaSource23> mVideoTrack23;
+	android_video_shim::sp<android_video_shim::MediaSource23> mAudioTrack23;
 
+	android_video_shim::sp<android_video_shim::MetaData> mVideoTrack_md;
+	android_video_shim::sp<android_video_shim::MetaData> mAudioTrack_md;
 
 	// These are the codec converted sources that we get actual frames and audio from
 	android_video_shim::sp<android_video_shim::MediaSource> mVideoSource;
 	android_video_shim::sp<android_video_shim::MediaSource> mAudioSource;
+	android_video_shim::sp<android_video_shim::MediaSource23> mVideoSource23;
+	android_video_shim::sp<android_video_shim::MediaSource23> mAudioSource23;
 
+	// Our datasource that handles loading segments.
 	android_video_shim::sp<android_video_shim::HLSDataSource> mDataSource;
 
-	android_video_shim::sp<android_video_shim::MediaExtractor> mExtractor;    // The object that pulls the initial data source apart into separate audio and video sources
+	// The object that pulls the initial data stream apart into separate audio and video sources
+	android_video_shim::sp<android_video_shim::MediaExtractor> mExtractor;
 
-	AudioTrack* mJAudioTrack;
+	AudioTrack *mJAudioTrack;
 
 	bool mOffloadAudio;
 	int64_t mDurationUs;
 
 	android_video_shim::MediaBuffer* mVideoBuffer;
+
+	android_video_shim::sp<android_video_shim::IOMXRenderer> mVideoRenderer;
 
 	int64_t mBitrate;
 	int32_t mWidth;
@@ -118,8 +134,6 @@ private:
 
 	int32_t mScreenWidth;
 	int32_t mScreenHeight;
-
-
 };
 
 

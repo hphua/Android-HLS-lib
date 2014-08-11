@@ -45,6 +45,7 @@ bool ColorConverter_Local::isValid() const {
         return false;
     }
     switch (mSrcFormat) {
+        case OMX_COLOR_Format16bitRGB565:
         case OMX_COLOR_FormatYUV420Planar:
         case OMX_COLOR_FormatCbYCrY:
         case OMX_QCOM_COLOR_FormatYVU420SemiPlanar:
@@ -97,12 +98,29 @@ status_t ColorConverter_Local::convert(
             const_cast<void *>(srcBits),
             srcWidth, srcHeight,
             srcCropLeft, srcCropTop, srcCropRight, srcCropBottom);
+ 
     BitmapParams dst(
             dstBits,
             dstWidth, dstHeight,
             dstCropLeft, dstCropTop, dstCropRight, dstCropBottom);
+ 
     status_t err;
-    switch (mSrcFormat) {
+    switch (mSrcFormat) 
+    {
+        case OMX_COLOR_Format16bitRGB565:
+        {
+            // Copy the cropped region.
+            unsigned short *dstShort = (unsigned short *)dstBits;
+            unsigned short *srcShort = (unsigned short *)srcBits;
+            memcpy(dstShort + dstCropLeft + (dstCropTop)*dstWidth,
+                   srcShort, 
+                   srcWidth*srcHeight*sizeof(short));
+
+            for(int i=0; i<dstHeight; i++)
+                dstShort[i*dstWidth + (srcWidth-1)] = 0xF00F;
+
+            break;
+        }
         case OMX_COLOR_FormatYUV420Planar:
             err = convertYUV420Planar(src, dst);
             break;

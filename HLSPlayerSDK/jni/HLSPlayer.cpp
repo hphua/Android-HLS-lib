@@ -32,7 +32,7 @@ void* audio_thread_func(void* arg)
 
 	while (audioTrack->Update())
 	{
-
+		sched_yield();
 	}
 
 	LOGI("audio_thread_func ending");
@@ -45,7 +45,8 @@ mHeight(0), mWidth(0), mCropHeight(0), mCropWidth(0), mBitrate(0), mActiveAudioT
 mVideoBuffer(NULL), mWindow(NULL), mSurface(NULL), mRenderedFrameCount(0),
 mDurationUs(0), mOffloadAudio(false), mStatus(STOPPED),
 mAudioTrack(NULL), mVideoTrack(NULL), mJvm(jvm), mPlayerViewClass(NULL),
-mNextSegmentMethodID(NULL), mSegmentTimeOffset(0), mVideoFrameDelta(0), mLastVideoTimeUs(0),
+mNextSegmentMethodID(NULL), mSetVideoResolutionID(NULL), mEnableHWRendererModeID(NULL), 
+mSegmentTimeOffset(0), mVideoFrameDelta(0), mLastVideoTimeUs(0),
 mSegmentForTimeMethodID(NULL), mFrameCount(0), mDataSource(NULL), audioThread(0),
 mScreenHeight(0), mScreenWidth(0), mJAudioTrack(NULL)
 {
@@ -135,7 +136,10 @@ void HLSPlayer::SetSurface(JNIEnv* env, jobject surface)
 
 	mSurface = (jobject)env->NewGlobalRef(surface);
 
-	ANativeWindow* window = ANativeWindow_fromSurface(env, mSurface);
+	if(AVSHIM_HAS_OMXRENDERERPATH)
+		return;
+
+	::ANativeWindow *window = ANativeWindow_fromSurface(env, mSurface);
 
 	LOGI("Java_com_kaltura_hlsplayersdk_PlayerView_SetSurface() - window = %p", window);
 //	LOGI("window->flags = %x", window->flags);
@@ -153,7 +157,7 @@ void HLSPlayer::SetSurface(JNIEnv* env, jobject surface)
 	}
 }
 
-void HLSPlayer::SetNativeWindow(ANativeWindow* window)
+void HLSPlayer::SetNativeWindow(::ANativeWindow* window)
 {
 	LOGI("window = %p", window);
 	if (mWindow)
@@ -190,7 +194,8 @@ status_t HLSPlayer::FeedSegment(const char* path, int quality, double time )
 	if (err != OK)
 	{
 		LOGE("append Failed: %s", strerror(-err));
-		return err;
+		LOGE("Provisionally continuing...");
+		//return err;
 	}
 
 	// I don't know if we still need this - might need to pass in the URL instead of the datasource
@@ -210,6 +215,8 @@ bool HLSPlayer::InitTracks()
 	if (err != OK)
 	{
 		LOGE("DataSource is invalid: %s", strerror(-err));
+		// Don't bail as the HTTP sources will return errors sometimes due to
+		// internal race conditions.
 		//return false;
 	}
 
@@ -217,7 +224,7 @@ bool HLSPlayer::InitTracks()
 	mExtractor = MediaExtractor::Create(mDataSource, "video/mp2ts");
 	if (mExtractor == NULL)
 	{
-		LOGE("Could not create MediaExtractor from DataSource %p", mDataSource.get());
+		LOGE("Could not create MediaExtractor from DataSource @ %p", mDataSource.get());
 		return false;
 	}
 
@@ -260,11 +267,13 @@ bool HLSPlayer::InitTracks()
 		const char* cmime;
 		if (meta->findCString(kKeyMIMEType, &cmime))
 		{
-			//String8 mime = String8(cmime);
-
-			if (!haveVideo && !strncasecmp(cmime /*mime.string()*/, "video/", 6))
+			if (!haveVideo && !strncasecmp(cmime, "video/", 6))
 			{
-				mVideoTrack = mExtractor->getTrack(i);
+				if(AVSHIM_USE_NEWMEDIASOURCE)
+					mVideoTrack = mExtractor->getTrack(i);
+				else
+					mVideoTrack23 = mExtractor->getTrack23(i);
+
 				haveVideo = true;
 
 				// Set the presentation/display size
@@ -278,16 +287,23 @@ bool HLSPlayer::InitTracks()
 				{
 					mWidth = width;
 					mHeight = height;
+					NoteVideoDimensions();
 					LOGI("Video Track Width = %d, Height = %d, %d", width, height, __LINE__);
 				}
+
+				mVideoTrack_md = meta;
 			}
 			else if (!haveAudio && !strncasecmp(cmime /*mime.string()*/, "audio/", 6))
 			{
-				mAudioTrack = mExtractor->getTrack(i);
+				if(AVSHIM_USE_NEWMEDIASOURCE)
+					mAudioTrack = mExtractor->getTrack(i);
+				else
+					mAudioTrack23 = mExtractor->getTrack23(i);
 				haveAudio = true;
 
 				mActiveAudioTrackIndex = i;
 
+				mAudioTrack_md = meta;
 			}
 //			else if (!strcasecmp(cmime /*mime.string()*/, MEDIA_MIMETYPE_TEXT_3GPP))
 //			{
@@ -308,38 +324,22 @@ bool HLSPlayer::InitTracks()
 
 bool HLSPlayer::CreateAudioPlayer()
 {
-	uint32_t flags = 0;
-	if (mOffloadAudio)
-	{
-		flags |= AudioPlayer::USE_OFFLOAD;
-	}
-
-//	if (mAudioPlayer != NULL)
-//	{
-//		mAudioPlayer->pause(false);
-//		delete mAudioPlayer;
-//		mAudioPlayer = NULL;
-//	}
-
 	LOGI("Constructing JAudioTrack");
 	mJAudioTrack = new AudioTrack(mJvm);
-	if (mJAudioTrack)
-	{
-		if (!mJAudioTrack->Init())
-		{
-			LOGE("JAudioTrack::Init() failed - quitting CreateAudioPlayer");
-			return false;
-		}
+	if (!mJAudioTrack)
+		return false;
 
-		mJAudioTrack->Set(mAudioSource);
+	if (!mJAudioTrack->Init())
+	{
+		LOGE("JAudioTrack::Init() failed - quitting CreateAudioPlayer");
+		mAudioTrack = NULL;
+		return false;
 	}
 
-//	LOGI("Constructing AudioPlayer");
-//	mAudioPlayer = new AudioPlayer(NULL, flags, NULL);
-//	LOGI("AudioPlayer::setSource with %p", mAudioSource.get());
-//	mAudioPlayer->setSource(mAudioSource);
-//	LOGI("Storing audio player");
-//	mTimeSource = mAudioPlayer;
+	if(mAudioSource.get())
+		mJAudioTrack->Set(mAudioSource);
+	else
+		mJAudioTrack->Set23(mAudioSource23);
 
 	return true;
 }
@@ -347,70 +347,187 @@ bool HLSPlayer::CreateAudioPlayer()
 
 bool HLSPlayer::InitSources()
 {
-	if (!InitTracks()) return false;
+	if (!InitTracks())
+		return false;
+	
 	LOGI("Entered");
-	if (mVideoTrack == NULL || mAudioTrack == NULL) return false;
+	
+	if(AVSHIM_USE_NEWMEDIASOURCE)
+	{
+		if (mVideoTrack == NULL || mAudioTrack == NULL)
+			return false;
+	}
+	else
+	{
+		if (mVideoTrack23 == NULL || mAudioTrack23 == NULL)
+			return false;		
+	}
 
+	LOGV("Past initial sanity check...");
 
 	// Video
 	sp<IOMX> iomx = mClient.interface();
-	sp<MetaData> vidFormat = mVideoTrack->getFormat();
-	sp<MediaSource> omxSource = OMXCodec::Create(iomx, vidFormat, false, mVideoTrack, NULL, 0 /*, nativeWindow = NULL */);
-	LOGI("OMXCodec::Create() (video) returned %p", omxSource.get());
-	mVideoSource = omxSource;
 
-	audio_stream_type_t streamType = AUDIO_STREAM_MUSIC;
-//	if (mAudioSink != NULL)
-//	{
-//		streamType = mAudioSink->getAudioStreamType();
-//	}
+	sp<MetaData> vidFormat;
+	if(mVideoTrack_md.get() != NULL)
+	{
+		LOGV("    o Path C");
+		vidFormat = mVideoTrack_md;
+	}
+	else if(AVSHIM_USE_NEWMEDIASOURCE)
+	{
+		LOGV("    o Path A");
+		vidFormat = mVideoTrack->getFormat();
+	}
+	else if (!AVSHIM_USE_NEWMEDIASOURCE)
+	{
+		LOGV("    o Path B");
+		vidFormat = mVideoTrack23->getFormat();
+	}
+	else
+	{
+		LOGV("No path found!");
+	}
+	
+	LOGV("vidFormat look up round 1 complete");
 
+	if(vidFormat.get() == NULL)
+	{
+		LOGE("No format available from the video track.");
+		return false;
+	}
+	
+	LOGI("Creating hardware video decoder...");
 
-	sp<MetaData> meta = mVideoSource->getFormat();
+	if(AVSHIM_USE_NEWMEDIASOURCE)
+	{
+		LOGV("   - taking 4.x path");
+		LOGV("OMXCodec::Create - format=%p track=%p", vidFormat.get(), mVideoTrack.get());
+		mVideoSource = OMXCodec::Create(iomx, vidFormat, false, mVideoTrack, NULL, 4);
+		LOGV("   - got %p back", mVideoSource.get());
+	}
+	else
+	{
+		LOGV("   - taking 2.3 path");
+
+		LOGV("OMXCodec::Create - format=%p track=%p", vidFormat.get(), mVideoTrack23.get());
+		mVideoSource23 = OMXCodec::Create23(iomx, vidFormat, false, mVideoTrack23, NULL, 4);
+		LOGV("   - got %p back", mVideoSource23.get());
+	}
+	
+	LOGI("OMXCodec::Create() (video) returned %p", mVideoSource.get());
+
+	sp<MetaData> meta;
+	if(AVSHIM_USE_NEWMEDIASOURCE)
+		meta = mVideoSource->getFormat();
+	else
+		meta = mVideoSource23->getFormat();
+
+	if(!meta.get())
+	{
+		LOGE("No format available from the video source.");
+		return false;
+	}
+
 	meta->findInt32(kKeyWidth, &mWidth);
 	meta->findInt32(kKeyHeight, &mHeight);
 	int32_t left, top;
-	meta->findRect(kKeyCropRect, &left, &top, &mCropWidth, &mCropHeight);
+	if(!meta->findRect(kKeyCropRect, &left, &top, &mCropWidth, &mCropHeight))
+	{
+		LOGW("Could not get crop rect, assuming full video size.");
+		left = top = 0;
+		mCropWidth = mWidth;
+		mCropHeight = mHeight;
+	}
+
+	const char *component = "";
+	if(AVSHIM_HAS_OMXRENDERERPATH && meta->findCString(kKeyDecoderComponent, &component))
+	{
+		// Grab the color format, too.
+		int colorFormat = -1;
+		meta->findInt32(kKeyColorFormat, &colorFormat);
+
+		// Set things up w/ OMX.
+		LOGV("Trying OMXRenderer path!");
+		JNIEnv *env = NULL;
+		mJvm->AttachCurrentThread(&env, NULL);
+		LOGV(" env=%p", env);
+
+		LOGV("Getting IOMX");
+		sp<IOMX> omx = mClient.interface();
+		LOGV("   got %p", omx.get());
+
+		LOGI("Calling createRendererFromJavaSurface component='%s' %dx%d colf=%d", component, mWidth, mHeight, colorFormat);
+		mVideoRenderer = omx.get()->createRendererFromJavaSurface(env, mSurface, 
+			component, (OMX_COLOR_FORMATTYPE)colorFormat, 
+			mWidth, mHeight,
+			320, 240,
+			0);
+		LOGV("   o got %p", mVideoRenderer.get());
+		assert(mVideoRenderer.get());
+	}
 
 	UpdateWindowBufferFormat();
 
 	// Audio
-	mOffloadAudio = canOffloadStream(mAudioTrack->getFormat(), (mVideoTrack != NULL), false /*streaming http */, streamType);
+	if(AVSHIM_USE_NEWMEDIASOURCE)
+		mOffloadAudio = canOffloadStream(mAudioTrack->getFormat(), (mVideoTrack != NULL), false /*streaming http */, AUDIO_STREAM_MUSIC);
+	else
+		mOffloadAudio = canOffloadStream(mAudioTrack23->getFormat(), (mVideoTrack23 != NULL), false /*streaming http */, AUDIO_STREAM_MUSIC);				
+
 	LOGI("mOffloadAudio == %s", mOffloadAudio ? "true" : "false");
 
-	sp<MetaData> audioFormat = mAudioTrack->getFormat();
-	audioFormat->dumpToLog();
-	sp<MediaSource> omxAudioSource = OMXCodec::Create(iomx, audioFormat, false, mAudioTrack, NULL, 0);
-	LOGI("OMXCodec::Create() (audio) returned %p", omxAudioSource.get());
+	sp<MetaData> audioFormat;
+	if(AVSHIM_USE_NEWMEDIASOURCE)
+		audioFormat = mAudioTrack->getFormat();
+	else
+		audioFormat = mAudioTrack23->getFormat();
 
+	// Fall back to the MediaExtractor value for 3.x devices..
+	if(audioFormat.get() == NULL)
+		audioFormat = mAudioTrack_md;
+
+	if(!audioFormat.get())
+	{
+		LOGE("No format available from the audio track.");
+		return false;
+	}
+
+	audioFormat->dumpToLog();
+
+	if(AVSHIM_USE_NEWMEDIASOURCE)
+		mAudioSource = OMXCodec::Create(iomx, audioFormat, false, mAudioTrack, NULL, 0);
+	else
+		mAudioSource23 = OMXCodec::Create23(iomx, audioFormat, false, mAudioTrack23, NULL, 0);
+
+	LOGI("OMXCodec::Create() (audio) returned %p %p", mAudioSource.get(), mAudioSource23.get());
 
 	if (mOffloadAudio)
 	{
 		LOGI("Bypass OMX (offload) Line: %d", __LINE__);
-		mAudioSource = mAudioTrack;
-		//((HLSMediaSourceAdapter*)mAudioTrack.get())->append(s->GetAudioTrack());
+		if(AVSHIM_USE_NEWMEDIASOURCE)
+			mAudioSource = mAudioTrack;
+		else
+			mAudioSource23 = mAudioTrack23;
 	}
-	else
-	{
-		LOGI("Using OMX Line: %d ", __LINE__);
-		mAudioSource = omxAudioSource;
-		//((HLSMediaSourceAdapter*)mAudioTrack.get())->append(omxAudioSource);
-	}
+
 	return true;
 }
 
 
+void HLSPlayer::SetScreenSize(int w, int h)
+{
+	mScreenWidth = w;
+	mScreenHeight = h;
+	LOGI("SET screenWidth=%d | screenHeight=%d", mScreenWidth, mScreenHeight);
+}
+
 bool HLSPlayer::UpdateWindowBufferFormat()
 {
-	int32_t screenWidth = ANativeWindow_getWidth(mWindow);
-	int32_t screenHeight = ANativeWindow_getHeight(mWindow);
-
-	if (mScreenWidth == screenWidth && mScreenHeight == screenHeight)
-	{
-		// do nothing
+	if(AVSHIM_USE_NEWMEDIASOURCE && mVideoRenderer.get())
 		return true;
-	}
-	LOGI("screenWidth=%d | screenHeight=%d", screenWidth, screenHeight);
+
+	LOGI("screenWidth=%d | screenHeight=%d", mScreenWidth, mScreenHeight);
 
 	int32_t bufferWidth = mWidth;
 	int32_t bufferHeight = mHeight;
@@ -419,21 +536,63 @@ bool HLSPlayer::UpdateWindowBufferFormat()
 	{
 		mVideoSource->getFormat()->findInt32(kKeyWidth, &bufferWidth);
 		mVideoSource->getFormat()->findInt32(kKeyHeight, &bufferHeight);
+	} 
+	else if(mVideoSource23.get())
+	{
+		mVideoSource23->getFormat()->findInt32(kKeyWidth, &bufferWidth);
+		mVideoSource23->getFormat()->findInt32(kKeyHeight, &bufferHeight);
+	}
+	else
+	{
+		LOGE("Failed to get buffer width/height.");
+		return false;
 	}
 
 	LOGI("bufferWidth=%d | bufferHeight=%d", bufferWidth, bufferHeight);
 
-	double screenScale = (double)screenWidth / (double)screenHeight;
+	// We want to fit our buffer to the screen aspect ratio, but only by
+	// increasing its dimensions. We consider several cases:
+	//
+	//    A) Mapping 480x256 to 320x240
+	//    B) Mapping 480x256 to 240x320
+	//    C) Mapping 256x480 to 1920x1080
+	//    D) Mapping 256x480 to 1080x1920
+	//
+	// We want to minimize the size of the buffer, so we'll always take the
+	// smaller dimension and increase it to fit the desired aspect ratio.
+	//
+	// 		aspect = width/height
+	//
+	// In the case of A, the screen aspect is 1.3 and the buffer aspect is
+	// 1.875. We want to modify A to have the same aspect, which we can do
+	// by increasing its height to be 360px. This results in an aspect of
+	// 1.3, allowing correct display.
+	//
+	// In the case of B, the screen aspect is 0.75 and the buffer aspect is
+	// 1.875. We want to modify B to have the same aspect, which we can do
+	// by increasing its height to be 640px. This results in an aspect of
+	// 0.75, allowing correct display.
+	//
+	// In the case of C, the screen aspect is 1.77, and the buffer aspect is
+	// 0.53. We increase the width of C to 853px to match aspect.
+	//
+	// In the case of D, the screen aspect is 0.5625 and the buffer aspect is
+	// 0.53. We increase the width of D to 270px to match aspect.
+	
+	double screenAspect = (double)mScreenWidth / (double)mScreenHeight;
+	double bufferAspect = (double)bufferWidth / (double)bufferHeight;
 
-	LOGI("screenScale=%f", screenScale);
-	if (screenWidth > screenHeight)
+	LOGI("screenAspect=%f bufferAspect=%f", screenAspect, bufferAspect);
+
+	if(bufferWidth < bufferHeight)
 	{
-		double vidScale = (double)mWidth / (double)mHeight;
-		bufferWidth = ((double)mWidth / vidScale) * screenScale; // width / bufferScale * screenScale
+		// Increase width to match screen aspect.
+		bufferWidth = bufferHeight * screenAspect;
 	}
-	else if (screenHeight > screenWidth)
+	else
 	{
-		bufferHeight = (double)mWidth / screenScale;
+		// Increase height to match screen aspect.
+		bufferHeight = bufferWidth / screenAspect;
 	}
 
 	LOGI("bufferWidth=%d | bufferHeight=%d", bufferWidth, bufferHeight);
@@ -450,15 +609,29 @@ bool HLSPlayer::UpdateWindowBufferFormat()
 bool HLSPlayer::Play()
 {
 	LOGI("Entered");
-	if (!mWindow) { LOGI("mWindow is NULL"); return false; }
-	LOGI("%d", __LINE__);
-
+	
 	if (!InitSources()) return false;
 
-	status_t err = mVideoSource->start();
+	/*if (!mWindow) 
+	{
+		LOGI("mWindow is NULL"); 
+		return false; 
+	}*/
+
+	status_t err = OK;
+	
+	if(mVideoSource.get())
+		err = mVideoSource->start();
+	else
+		err = mVideoSource23->start();
+
 	if (err == OK)
 	{
-		err = mAudioSource->start();
+/*		if(mAudioSource.get())
+			err = mAudioSource->start();
+		else
+			err = mAudioSource23->start();*/
+
 		if (err == OK)
 		{
 			if (CreateAudioPlayer())
@@ -466,7 +639,6 @@ bool HLSPlayer::Play()
 				LOGI("Starting audio playback");
 
 #ifdef USE_AUDIO
-				//err = mAudioPlayer->start(true);
 				if (mJAudioTrack->Start())
 				{
 					if (pthread_create(&audioThread, NULL, audio_thread_func, (void*)mJAudioTrack  ) != 0)
@@ -538,8 +710,8 @@ int HLSPlayer::Update()
 			RequestNextSegment();
 	}
 
-
 	MediaSource::ReadOptions options;
+	MediaSource23::ReadOptions options23;
 	bool rval = -1;
 	for (;;)
 	{
@@ -549,7 +721,11 @@ int HLSPlayer::Update()
 		if (mVideoBuffer == NULL)
 		{
 			LOGI("Reading video buffer");
-			err = mVideoSource->read(&mVideoBuffer, &options);
+			if(mVideoSource.get())
+				err = mVideoSource->read(&mVideoBuffer, &options);
+			if(mVideoSource23.get())
+				err = mVideoSource23->read(&mVideoBuffer, &options23);
+
 			if (err == OK && mVideoBuffer->range_length() != 0) ++mFrameCount;
 		}
 		if (err != OK)
@@ -564,9 +740,11 @@ int HLSPlayer::Update()
 				if (mVideoBuffer == NULL) return 0;
 				break;
 			case ERROR_END_OF_STREAM:
-				SetState(STOPPED);
+				//SetState(STOPPED);
 				//PlayNextSegment();
 				return -1;
+				//LOGI("Saw end of stream but who really cares about that?");
+				//return 0;
 				break;
 			default:
 				SetState(STOPPED);
@@ -595,8 +773,6 @@ int HLSPlayer::Update()
 #endif
 
 			LOGI("audioTime = %lld | videoTime = %lld | diff = %lld", audioTime, timeUs, audioTime - timeUs);
-
-
 
 			if (timeUs > mLastVideoTimeUs)
 			{
@@ -677,8 +853,26 @@ int HLSPlayer::Update()
 
 bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 {
+	if(AVSHIM_HAS_OMXRENDERERPATH && mVideoRenderer.get())
+	{
+        int fmt = -1;
+        mVideoSource23->getFormat()->findInt32(kKeyColorFormat, &fmt);
+
+		LOGI("Cond1 for hw path colf=%d", fmt);
+
+        void *id;
+        if (buffer->meta_data()->findPointer(kKeyBufferID, &id)) 
+        {
+			LOGV2("Cond2 for hw path");
+            mVideoRenderer->render(id);
+			LOGV2("Cond3 for hw path");
+			//sched_yield();
+            return true;
+        }
+	}
+
 	//LOGI("Entered");
-	LOGI("Rendering Buffer size=%d", buffer->size());
+	//LOGI("Rendering Buffer size=%d", buffer->size());
 	if (!mWindow) { LOGI("mWindow is NULL"); return false; }
 	if (!buffer) { LOGI("the MediaBuffer is NULL"); return false; }
 
@@ -686,32 +880,73 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 
 	// Get the frame's width and height.
 	int videoBufferWidth = 0, videoBufferHeight = 0, vbCropTop = 0, vbCropLeft = 0, vbCropBottom = 0, vbCropRight = 0;
-	mVideoSource->getFormat()->findInt32(kKeyWidth, &videoBufferWidth);
-	mVideoSource->getFormat()->findInt32(kKeyHeight, &videoBufferHeight);
-	if(!mVideoSource->getFormat()->findRect(kKeyCropRect, &vbCropLeft, &vbCropTop, &vbCropRight, &vbCropBottom))
+	sp<MetaData> vidFormat;
+	if(mVideoSource.get())
+		vidFormat = mVideoSource->getFormat();
+	if(mVideoSource23.get())
+		vidFormat = mVideoSource23->getFormat();
+
+	if(!vidFormat->findInt32(kKeyWidth, &videoBufferWidth) || !buffer->meta_data()->findInt32(kKeyHeight, &videoBufferHeight))
 	{
-		vbCropTop = 0;
-		vbCropLeft = 0;
-		vbCropBottom = mCropHeight - 1;
-		vbCropRight = mCropWidth - 1;
+		LOGV("Falling back to source dimensions.");
+		if(!buffer->meta_data()->findInt32(kKeyWidth, &videoBufferWidth) || !vidFormat->findInt32(kKeyHeight, &videoBufferHeight))
+		{
+			// I hope we're right!
+			LOGV("Setting best guess width/height %dx%d", mWidth, mHeight);
+			videoBufferWidth = mWidth;
+			videoBufferHeight = mHeight;			
+		}
+	}
+
+	int stride = -1;
+	if(!buffer->meta_data()->findInt32(kKeyStride, &stride))
+	{
+		LOGV("Trying source stride");
+		if(!vidFormat->findInt32(kKeyStride, &stride))
+		{
+			LOGV("Got no source");
+		}
+	}
+
+	int x = -1;
+	buffer->meta_data()->findInt32(kKeyDisplayWidth, &x);
+	LOGV("dwidth = %d", x);
+
+	if(stride != -1)
+	{
+		LOGV("Got stride %d", stride);
+	}
+
+	if(!vidFormat->findRect(kKeyCropRect, &vbCropLeft, &vbCropTop, &vbCropRight, &vbCropBottom))
+	{
+		if(!buffer->meta_data()->findRect(kKeyCropRect, &vbCropLeft, &vbCropTop, &vbCropRight, &vbCropBottom))
+		{
+			vbCropTop = 0;
+			vbCropLeft = 0;
+			vbCropBottom = videoBufferHeight - 1;
+			vbCropRight = videoBufferWidth - 1;
+		}
 	}
 	LOGI("vbw=%d vbh=%d vbcl=%d vbct=%d vbcr=%d vbcb=%d", videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom);
 
 	int colf = 0;
-	bool res = mVideoSource->getFormat()->findInt32(kKeyColorFormat, &colf);
-	LOGI("Found Frame Color Format: %s", res ? "true" : "false" );
+	bool res = vidFormat->findInt32(kKeyColorFormat, &colf);
+	LOGV2("Found Frame Color Format: %s %d", res ? "true" : "false", colf);
+
+	const char *omxCodecString = "";
+	res = vidFormat->findCString(kKeyDecoderComponent, &omxCodecString);
+	LOGV("Found Frame decoder component: %s %s", res ? "true" : "false", omxCodecString);
 
 	ColorConverter_Local lcc((OMX_COLOR_FORMATTYPE)colf, OMX_COLOR_Format16bitRGB565);
-	LOGI("ColorConversion from %x is valid: %s", colf, lcc.isValid() ? "true" : "false" );
+	LOGV("ColorConversion from %x is valid: %s", colf, lcc.isValid() ? "true" : "false" );
 
 	ColorConverter cc((OMX_COLOR_FORMATTYPE)colf, OMX_COLOR_Format16bitRGB565); // Should be getting these from the formats, probably
-	LOGI("ColorConversion from %x is valid: %s", colf, cc.isValid() ? "true" : "false" );
+	LOGV("ColorConversion from %x is valid: %s", colf, cc.isValid() ? "true" : "false" );
 
-	bool useLocalCC = lcc.isValid();
-
+	bool useLocalCC = lcc.isValid();	
 	if (!useLocalCC && !cc.isValid())
 	{
-		LOGE("No Valid Color Conversion Found for %d", colf);
+		LOGE("No valid color conversion found for %d", colf);
 	}
 
 
@@ -724,7 +959,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 		ANativeWindow_Buffer windowBuffer;
 		if (ANativeWindow_lock(mWindow, &windowBuffer, NULL) == 0)
 		{
-			LOGI("buffer locked (%d x %d stride=%d, format=%d)", windowBuffer.width, windowBuffer.height, windowBuffer.stride, windowBuffer.format);
+			LOGV("buffer locked (%d x %d stride=%d, format=%d)", windowBuffer.width, windowBuffer.height, windowBuffer.stride, windowBuffer.format);
 
 			//MediaSource* vt = (MediaSource*)mVideoSource.get();
 
@@ -735,7 +970,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 			unsigned short *pixels = (unsigned short *)windowBuffer.bits;
 			memset(pixels, 0, windowBuffer.stride * windowBuffer.height * 2);
 
-			LOGI("mWidth=%d | mHeight=%d | mCropWidth=%d | mCropHeight=%d | buffer.width=%d | buffer.height=%d",
+			LOGV("mWidth=%d | mHeight=%d | mCropWidth=%d | mCropHeight=%d | buffer.width=%d | buffer.height=%d",
 							mWidth, mHeight, mCropWidth, mCropHeight, windowBuffer.width, windowBuffer.height);
 
 			int32_t offsetx = (windowBuffer.width - videoBufferWidth) / 2;
@@ -748,14 +983,15 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 			if (useLocalCC)
 				ccres = lcc.convert(buffer->data(), videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom,
 						windowBuffer.bits, targetWidth, targetHeight, vbCropLeft + offsetx, vbCropTop + offsety, vbCropRight + offsetx, vbCropBottom + offsety);
-						//windowBuffer.bits, targetWidth, targetHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom);
 			else
-				ccres = cc.convert(buffer->data(), mWidth, mHeight, 0, 0, mCropWidth, mCropHeight,
-						windowBuffer.bits, targetWidth, targetHeight, offsetx, offsety,mCropWidth + offsetx, mCropHeight + offsety);
+				ccres = cc.convert(buffer->data(), videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom,
+						windowBuffer.bits, targetWidth, targetHeight, vbCropLeft + offsetx, vbCropTop + offsety, vbCropRight + offsetx, vbCropBottom + offsety);
 
 			if (ccres != OK) LOGE("ColorConversion error: %s (%d)", strerror(-ccres), -ccres);
 
 			ANativeWindow_unlockAndPost(mWindow);
+
+			sched_yield();
 		}
 
 
@@ -878,6 +1114,79 @@ void HLSPlayer::RequestSegmentForTime(double time)
 	{
 		LOGI("Call to method  com/kaltura/hlsplayersdk/PlayerView.requestSegmentForTime() FAILED" );
 	}
+}
+
+void HLSPlayer::NoteVideoDimensions()
+{
+	LOGI("Noting video dimensions.");
+	JNIEnv* env = NULL;
+	mJvm->AttachCurrentThread(&env, NULL);
+
+	if (mPlayerViewClass == NULL)
+	{
+		jclass c = env->FindClass("com/kaltura/hlsplayersdk/PlayerView");
+		if ( env->ExceptionCheck() || c == NULL) {
+			LOGI("Could not find class com/kaltura/hlsplayersdk/PlayerView" );
+			mPlayerViewClass = NULL;
+			return;
+		}
+
+		mPlayerViewClass = (jclass)env->NewGlobalRef((jobject)c);
+	}
+
+	if (mSetVideoResolutionID == NULL)
+	{
+		mSetVideoResolutionID = env->GetStaticMethodID(mPlayerViewClass, "setVideoResolution", "(II)V" );
+		if (env->ExceptionCheck())
+		{
+			mSetVideoResolutionID = NULL;
+			LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerView.setVideoResolution()" );
+			return;
+		}
+	}
+
+	env->CallStaticVoidMethod(mPlayerViewClass, mSetVideoResolutionID, mWidth, mHeight);
+	if (env->ExceptionCheck())
+	{
+		LOGI("Call to method  com/kaltura/hlsplayersdk/PlayerView.setVideoResolution() FAILED" );
+	}	
+}
+
+
+void HLSPlayer::NoteHWRendererMode(bool enabled)
+{
+	LOGI("Noting video dimensions.");
+	JNIEnv* env = NULL;
+	mJvm->AttachCurrentThread(&env, NULL);
+
+	if (mPlayerViewClass == NULL)
+	{
+		jclass c = env->FindClass("com/kaltura/hlsplayersdk/PlayerView");
+		if ( env->ExceptionCheck() || c == NULL) {
+			LOGI("Could not find class com/kaltura/hlsplayersdk/PlayerView" );
+			mPlayerViewClass = NULL;
+			return;
+		}
+
+		mPlayerViewClass = (jclass)env->NewGlobalRef((jobject)c);
+	}
+
+	if (mEnableHWRendererModeID == NULL)
+	{
+		mEnableHWRendererModeID = env->GetStaticMethodID(mPlayerViewClass, "enableHWRendererMode", "(B)V" );
+		if (env->ExceptionCheck())
+		{
+			mEnableHWRendererModeID = NULL;
+			LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerView.enableHWRendererMode()" );
+			return;
+		}
+	}
+
+	env->CallStaticVoidMethod(mPlayerViewClass, mEnableHWRendererModeID, enabled);
+	if (env->ExceptionCheck())
+	{
+		LOGI("Call to method  com/kaltura/hlsplayersdk/PlayerView.enableHWRendererMode() FAILED" );
+	}	
 }
 
 int HLSPlayer::GetState()

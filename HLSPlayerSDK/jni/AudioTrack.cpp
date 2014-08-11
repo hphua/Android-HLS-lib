@@ -39,7 +39,12 @@ void AudioTrack::Close()
 		mTrack = NULL;
 		env->DeleteGlobalRef(mCAudioTrack);
 		mCAudioTrack = NULL;
-		mAudioSource->stop();
+
+		if(mAudioSource.get())
+			mAudioSource->stop();
+		if(mAudioSource23.get())
+			mAudioSource23->stop();
+
 		sem_destroy(&semPause);
 	}
 }
@@ -86,6 +91,7 @@ bool AudioTrack::Init()
 
 bool AudioTrack::Set(sp<MediaSource> audioSource, bool alreadyStarted)
 {
+	LOGI("Set with %p", audioSource.get());
 	mAudioSource = audioSource;
 	if (!alreadyStarted) mAudioSource->start(NULL);
 
@@ -124,8 +130,50 @@ bool AudioTrack::Set(sp<MediaSource> audioSource, bool alreadyStarted)
 		}
 		mChannelMask = 0; // CHANNEL_MASK_USE_CHANNEL_ORDER
 	}
+}
 
 
+bool AudioTrack::Set23(sp<MediaSource23> audioSource, bool alreadyStarted)
+{
+	LOGI("Set23 with %p", audioSource.get());
+	mAudioSource23 = audioSource;
+	if (!alreadyStarted) mAudioSource23->start(NULL);
+
+	sp<MetaData> format = mAudioSource23->getFormat();
+	RUNDEBUG(format->dumpToLog());
+	const char* mime;
+	bool success = format->findCString(kKeyMIMEType, &mime);
+	if (!success)
+	{
+		LOGE("Could not find mime type");
+		return false;
+	}
+	if (strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_RAW))
+	{
+		LOGE("Mime Type was not audio/raw. Was: %s", mime);
+		return false;
+	}
+	success = format->findInt32(kKeySampleRate, &mSampleRate);
+	if (!success)
+	{
+		LOGE("Could not find audio sample rate");
+		return false;
+	}
+
+	success = format->findInt32(kKeyChannelCount, &mNumChannels);
+	if (!success)
+	{
+		LOGE("Could not find channel count");
+		return false;
+	}
+	if (!format->findInt32(kKeyChannelMask, &mChannelMask))
+	{
+		if (mNumChannels > 2)
+		{
+			LOGI("Source format didn't specify channel mask. Using (%d) channel order", mNumChannels);
+		}
+		mChannelMask = 0; // CHANNEL_MASK_USE_CHANNEL_ORDER
+	}
 }
 
 #define STREAM_MUSIC 3
@@ -229,7 +277,6 @@ int64_t AudioTrack::GetTimeStamp()
 	double frames = env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mGetPlaybackHeadPosition);
 	double secs = frames / (double)mSampleRate;
 	return (secs * 1000000);
-
 }
 
 
@@ -250,9 +297,16 @@ bool AudioTrack::Update()
 
 	MediaBuffer* mediaBuffer = NULL;
 
-	LOGI("Reading to the media buffer");
-	status_t res = mAudioSource->read(&mediaBuffer, NULL);
-	LOGI("Finished reading from the media buffer");
+	//LOGI("Reading to the media buffer");
+	status_t res;
+	
+	if(mAudioSource.get())
+		res = mAudioSource->read(&mediaBuffer, NULL);
+	
+	if(mAudioSource23.get())
+		res = mAudioSource23->read(&mediaBuffer, NULL);
+
+	//LOGI("Finished reading from the media buffer");
 	if (res == OK)
 	{
 		RUNDEBUG(mediaBuffer->meta_data()->dumpToLog());
@@ -265,20 +319,20 @@ bool AudioTrack::Update()
 		if (pBuffer)
 		{
 			size_t mbufSize = mediaBuffer->range_length();
-			LOGI("MediaBufferSize = %d, mBufferSizeInBytes = %d", mbufSize, mBufferSizeInBytes );
+			//LOGI("MediaBufferSize = %d, mBufferSizeInBytes = %d", mbufSize, mBufferSizeInBytes );
 			if (mbufSize <= mBufferSizeInBytes)
 			{
-				LOGI("Writing data to jAudioTrack %d", mbufSize);
+				//LOGI("Writing data to jAudioTrack %d", mbufSize);
 				memcpy(pBuffer, mediaBuffer->data(), mbufSize);
 				unsigned short* pBShorts = (unsigned short*)pBuffer;
-				LOGV("%uhd %uhd %uhd %uhd", pBShorts[0], pBShorts[1], pBShorts[2], pBShorts[3]);
+				//LOGV("%hd %hd %hd %hd", pBShorts[0], pBShorts[1], pBShorts[2], pBShorts[3]);
 				int len = mbufSize / 2;
-				LOGV("%uhd %uhd %uhd %uhd", pBShorts[len - 4], pBShorts[len - 3], pBShorts[len - 2], pBShorts[len - 1]);
+				//LOGV("%hd %hd %hd %hd", pBShorts[len - 4], pBShorts[len - 3], pBShorts[len - 2], pBShorts[len - 1]);
 
 				env->ReleasePrimitiveArrayCritical(buffer, pBuffer, 0);
-				LOGI("Finished copying audio data to buffer");
+				//LOGI("Finished copying audio data to buffer");
 				env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mWrite, buffer, 0, mbufSize  );
-				LOGI("Finished Writing Data to jAudioTrack");
+				//LOGI("Finished Writing Data to jAudioTrack");
 			}
 			else
 			{
@@ -301,8 +355,6 @@ bool AudioTrack::Update()
 	}
 
 	mJvm->DetachCurrentThread();
-
-
 
 	if (mediaBuffer != NULL)
 	{
