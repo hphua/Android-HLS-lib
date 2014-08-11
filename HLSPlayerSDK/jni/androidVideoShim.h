@@ -784,7 +784,7 @@ namespace android_video_shim
                 LOGV2("virtual layout[%d]=%p", i, fakeObj[0][i]);
             }
 
-            LOGV2("FileSource::getSize should be %p", searchSymbol("_ZN7android10FileSource7getSizeEPx")); */
+            LOGV2("FileSource::getSize should be %p", searchSymbol("_ZN7android10FileSource7getSizeEPx"));
 
             localFuncCast lfc = (localFuncCast)fakeObj[0][vtableOffset];
             LOGV2("virtual getSize=%p", lfc);
