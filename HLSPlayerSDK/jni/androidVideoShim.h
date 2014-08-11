@@ -208,6 +208,70 @@ namespace android_video_shim
         ERROR_HEARTBEAT_TERMINATE_REQUESTED                     = HEARTBEAT_ERROR_BASE,
     };
 
+
+    typedef enum OMX_COLOR_FORMATTYPE {
+        OMX_COLOR_FormatUnused,
+        OMX_COLOR_FormatMonochrome,
+        OMX_COLOR_Format8bitRGB332,
+        OMX_COLOR_Format12bitRGB444,
+        OMX_COLOR_Format16bitARGB4444,
+        OMX_COLOR_Format16bitARGB1555,
+        OMX_COLOR_Format16bitRGB565,
+        OMX_COLOR_Format16bitBGR565,
+        OMX_COLOR_Format18bitRGB666,
+        OMX_COLOR_Format18bitARGB1665,
+        OMX_COLOR_Format19bitARGB1666,
+        OMX_COLOR_Format24bitRGB888,
+        OMX_COLOR_Format24bitBGR888,
+        OMX_COLOR_Format24bitARGB1887,
+        OMX_COLOR_Format25bitARGB1888,
+        OMX_COLOR_Format32bitBGRA8888,
+        OMX_COLOR_Format32bitARGB8888,
+        OMX_COLOR_FormatYUV411Planar,
+        OMX_COLOR_FormatYUV411PackedPlanar,
+        OMX_COLOR_FormatYUV420Planar,
+        OMX_COLOR_FormatYUV420PackedPlanar,
+        OMX_COLOR_FormatYUV420SemiPlanar,
+        OMX_COLOR_FormatYUV422Planar,
+        OMX_COLOR_FormatYUV422PackedPlanar,
+        OMX_COLOR_FormatYUV422SemiPlanar,
+        OMX_COLOR_FormatYCbYCr,
+        OMX_COLOR_FormatYCrYCb,
+        OMX_COLOR_FormatCbYCrY,
+        OMX_COLOR_FormatCrYCbY,
+        OMX_COLOR_FormatYUV444Interleaved,
+        OMX_COLOR_FormatRawBayer8bit,
+        OMX_COLOR_FormatRawBayer10bit,
+        OMX_COLOR_FormatRawBayer8bitcompressed,
+        OMX_COLOR_FormatL2,
+        OMX_COLOR_FormatL4,
+        OMX_COLOR_FormatL8,
+        OMX_COLOR_FormatL16,
+        OMX_COLOR_FormatL24,
+        OMX_COLOR_FormatL32,
+        OMX_COLOR_FormatYUV420PackedSemiPlanar,
+        OMX_COLOR_FormatYUV422PackedSemiPlanar,
+        OMX_COLOR_Format18BitBGR666,
+        OMX_COLOR_Format24BitARGB6666,
+        OMX_COLOR_Format24BitABGR6666,
+        OMX_COLOR_FormatKhronosExtensions = 0x6F000000, /**< Reserved region for introducing Khronos Standard Extensions */
+        OMX_COLOR_FormatVendorStartUnused = 0x7F000000, /**< Reserved region for introducing Vendor Extensions */
+        /**<Reserved android opaque colorformat. Tells the encoder that
+         * the actual colorformat will be  relayed by the
+         * Gralloc Buffers.
+         * FIXME: In the process of reserving some enum values for
+         * Android-specific OMX IL colorformats. Change this enum to
+         * an acceptable range once that is done.
+         * */
+        OMX_COLOR_FormatAndroidOpaque = 0x7F000789,
+        OMX_TI_COLOR_FormatYUV420PackedSemiPlanar = 0x7F000100,
+        OMX_QCOM_COLOR_FormatYVU420SemiPlanar = 0x7FA30C00,
+        QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka = 0x7fa30c03,
+        OMX_QCOM_COLOR_FormatYUV420PackedSemiPlanar32m = 0x7fa30c04,
+
+        OMX_COLOR_FormatMax = 0x7FFFFFFF
+    } OMX_COLOR_FORMATTYPE;
+
     extern const char *MEDIA_MIMETYPE_IMAGE_JPEG;
 
     extern const char *MEDIA_MIMETYPE_VIDEO_VP8;
@@ -438,10 +502,150 @@ namespace android_video_shim
         m_ptr = ptr;
     }
 
-    class IOMX : public virtual RefBase
+    struct ANativeWindow
+    {
+
+    };
+
+    template <typename NATIVE_TYPE, typename TYPE, typename REF>
+    class EGLNativeBase : public NATIVE_TYPE, public REF
+    {
+    };
+
+    class ISurface : public virtual RefBase
+    {
+
+    };
+
+    class Surface
+        : public EGLNativeBase<ANativeWindow, Surface, RefBase>
+    {
+    public:
+        sp<ISurface> getISurface()
+        {
+            typedef sp<ISurface> (*localFuncCast)(void *);
+            localFuncCast lfc = (localFuncCast)searchSymbol("_ZNK7android7Surface11getISurfaceEv");
+            assert(lfc);
+            LOGI("getISurface=%p %p", lfc, this);
+
+            return lfc(this);
+        }
+    };
+
+    class IInterface : public virtual RefBase
+    {
+
+    };
+
+    class IOMXRenderer : public IInterface
+    {
+    public:
+        void render(void *buffer)
+        {
+            typedef void (*localFuncCast)(void *thiz, void *buffer);
+
+            // Do a vtable lookup.
+            const int vtableOffset = 4;
+
+            localFuncCast **fakeObj = (localFuncCast**)this;
+
+            localFuncCast lfc = (localFuncCast)fakeObj[0][vtableOffset];
+
+            for(int i=0; i<8; i++)
+            {
+                LOGV2("vtable[%d] = %p", i, fakeObj[0][i]);
+            }
+
+            LOGV2("expected OMXRenderer::render=%p", searchSymbol("_ZN7android11OMXRenderer6renderEPv"));
+
+            LOGI("virtual IOMXRenderer::render=%p", lfc);
+            
+            lfc((void*)this, buffer);
+        }
+    };
+
+    class IOMX : public IInterface
     {
     public:
 
+        sp<IOMXRenderer> createRenderer(
+                const sp<ISurface> &surface,
+                const char *componentName,
+                OMX_COLOR_FORMATTYPE colorFormat,
+                size_t encodedWidth, size_t encodedHeight,
+                size_t displayWidth, size_t displayHeight,
+                int32_t rotationDegrees)
+        {
+            typedef sp<IOMXRenderer> (*localFuncCast)(
+                    void *thiz,
+                    const sp<ISurface> &surface,
+                    const char *componentName,
+                    OMX_COLOR_FORMATTYPE colorFormat,
+                    size_t encodedWidth, size_t encodedHeight,
+                    size_t displayWidth, size_t displayHeight,
+                    int32_t rotationDegrees);
+
+            // Do a vtable lookup.
+            const int vtableOffset = 20;
+
+            localFuncCast **fakeObj = (localFuncCast**)this;
+
+            localFuncCast lfc = (localFuncCast)fakeObj[0][vtableOffset];
+
+            for(int i=0; i<32; i++)
+            {
+                LOGV2("vtable[%d] = %p", i, fakeObj[0][i]);
+            }
+
+            LOGV2("expected OMX::createRenderer=%p", searchSymbol("_ZN7android3OMX14createRendererERKNS_2spINS_8ISurfaceEEEPKc20OMX_COLOR_FORMATTYPEjjjji"));
+
+            LOGI("virtual IOMX::createRenderer=%p", lfc);
+            sp<IOMXRenderer> r = lfc((void*)this, surface, componentName, colorFormat, encodedWidth, encodedHeight, displayWidth, displayHeight, rotationDegrees);
+            LOGI("    o got %p", r.get());
+            return r;
+        }
+
+        #define ANDROID_VIEW_SURFACE_JNI_ID    "mNativeSurface"
+
+        sp<IOMXRenderer> createRendererFromJavaSurface(
+            JNIEnv *env, jobject javaSurface,
+            const char *componentName,
+            OMX_COLOR_FORMATTYPE colorFormat,
+            size_t encodedWidth, size_t encodedHeight,
+            size_t displayWidth, size_t displayHeight,
+            int32_t rotationDegrees)
+        {
+
+            LOGV2("Resolving android.view.Surface class.");
+            jclass surfaceClass = env->FindClass("android/view/Surface");
+            if (surfaceClass == NULL) {
+                LOGE("Can't find android/view/Surface");
+                return NULL;
+            }
+            //LOGV2("   o Got %d", jclass);
+
+            LOGV2("Resolving android.view.Surface field ID");
+            jfieldID surfaceID = env->GetFieldID(surfaceClass, ANDROID_VIEW_SURFACE_JNI_ID, "I");
+            if (surfaceID == NULL) {
+                LOGE("Can't find Surface.mSurface");
+                return NULL;
+            }
+            LOGV2("   o Got %p", surfaceID);
+
+            LOGV2("Getting Surface off of the Java Surface");
+            sp<Surface> surface = (Surface *)env->GetIntField(javaSurface, surfaceID);
+            LOGV2("   o Got %p", surface.get());
+
+            LOGV2("Getting ISurface off of the Surface");
+            sp<ISurface> surfInterface = surface->getISurface();
+            LOGV2("   o Got %p", surfInterface.get());
+
+            LOGV2("Calling createRenderer %p %s...", surfInterface.get(), componentName);
+            return createRenderer(
+                    surfInterface, componentName, colorFormat, encodedWidth,
+                    encodedHeight, displayWidth, displayHeight,
+                    rotationDegrees);
+        }
     };
 
     struct AMessage;
@@ -684,7 +888,7 @@ namespace android_video_shim
             typedef sp<MetaData> (*localFuncCast)(void *thiz);
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android11MediaBuffer9meta_dataEv");
             assert(lfc);
-            LOGV("MediaBuffer::meta_data = %p this=%p", lfc, this);
+            LOGV2("MediaBuffer::meta_data = %p this=%p", lfc, this);
 
             return lfc(this);
         }
@@ -1294,6 +1498,14 @@ namespace android_video_shim
             lfc(this);
         }
 
+        bool findPointer(uint32_t key, void **value)
+        {
+            typedef bool (*localFuncCast)(void *thiz, uint32_t key, void **value);
+            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android8MetaData11findPointerEjPPv");
+            assert(lfc);
+            return lfc(this, key, value);
+        }
+
         bool findInt32(uint32_t key, int32_t *value)
         {
             typedef bool (*localFuncCast)(void *thiz, uint32_t key, int32_t *value);
@@ -1714,9 +1926,9 @@ namespace android_video_shim
 
         status_t _getSize_23(off64_t* size)
         {
-            LOGV("Attempting _getSize_23 %x", size);
+            LOGV("Attempting _getSize_23 size=%p", size);
             status_t rval = mSources[mSourceIdx]->getSize_23(size);
-            LOGV("getSize - %p | size = %ld",this, *size);
+            LOGV("getSize - %p | size = %lld", this, *size);
             return rval;
         }
 
@@ -1729,69 +1941,6 @@ namespace android_video_shim
         off64_t mOffsetAdjustment;
 
     };
-
-    typedef enum OMX_COLOR_FORMATTYPE {
-        OMX_COLOR_FormatUnused,
-        OMX_COLOR_FormatMonochrome,
-        OMX_COLOR_Format8bitRGB332,
-        OMX_COLOR_Format12bitRGB444,
-        OMX_COLOR_Format16bitARGB4444,
-        OMX_COLOR_Format16bitARGB1555,
-        OMX_COLOR_Format16bitRGB565,
-        OMX_COLOR_Format16bitBGR565,
-        OMX_COLOR_Format18bitRGB666,
-        OMX_COLOR_Format18bitARGB1665,
-        OMX_COLOR_Format19bitARGB1666,
-        OMX_COLOR_Format24bitRGB888,
-        OMX_COLOR_Format24bitBGR888,
-        OMX_COLOR_Format24bitARGB1887,
-        OMX_COLOR_Format25bitARGB1888,
-        OMX_COLOR_Format32bitBGRA8888,
-        OMX_COLOR_Format32bitARGB8888,
-        OMX_COLOR_FormatYUV411Planar,
-        OMX_COLOR_FormatYUV411PackedPlanar,
-        OMX_COLOR_FormatYUV420Planar,
-        OMX_COLOR_FormatYUV420PackedPlanar,
-        OMX_COLOR_FormatYUV420SemiPlanar,
-        OMX_COLOR_FormatYUV422Planar,
-        OMX_COLOR_FormatYUV422PackedPlanar,
-        OMX_COLOR_FormatYUV422SemiPlanar,
-        OMX_COLOR_FormatYCbYCr,
-        OMX_COLOR_FormatYCrYCb,
-        OMX_COLOR_FormatCbYCrY,
-        OMX_COLOR_FormatCrYCbY,
-        OMX_COLOR_FormatYUV444Interleaved,
-        OMX_COLOR_FormatRawBayer8bit,
-        OMX_COLOR_FormatRawBayer10bit,
-        OMX_COLOR_FormatRawBayer8bitcompressed,
-        OMX_COLOR_FormatL2,
-        OMX_COLOR_FormatL4,
-        OMX_COLOR_FormatL8,
-        OMX_COLOR_FormatL16,
-        OMX_COLOR_FormatL24,
-        OMX_COLOR_FormatL32,
-        OMX_COLOR_FormatYUV420PackedSemiPlanar,
-        OMX_COLOR_FormatYUV422PackedSemiPlanar,
-        OMX_COLOR_Format18BitBGR666,
-        OMX_COLOR_Format24BitARGB6666,
-        OMX_COLOR_Format24BitABGR6666,
-        OMX_COLOR_FormatKhronosExtensions = 0x6F000000, /**< Reserved region for introducing Khronos Standard Extensions */
-        OMX_COLOR_FormatVendorStartUnused = 0x7F000000, /**< Reserved region for introducing Vendor Extensions */
-        /**<Reserved android opaque colorformat. Tells the encoder that
-         * the actual colorformat will be  relayed by the
-         * Gralloc Buffers.
-         * FIXME: In the process of reserving some enum values for
-         * Android-specific OMX IL colorformats. Change this enum to
-         * an acceptable range once that is done.
-         * */
-        OMX_COLOR_FormatAndroidOpaque = 0x7F000789,
-        OMX_TI_COLOR_FormatYUV420PackedSemiPlanar = 0x7F000100,
-        OMX_QCOM_COLOR_FormatYVU420SemiPlanar = 0x7FA30C00,
-        QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka = 0x7fa30c03,
-        OMX_QCOM_COLOR_FormatYUV420PackedSemiPlanar32m = 0x7fa30c04,
-
-        OMX_COLOR_FormatMax = 0x7FFFFFFF
-    } OMX_COLOR_FORMATTYPE;
 
     struct ColorConverter
     {

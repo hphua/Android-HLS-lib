@@ -23,16 +23,21 @@ namespace android_video_shim
     int gAPILevel = -1;
 
     // Libraries to search, in priority order.
-    static int gLibCount = 8;
+    static int gLibCount = 13;
     static const char *gLibName[] = {
         "libandroid.so",
         "libandroid_runtime.so",
         "libstagefright.so",
+        "libstagefright_hw.so",
+        "libstagefrighthw.so",
+        "libstagefright_omx.so",
         "libstagefright_avc_common.so",
         "libstagefright_color_conversion.so",
         "libutils.so",
         "libmedia.so",
-        "libstlport.so"
+        "libstlport.so",
+        "libsurfaceflinger.so",
+        "libsurfaceflinger_client.so"
     };
     static void *gLib[128];
     static int gLibsInitialized = 0;

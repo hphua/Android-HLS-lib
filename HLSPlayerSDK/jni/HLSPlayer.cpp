@@ -135,7 +135,8 @@ void HLSPlayer::SetSurface(JNIEnv* env, jobject surface)
 
 	mSurface = (jobject)env->NewGlobalRef(surface);
 
-	ANativeWindow* window = ANativeWindow_fromSurface(env, mSurface);
+#if 0
+	::ANativeWindow* window = ANativeWindow_fromSurface(env, mSurface);
 
 	LOGI("Java_com_kaltura_hlsplayersdk_PlayerView_SetSurface() - window = %p", window);
 //	LOGI("window->flags = %x", window->flags);
@@ -151,9 +152,10 @@ void HLSPlayer::SetSurface(JNIEnv* env, jobject surface)
 	{
 		UpdateWindowBufferFormat();
 	}
+	#endif
 }
 
-void HLSPlayer::SetNativeWindow(ANativeWindow* window)
+void HLSPlayer::SetNativeWindow(::ANativeWindow* window)
 {
 	LOGI("window = %p", window);
 	if (mWindow)
@@ -218,7 +220,7 @@ bool HLSPlayer::InitTracks()
 	mExtractor = MediaExtractor::Create(mDataSource, "video/mp2ts");
 	if (mExtractor == NULL)
 	{
-		LOGE("Could not create MediaExtractor from DataSource %p", mDataSource.get());
+		LOGE("Could not create MediaExtractor from DataSource @ %p", mDataSource.get());
 		return false;
 	}
 
@@ -396,7 +398,7 @@ bool HLSPlayer::InitSources()
 	{
 		LOGV("   - taking 4.x path");
 		LOGV("OMXCodec::Create - format=%p track=%p", vidFormat.get(), mVideoTrack.get());
-		mVideoSource = OMXCodec::Create(iomx, vidFormat, false, mVideoTrack, NULL, 0);
+		mVideoSource = OMXCodec::Create(iomx, vidFormat, false, mVideoTrack, NULL, 4);
 		LOGV("   - got %p back", mVideoSource.get());
 	}
 	else
@@ -404,7 +406,7 @@ bool HLSPlayer::InitSources()
 		LOGV("   - taking 2.3 path");
 
 		LOGV("OMXCodec::Create - format=%p track=%p", vidFormat.get(), mVideoTrack23.get());
-		mVideoSource23 = OMXCodec::Create23(iomx, vidFormat, false, mVideoTrack23, NULL, 0);
+		mVideoSource23 = OMXCodec::Create23(iomx, vidFormat, false, mVideoTrack23, NULL, 4);
 		LOGV("   - got %p back", mVideoSource23.get());
 	}
 	
@@ -431,6 +433,75 @@ bool HLSPlayer::InitSources()
 		left = top = 0;
 		mCropWidth = mWidth;
 		mCropHeight = mHeight;
+	}
+
+	// MAGIC HAX for the purposes of testing the new renderer.
+	int colorFormat = -1;
+	meta->findInt32(kKeyColorFormat, &colorFormat);
+
+	const char *component = "";
+	if(meta->findCString(kKeyDecoderComponent, &component))
+	{
+		// Set things up w/ OMX.
+		LOGV("Trying OMXRenderer path!");
+		JNIEnv *env = NULL;
+		mJvm->AttachCurrentThread(&env, NULL);
+		LOGV(" env=%p", env);
+
+		LOGV("Getting IOMX");
+		sp<IOMX> omx = mClient.interface();
+		LOGV("   got %p", omx.get());
+
+		LOGI("Calling createRendererFromJavaSurface component='%s' %dx%d colf=%d", component, mWidth, mHeight, colorFormat);
+		mVideoRenderer = omx.get()->createRendererFromJavaSurface(env, mSurface, 
+			component, (OMX_COLOR_FORMATTYPE)colorFormat, 
+			mWidth, mHeight,
+			320, 240,
+			0);
+		LOGV("   o got %p", mVideoRenderer.get());
+		assert(mVideoRenderer.get());
+
+/*
+		typedef void *(*localFuncCast)(
+        const sp<ISurface> &surface,
+        const char *componentName,
+        OMX_COLOR_FORMATTYPE colorFormat,
+        size_t displayWidth, size_t displayHeight,
+        size_t decodedWidth, size_t decodedHeight,
+        int32_t rotationDegrees);
+
+		localFuncCast lfc = (localFuncCast)searchSymbol("_Z14createRendererRKN7android2spINS_8ISurfaceEEEPKc20OMX_COLOR_FORMATTYPEjjjj");
+		LOGV("createRenderer lfc=%p", lfc);
+		assert(lfc);
+
+        LOGV2("Resolving android.view.Surface class.");
+        jclass surfaceClass = env->FindClass("android/view/Surface");
+        if (surfaceClass == NULL) {
+            LOGE("Can't find android/view/Surface");
+            return NULL;
+        }
+        //LOGV2("   o Got %d", jclass);
+
+        LOGV2("Resolving android.view.Surface field ID");
+        jfieldID surfaceID = env->GetFieldID(surfaceClass, ANDROID_VIEW_SURFACE_JNI_ID, "I");
+        if (surfaceID == NULL) {
+            LOGE("Can't find Surface.mSurface");
+            return NULL;
+        }
+        LOGV2("   o Got %p", surfaceID);
+
+        LOGV2("Getting Surface off of the Java Surface");
+        sp<Surface> surface = (Surface *)env->GetIntField(mSurface, surfaceID);
+        LOGV2("   o Got %p", surface.get());
+
+        LOGV2("Getting ISurface off of the Surface");
+        sp<ISurface> surfInterface = surface->getISurface();
+        LOGV2("   o Got %p", surfInterface.get());
+
+        LOGV2("   surfInterface=%p component='%s' colf=%d %dx%d", surfInterface.get(), component, colorFormat, mWidth, mHeight);
+		void *r = lfc(surfInterface, component, (OMX_COLOR_FORMATTYPE)colorFormat, mWidth, mHeight, mWidth, mHeight, 0);
+		LOGV2("   r=%p", r); */
+		
 	}
 
 	UpdateWindowBufferFormat();
@@ -560,7 +631,7 @@ bool HLSPlayer::UpdateWindowBufferFormat()
 
 	LOGI("bufferWidth=%d | bufferHeight=%d", bufferWidth, bufferHeight);
 
-	int32_t res = ANativeWindow_setBuffersGeometry(mWindow, bufferWidth, bufferHeight, WINDOW_FORMAT_RGB_565);
+	//int32_t res = ANativeWindow_setBuffersGeometry(mWindow, bufferWidth, bufferHeight, WINDOW_FORMAT_RGB_565);
 }
 
 //
@@ -573,15 +644,13 @@ bool HLSPlayer::Play()
 {
 	LOGI("Entered");
 	
-	if (!mWindow) 
+	if (!InitSources()) return false;
+
+	/*if (!mWindow) 
 	{
 		LOGI("mWindow is NULL"); 
 		return false; 
-	}
-
-	LOGI("%d", __LINE__);
-
-	if (!InitSources()) return false;
+	}*/
 
 	status_t err = OK;
 	
@@ -808,6 +877,24 @@ int HLSPlayer::Update()
 
 bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 {
+	if(mVideoRenderer.get())
+	{
+        
+        int fmt = -1;
+        mVideoSource23->getFormat()->findInt32(kKeyColorFormat, &fmt);
+
+		LOGI("Cond1 for hw path colf=%d", fmt);
+
+        void *id;
+        if (buffer->meta_data()->findPointer(kKeyBufferID, &id)) {
+			LOGV2("Cond2 for hw path");
+            mVideoRenderer->render(id);
+			LOGV2("Cond3 for hw path");
+			//sched_yield();
+            return true;
+        }
+	}
+
 	//LOGI("Entered");
 	//LOGI("Rendering Buffer size=%d", buffer->size());
 	if (!mWindow) { LOGI("mWindow is NULL"); return false; }
@@ -829,7 +916,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 		if(!buffer->meta_data()->findInt32(kKeyWidth, &videoBufferWidth) || !vidFormat->findInt32(kKeyHeight, &videoBufferHeight))
 		{
 			// I hope we're right!
-			LOGV("Setting best guess width/height");
+			LOGV("Setting best guess width/height %dx%d", mWidth, mHeight);
 			videoBufferWidth = mWidth;
 			videoBufferHeight = mHeight;			
 		}
@@ -868,7 +955,11 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 
 	int colf = 0;
 	bool res = vidFormat->findInt32(kKeyColorFormat, &colf);
-	//LOGI("Found Frame Color Format: %s", res ? "true" : "false" );
+	LOGV2("Found Frame Color Format: %s %d", res ? "true" : "false", colf);
+
+	const char *omxCodecString = "";
+	res = vidFormat->findCString(kKeyDecoderComponent, &omxCodecString);
+	LOGV("Found Frame decoder component: %s %s", res ? "true" : "false", omxCodecString);
 
 	ColorConverter_Local lcc((OMX_COLOR_FORMATTYPE)colf, OMX_COLOR_Format16bitRGB565);
 	//LOGI("ColorConversion from %x is valid: %s", colf, lcc.isValid() ? "true" : "false" );
@@ -876,7 +967,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 	ColorConverter cc((OMX_COLOR_FORMATTYPE)colf, OMX_COLOR_Format16bitRGB565); // Should be getting these from the formats, probably
 	//LOGI("ColorConversion from %x is valid: %s", colf, cc.isValid() ? "true" : "false" );
 
-	bool useLocalCC = lcc.isValid();
+	bool useLocalCC = lcc.isValid();	
 	if (!useLocalCC && !cc.isValid())
 	{
 		LOGE("No valid color conversion found for %d", colf);

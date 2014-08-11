@@ -11,8 +11,10 @@ import com.kaltura.hlsplayersdk.manifest.events.OnParseCompleteListener;
 import android.content.Context;
 import android.os.Handler;
 import android.util.Log;
+import android.graphics.PixelFormat;
 import android.view.Surface;
 import android.view.SurfaceView;
+import android.view.SurfaceHolder;
 import android.widget.MediaController.MediaPlayerControl;
 import android.widget.VideoView;
 import android.widget.RelativeLayout;
@@ -105,7 +107,7 @@ public class PlayerView extends SurfaceView implements
 
 		Log.i("PlayerView.setVideoUrl", "Set size to " + w + "x" + h);
 		SetScreenSize(w, h);
-		getHolder().setFixedSize(w, h);
+		//getHolder().setFixedSize(w, h);
 	}
 	
 	// Called when the manifest parser is complete. Once this is done, play can actually start
@@ -153,6 +155,12 @@ public class PlayerView extends SurfaceView implements
 		}
 
 		currentPlayerView = this;
+
+		// Set the surface type.
+		getHolder().setKeepScreenOn(true);
+		getHolder().setFixedSize(320, 240);
+		getHolder().setFormat(19);
+		getHolder().setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
 	}
 	
 	

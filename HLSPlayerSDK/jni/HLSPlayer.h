@@ -112,6 +112,8 @@ private:
 
 	android_video_shim::MediaBuffer* mVideoBuffer;
 
+	android_video_shim::sp<android_video_shim::IOMXRenderer> mVideoRenderer;
+
 	int64_t mBitrate;
 	int32_t mWidth;
 	int32_t mHeight;

@@ -218,7 +218,7 @@ void HLSPlayerSDK::PlayFile()
 	{
 		while (mPlayer->Update() == 0)
 		{
-			LOGI(CLASS_NAME, "Decoded a frame!");
+			LOGI("Decoded a frame!");
 		}
 	}
 }
