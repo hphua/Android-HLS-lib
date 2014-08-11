@@ -10,7 +10,6 @@ import android.util.Log;
 import android.view.Surface;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
-<<<<<<< HEAD
 
 import android.widget.MediaController.MediaPlayerControl;
 import android.widget.RelativeLayout;

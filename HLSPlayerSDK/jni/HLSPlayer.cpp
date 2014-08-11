@@ -742,9 +742,9 @@ int HLSPlayer::Update()
 			case ERROR_END_OF_STREAM:
 				//SetState(STOPPED);
 				//PlayNextSegment();
-				//return -1;
-				LOGI("Saw end of stream but who really cares about that?");
-				return 0;
+				return -1;
+				//LOGI("Saw end of stream but who really cares about that?");
+				//return 0;
 				break;
 			default:
 				SetState(STOPPED);
