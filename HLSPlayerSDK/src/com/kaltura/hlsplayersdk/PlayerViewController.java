@@ -87,12 +87,13 @@ public class PlayerViewController extends RelativeLayout implements VideoPlayerI
         Log.i("PlayerViewController.onSizeChanged", "Set size to " + w + "x" + h);
     }
 
-    public void destroy() {
-        if ( mPlayerView!=null )
-        {
-            mPlayerView.stop();
-            mPlayerView.close();
-        }
+    public void destroy() 
+    {
+        if ( mPlayerView == null )
+            return;
+
+        mPlayerView.stop();
+        mPlayerView.close();
     }
     
     // /////////////////////////////////////////////////////////////////////////////////////////////
@@ -168,8 +169,7 @@ public class PlayerViewController extends RelativeLayout implements VideoPlayerI
 
     @Override
     public void registerPlayheadUpdate(OnPlayheadUpdateListener listener) {
-        // TODO Auto-generated method stub
-        
+        mPlayerView.mPlayheadUpdateListener = listener;
     }
 
     @Override

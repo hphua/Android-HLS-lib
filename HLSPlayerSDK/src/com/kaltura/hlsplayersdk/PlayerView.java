@@ -19,6 +19,8 @@ import com.kaltura.hlsplayersdk.manifest.events.OnParseCompleteListener;
 import com.kaltura.hlsplayersdk.manifest.ManifestParser;
 import com.kaltura.hlsplayersdk.manifest.ManifestSegment;
 
+import com.kaltura.hlsplayersdk.events.OnPlayheadUpdateListener;
+
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Timer;
@@ -79,7 +81,9 @@ public class PlayerView extends SurfaceView implements
 	private StreamHandler mStreamHandler = null;
 	
 	private int mTimeMS = 0;
-		
+	
+	public OnPlayheadUpdateListener mPlayheadUpdateListener;
+
 	private Handler handler = new Handler();
 	private Runnable runnable = new Runnable()
 	{
@@ -173,13 +177,10 @@ public class PlayerView extends SurfaceView implements
 		getHolder().setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
 	}
 	
-	
 	public void close()
 	{
 		CloseNativeDecoder();
 	}
-	
-	
 	
 	public String getVideoUrl()
 	{
@@ -192,7 +193,6 @@ public class PlayerView extends SurfaceView implements
 			return mStreamHandler.getDuration();
 		return -1;
 	}
-	
 	
 	public int getCurrentPosition()
 	{
@@ -262,7 +262,6 @@ public class PlayerView extends SurfaceView implements
 			e.printStackTrace();
 		}
 	}
-	
 
 	public void seek(int msec)
 	{

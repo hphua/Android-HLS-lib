@@ -104,20 +104,16 @@ extern "C"
 		gHLSPlayerSDK->GetPlayer()->SetScreenSize(width, height);
 	}
 
-	void Java_com_kaltura_hlsplayersdk_PlayerView_NextFrame(JNIEnv* env, jobject jcaller)
+	int Java_com_kaltura_hlsplayersdk_PlayerView_NextFrame(JNIEnv* env, jobject jcaller)
 	{
 		//LOGI("Entered");
-		if (gHLSPlayerSDK != NULL)
-		{
-			if (gHLSPlayerSDK->GetPlayer())
-			{
-				if (gHLSPlayerSDK->GetPlayer()->Update() >= 0)
-				{
-					return gHLSPlayerSDK->GetPlayer()->GetCurrentTimeMS();
-				}
-			}
-		}
-		return 0;
+		if (gHLSPlayerSDK == NULL)
+			return 0;
+		if (!gHLSPlayerSDK->GetPlayer())
+			return 0;
+		if (gHLSPlayerSDK->GetPlayer()->Update() >= 0)
+			return 0;
+		return gHLSPlayerSDK->GetPlayer()->GetCurrentTimeMS();
 	}
 
 	void Java_com_kaltura_hlsplayersdk_PlayerView_FeedSegment(JNIEnv* env, jobject jcaller, jstring jurl, jint quality, jdouble startTime )
