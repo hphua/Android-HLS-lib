@@ -71,7 +71,10 @@ public class PlayerViewController extends RelativeLayout implements VideoPlayerI
     public void addComponents(String iframeUrl, Activity activity) {
         mActivity = activity;
 
+        setBackgroundColor(0xFF000000);
+
         LayoutParams lp = new LayoutParams(ViewGroup.LayoutParams.FILL_PARENT, ViewGroup.LayoutParams.FILL_PARENT);
+        lp.addRule(RelativeLayout.CENTER_IN_PARENT, RelativeLayout.TRUE);
         mPlayerView = new PlayerView(mActivity);
         addView(mPlayerView, lp);
         
