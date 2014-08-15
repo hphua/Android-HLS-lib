@@ -12,3 +12,6 @@ HLSPlayerSDK/obj/
 VideoPlayer/bin/
 VideoPlayer/gen/
 *.dmp
+KalturaPlayerRobotium/bin/
+KalturaPlayerRobotium/gen/
+KalturaPlayerTests/local.properties
