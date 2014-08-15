@@ -15,9 +15,11 @@
 #define _DEBUG_E
 #define _DEBUG_W
 #define _DEBUG_I
-#define _DEBUG_V
+//#define _DEBUG_V
 //#define _DEBUG_V2
 //#define _DEBUG_RUN
+
+//#define _DEBUG_SCREENINFO
 
 //#define _VERBOSE
 #ifdef _DEBUG_E
@@ -48,6 +50,12 @@
 #define LOGV2(...) __android_log_print(ANDROID_LOG_VERBOSE, __func__, __VA_ARGS__)
 #else
 #define LOGV2(...)
+#endif
+
+#ifdef _DEBUG_SCREENINFO
+#define LOGSCREENINFO(...) __android_log_print(ANDROID_LOG_VERBOSE, __func__, __VA_ARGS__)
+#else
+#define LOGSCREENINFO(...)
 #endif
 
 #ifdef _DEBUG_RUN

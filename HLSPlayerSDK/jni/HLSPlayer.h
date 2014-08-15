@@ -65,9 +65,15 @@ private:
 	bool InitTracks();
 
 	void RequestNextSegment();
-	void RequestSegmentForTime(double time);
+
+	double RequestSegmentForTime(double time);
 	void NoteVideoDimensions();
 	void NoteHWRendererMode(bool enabled);
+
+
+	/// seeking methods
+	void StopEverything();
+	///
 
 	std::list<HLSSegment* > mSegments;
 
@@ -134,6 +140,10 @@ private:
 
 	int32_t mScreenWidth;
 	int32_t mScreenHeight;
+
+	int32_t mStartTimeMS;
+
+	pthread_mutex_t lock;
 };
 
 

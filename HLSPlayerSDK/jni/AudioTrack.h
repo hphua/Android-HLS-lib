@@ -23,7 +23,8 @@ public:
 	bool Start();
 	void Play();
 	void Pause();
-	bool Stop();
+	void Flush();
+	bool Stop(bool seeking = false);
 
 	bool Set(android_video_shim::sp<android_video_shim::MediaSource> audioSource, bool alreadyStarted = false);
 	bool Set23(android_video_shim::sp<android_video_shim::MediaSource23> audioSource, bool alreadyStarted = false);
@@ -31,6 +32,7 @@ public:
 	bool Update();
 
 	int64_t GetTimeStamp();
+	void SetTimeStampOffset(double offsetSecs);
 
 private:
 	jclass mCAudioTrack;
@@ -42,6 +44,7 @@ private:
 	jmethodID mRelease;
 	jmethodID mGetTimestamp;
 	jmethodID mWrite;
+	jmethodID mFlush;
 	jmethodID mGetPlaybackHeadPosition;
 
 	jobject mTrack;
@@ -58,7 +61,10 @@ private:
 
 	int mPlayState;
 
+	double mTimeStampOffset;
+
 	sem_t semPause;
+    pthread_mutex_t updateMutex;
 
 };
 

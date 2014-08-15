@@ -104,7 +104,7 @@ extern "C"
 		gHLSPlayerSDK->GetPlayer()->SetScreenSize(width, height);
 	}
 
-	int Java_com_kaltura_hlsplayersdk_PlayerView_NextFrame(JNIEnv* env, jobject jcaller)
+	jint Java_com_kaltura_hlsplayersdk_PlayerView_NextFrame(JNIEnv* env, jobject jcaller)
 	{
 		//LOGI("Entered");
 		if (gHLSPlayerSDK == NULL)
@@ -112,8 +112,8 @@ extern "C"
 		if (!gHLSPlayerSDK->GetPlayer())
 			return 0;
 		if (gHLSPlayerSDK->GetPlayer()->Update() >= 0)
-			return 0;
-		return gHLSPlayerSDK->GetPlayer()->GetCurrentTimeMS();
+			return gHLSPlayerSDK->GetPlayer()->GetCurrentTimeMS();
+		return 0;
 	}
 
 	void Java_com_kaltura_hlsplayersdk_PlayerView_FeedSegment(JNIEnv* env, jobject jcaller, jstring jurl, jint quality, jdouble startTime )
@@ -199,12 +199,6 @@ void HLSPlayerSDK::PlayFile()
 	LOGI("::PlayFile()");
 	if (!mPlayer && !CreateDecoder()) return;
 
-	//	mPlayer->FeedSegment("/storage/emulated/0/Movies/segment1_0_av.ts");
-	//	mPlayer->FeedSegment("/storage/emulated/0/Movies/segment2_0_av.ts");
-	//mPlayer->FeedSegment("/storage/emulated/0/Movies/segment3_0_av.ts");
-	//mPlayer->FeedSegment("/storage/emulated/0/Movies/segment4_0_av.ts");
-	//mPlayer->FeedSegment("/storage/emulated/0/Movies/segment5_0_av.ts");
-	//mPlayer->FeedSegment("/storage/emulated/0/Movies/segment6_0_av.ts");
 	if (mPlayer->Play())
 	{
 		while (mPlayer->Update() == 0)

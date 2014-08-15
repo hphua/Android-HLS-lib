@@ -12,15 +12,19 @@
 
 using namespace android_video_shim;
 
-AudioTrack::AudioTrack(JavaVM* jvm) : mJvm(jvm), mAudioTrack(NULL), mGetMinBufferSize(NULL), mPlay(NULL), mPause(NULL), mStop(NULL),
+AudioTrack::AudioTrack(JavaVM* jvm) : mJvm(jvm), mAudioTrack(NULL), mGetMinBufferSize(NULL), mPlay(NULL), mPause(NULL), mStop(NULL), mFlush(NULL),
 										mRelease(NULL), mGetTimestamp(NULL), mCAudioTrack(NULL), mWrite(NULL), mGetPlaybackHeadPosition(NULL),
-										mSampleRate(0), mNumChannels(0), mBufferSizeInBytes(0), mChannelMask(0), mTrack(NULL), mPlayState(STOPPED)
+										mSampleRate(0), mNumChannels(0), mBufferSizeInBytes(0), mChannelMask(0), mTrack(NULL), mPlayState(STOPPED),
+										mTimeStampOffset(0)
 {
 	// TODO Auto-generated constructor stub
 	if (!mJvm)
 	{
 		LOGE("Java VM is NULL");
 	}
+
+	int err = pthread_mutex_init(&updateMutex, NULL);
+	LOGI(" AudioTrack mutex err = %d", err);
 }
 
 AudioTrack::~AudioTrack() {
@@ -81,6 +85,7 @@ bool AudioTrack::Init()
         mPlay = env->GetMethodID(mCAudioTrack, "play", "()V");
         mStop = env->GetMethodID(mCAudioTrack, "stop", "()V");
         mPause = env->GetMethodID(mCAudioTrack, "pause", "()V");
+        mFlush = env->GetMethodID(mCAudioTrack, "flush", "()V");
         mRelease = env->GetMethodID(mCAudioTrack, "release", "()V");
         mWrite = env->GetMethodID(mCAudioTrack, "write", "([BII)I");
         mGetPlaybackHeadPosition = env->GetMethodID(mCAudioTrack, "getPlaybackHeadPosition", "()I");
@@ -91,6 +96,12 @@ bool AudioTrack::Init()
 
 bool AudioTrack::Set(sp<MediaSource> audioSource, bool alreadyStarted)
 {
+	if (mAudioSource.get())
+	{
+		mAudioSource->stop();
+		mAudioSource.clear();
+	}
+
 	LOGI("Set with %p", audioSource.get());
 	mAudioSource = audioSource;
 	if (!alreadyStarted) mAudioSource->start(NULL);
@@ -135,6 +146,9 @@ bool AudioTrack::Set(sp<MediaSource> audioSource, bool alreadyStarted)
 
 bool AudioTrack::Set23(sp<MediaSource23> audioSource, bool alreadyStarted)
 {
+	if (mAudioSource23.get())
+		mAudioSource23->stop();
+
 	LOGI("Set23 with %p", audioSource.get());
 	mAudioSource23 = audioSource;
 	if (!alreadyStarted) mAudioSource23->start(NULL);
@@ -225,6 +239,7 @@ bool AudioTrack::Start()
 		return false;
 	}
 
+
 	mTrack = env->NewGlobalRef(env->NewObject(mCAudioTrack, mAudioTrack, STREAM_MUSIC, mSampleRate, channelConfig, ENCODING_PCM_16BIT, mBufferSizeInBytes * 2, MODE_STREAM ));
 	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mPlay);
 	mPlayState = PLAYING;
@@ -234,27 +249,66 @@ bool AudioTrack::Start()
 
 void AudioTrack::Play()
 {
-	if (mPlayState == PAUSED)
+	if (mPlayState == PLAYING) return;
+	int lastPlayState = mPlayState;
+
+	mPlayState = PLAYING;
+
+	if (lastPlayState == PAUSED || lastPlayState == SEEKING)
 	{
+		LOGI("Playing Audio Thread: state = %s | semPause.count = %d", mPlayState==PAUSED?"PAUSED":(mPlayState==SEEKING?"SEEKING":"Not Possible!"), semPause.count );
 		sem_post(&semPause);
 	}
-	if (mPlayState == PLAYING) return;
-	mPlayState = PLAYING;
-	sem_post(&semPause);
+
+	LOGI("Audio State = PLAYING: semPause.count = %d", semPause.count);
+
 	JNIEnv* env;
 	mJvm->AttachCurrentThread(&env, NULL);
 	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mPlay);
 
 }
 
-bool AudioTrack::Stop()
+bool AudioTrack::Stop(bool seeking)
 {
-	if (mPlayState == PAUSED)
+	if (mPlayState == STOPPED) return true;
+
+	int lastPlayState = mPlayState;
+
+	if (seeking)
+		mPlayState = SEEKING;
+	else
+		mPlayState = STOPPED;
+
+	if (lastPlayState == PAUSED)
 	{
+		LOGI("Stopping Audio Thread: state = PAUSED | semPause.count = %d", semPause.count );
 		sem_post(&semPause);
 	}
-	if (mPlayState == STOPPED) return true;
-	mPlayState = STOPPED;
+	else if (lastPlayState == SEEKING)
+	{
+		LOGI("Stopping Audio Thread: state = SEEKING | semPause.count = %d", semPause.count );
+		sem_post(&semPause);
+	}
+
+	if(seeking)
+	{
+		pthread_mutex_lock(&updateMutex);
+
+		if (mAudioSource.get())
+		{
+			mAudioSource->stop();
+			mAudioSource.clear();
+		}
+
+		if (mAudioSource23.get())
+		{
+			mAudioSource23->stop();
+			mAudioSource23.clear();
+		}
+
+		pthread_mutex_unlock(&updateMutex);
+	}
+
 	JNIEnv* env;
 	mJvm->AttachCurrentThread(&env, NULL);
 	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mStop);
@@ -270,28 +324,60 @@ void AudioTrack::Pause()
 	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mPause);
 }
 
+void AudioTrack::Flush()
+{
+	if (mPlayState == PLAYING) return;
+	JNIEnv* env;
+	mJvm->AttachCurrentThread(&env, NULL);
+	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mFlush);
+}
+
+void AudioTrack::SetTimeStampOffset(double offsetSecs)
+{
+	mTimeStampOffset = offsetSecs;
+}
+
+
 int64_t AudioTrack::GetTimeStamp()
 {
 	JNIEnv* env;
 	mJvm->AttachCurrentThread(&env, NULL);
 	double frames = env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mGetPlaybackHeadPosition);
 	double secs = frames / (double)mSampleRate;
-	return (secs * 1000000);
+	LOGV2("secs = %f | mTimeStampOffset = %f", secs, mTimeStampOffset);
+	return ((secs + mTimeStampOffset) * 1000000);
 }
 
 
 bool AudioTrack::Update()
 {
+	LOGV("Audio Update Thread Running");
 	if (mPlayState != PLAYING)
 	{
 		while (mPlayState == PAUSED)
+		{
+			LOGI("Pausing Audio Thread: state = PAUSED | semPause.count = %d", semPause.count );
 			sem_wait(&semPause);
+		}
+
+		while (mPlayState == SEEKING)
+		{
+			LOGI("Pausing Audio Thread: state = SEEKING | semPause.count = %d", semPause.count );
+			sem_wait(&semPause);
+			LOGI("Resuming Audio Thread: state = %d | semPause.count = %d", mPlayState, semPause.count );
+		}
 
 		if (mPlayState == STOPPED)
+		{
+			LOGI("mPlayState == STOPPED. Ending audio update thread!");
 			return false; // We don't really want to add more stuff to the buffer
 							// and potentially run past the end of buffered source data
 							// if we're not actively playing
+		}
 	}
+
+	pthread_mutex_lock(&updateMutex);
+
 	JNIEnv* env;
 	mJvm->AttachCurrentThread(&env, NULL);
 
@@ -299,16 +385,18 @@ bool AudioTrack::Update()
 
 	//LOGI("Reading to the media buffer");
 	status_t res;
-	
+
 	if(mAudioSource.get())
 		res = mAudioSource->read(&mediaBuffer, NULL);
-	
+
 	if(mAudioSource23.get())
 		res = mAudioSource23->read(&mediaBuffer, NULL);
 
-	//LOGI("Finished reading from the media buffer");
 	if (res == OK)
 	{
+		LOGI("Finished reading from the media buffer");
+
+
 		RUNDEBUG(mediaBuffer->meta_data()->dumpToLog());
 		env->PushLocalFrame(2);
 
@@ -341,16 +429,19 @@ bool AudioTrack::Update()
 		}
 
 		env->PopLocalFrame(NULL);
-
+		
 	}
 	else if (res == INFO_FORMAT_CHANGED)
 	{
+		LOGE("Format Changed");
+		pthread_mutex_unlock(&updateMutex);
 		Update();
 	}
 	else if (res == ERROR_END_OF_STREAM)
 	{
 		LOGE("End of Audio Stream");
 		mJvm->DetachCurrentThread();
+		pthread_mutex_unlock(&updateMutex);
 		return false;
 	}
 
@@ -361,9 +452,8 @@ bool AudioTrack::Update()
 		mediaBuffer->release();
 	}
 
+	pthread_mutex_unlock(&updateMutex);
 	return true;
-
-
 }
 
 
