@@ -256,7 +256,6 @@ void AudioTrack::Play()
 
 	LOGI("Audio State = PLAYING: semPause.count = %d", semPause.count);
 
-	//sem_post(&semPause);
 	JNIEnv* env;
 	mJvm->AttachCurrentThread(&env, NULL);
 	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mPlay);

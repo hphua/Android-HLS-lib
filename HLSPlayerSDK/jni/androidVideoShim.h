@@ -1757,7 +1757,7 @@ namespace android_video_shim
 
         virtual void foo() { assert(0); }
 
-        void clearsources()
+        void clearSources()
         {
         	pthread_mutex_lock(&mutex);
         	mSources.clear();

@@ -1210,14 +1210,11 @@ void HLSPlayer::TogglePause()
 	{
 		SetState(PLAYING);
 		mJAudioTrack->Play();
-//		status_t res = mAudioPlayer->resume();
-//		LOGI("AudioPlayer->resume() result = %s", strerror(-res));
 	}
 	else if (GetState() == PLAYING)
 	{
 		SetState(PAUSED);
 		mJAudioTrack->Pause();
-//		mAudioPlayer->pause(false);
 	}
 }
 
@@ -1229,7 +1226,6 @@ void HLSPlayer::Stop()
 	{
 		SetState(STOPPED);
 		mJAudioTrack->Stop();
-//		mAudioPlayer->pause(false);
 	}
 }
 
@@ -1272,19 +1268,18 @@ void HLSPlayer::StopEverything()
 
 void HLSPlayer::Seek(double time)
 {
+	if (time < 0) time == 0;
+
 	SetState(SEEKING);
 
 	StopEverything();
-	mDataSource->clearsources();
-
+	mDataSource->clearSources();
 
 	double segTime = RequestSegmentForTime(time);
 
 	mStartTimeMS = (segTime * 1000);
 
 	LOGI("Segment Start Time = %f", segTime);
-
-
 
 	int segCount = ((HLSDataSource*) mDataSource.get())->getPreloadedSegmentCount();
 	if (!InitSources())
@@ -1314,10 +1309,8 @@ void HLSPlayer::Seek(double time)
 	SetState(PLAYING);
 	if (mJAudioTrack)
 	{
-		//mJAudioTrack->SetTimeStampOffset(segTime);
 		mJAudioTrack->Play();
 	}
 
-	//mVideoSource->start(NULL);
 }
 
