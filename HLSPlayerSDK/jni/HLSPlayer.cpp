@@ -52,6 +52,10 @@ mScreenHeight(0), mScreenWidth(0), mJAudioTrack(NULL), mStartTimeMS(0)
 {
 	status_t status = mClient.connect();
 	LOGI("OMXClient::Connect return %d", status);
+
+	int err = pthread_mutex_init(&lock, NULL);
+	LOGI(" HLSPlayer mutex err = %d", err);
+
 }
 
 HLSPlayer::~HLSPlayer()
@@ -680,19 +684,26 @@ int HLSPlayer::Update()
 
 	UpdateWindowBufferFormat();
 
+	pthread_mutex_lock(&lock);
+
 	if (GetState() == SEEKING)
 	{
 		int segCount = ((HLSDataSource*) mDataSource.get())->getPreloadedSegmentCount();
 		LOGI("Segment Count %d", segCount);
 		if (segCount < 1) // (current segment + 2)
+		{
+			pthread_mutex_unlock(&lock);
 			return 0; // keep going!
+		}
 		SetState(PLAYING);
 		if (mJAudioTrack)
 			mJAudioTrack->Play();
 	}
+	
 	if (GetState() != PLAYING)
 	{
 		LogState();
+		pthread_mutex_unlock(&lock);
 		return -1;
 	}
 
@@ -742,11 +753,16 @@ int HLSPlayer::Update()
 			case INFO_DISCONTINUITY:
 			case INFO_OUTPUT_BUFFERS_CHANGED:
 				// If it doesn't have a valid buffer, maybe it's informational?
-				if (mVideoBuffer == NULL) return 0;
+				if (mVideoBuffer == NULL) 
+				{
+					pthread_mutex_unlock(&lock);
+					return 0;
+				}
 				break;
 			case ERROR_END_OF_STREAM:
 				//SetState(STOPPED);
 				//PlayNextSegment();
+				pthread_mutex_unlock(&lock);
 				return -1;
 				//LOGI("Saw end of stream but who really cares about that?");
 				//return 0;
@@ -755,6 +771,7 @@ int HLSPlayer::Update()
 				SetState(STOPPED);
 				// deal with any errors
 				// in the sample code, they're sending the video event, anyway
+				pthread_mutex_unlock(&lock);
 				return -1;
 			}
 		}
@@ -767,6 +784,7 @@ int HLSPlayer::Update()
 			{
 				LOGI("Frame did not have time value: STOPPING");
 				SetState(STOPPED);
+				pthread_mutex_unlock(&lock);
 				return -1;
 			}
 
@@ -850,6 +868,7 @@ int HLSPlayer::Update()
 
 
 
+	pthread_mutex_unlock(&lock);
 
 //    int64_t nextTimeUs;
 //    mVideoBuffer->meta_data()->findInt64(kKeyTime, &nextTimeUs);
@@ -1241,6 +1260,8 @@ int32_t HLSPlayer::GetCurrentTimeMS()
 
 void HLSPlayer::StopEverything()
 {
+	pthread_mutex_lock(&lock);
+
 	mJAudioTrack->Stop(true); // Passing true means we're seeking.
 
 	mAudioTrack.clear();
@@ -1262,13 +1283,19 @@ void HLSPlayer::StopEverything()
 	if (mVideoSource23 != NULL) mVideoSource23->stop();
 	mVideoSource23.clear();
 
+	mLastVideoTimeUs = 0;
+	mSegmentTimeOffset = 0;
+	mVideoFrameDelta = 0;
+	mFrameCount = 0;
+
+	pthread_mutex_unlock(&lock);
 }
 
 
 
 void HLSPlayer::Seek(double time)
 {
-	if (time < 0) time == 0;
+	if (time < 0) time = 0;
 
 	SetState(SEEKING);
 

@@ -22,6 +22,9 @@ AudioTrack::AudioTrack(JavaVM* jvm) : mJvm(jvm), mAudioTrack(NULL), mGetMinBuffe
 	{
 		LOGE("Java VM is NULL");
 	}
+
+	int err = pthread_mutex_init(&updateMutex, NULL);
+	LOGI(" AudioTrack mutex err = %d", err);
 }
 
 AudioTrack::~AudioTrack() {
@@ -94,7 +97,10 @@ bool AudioTrack::Init()
 bool AudioTrack::Set(sp<MediaSource> audioSource, bool alreadyStarted)
 {
 	if (mAudioSource.get())
+	{
 		mAudioSource->stop();
+		mAudioSource.clear();
+	}
 
 	LOGI("Set with %p", audioSource.get());
 	mAudioSource = audioSource;
@@ -283,6 +289,26 @@ bool AudioTrack::Stop(bool seeking)
 		LOGI("Stopping Audio Thread: state = SEEKING | semPause.count = %d", semPause.count );
 		sem_post(&semPause);
 	}
+
+	if(seeking)
+	{
+		pthread_mutex_lock(&updateMutex);
+
+		if (mAudioSource.get())
+		{
+			mAudioSource->stop();
+			mAudioSource.clear();
+		}
+
+		if (mAudioSource23.get())
+		{
+			mAudioSource23->stop();
+			mAudioSource23.clear();
+		}
+
+		pthread_mutex_unlock(&updateMutex);
+	}
+
 	JNIEnv* env;
 	mJvm->AttachCurrentThread(&env, NULL);
 	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mStop);
@@ -349,6 +375,9 @@ bool AudioTrack::Update()
 							// if we're not actively playing
 		}
 	}
+
+	pthread_mutex_lock(&updateMutex);
+
 	JNIEnv* env;
 	mJvm->AttachCurrentThread(&env, NULL);
 
@@ -400,17 +429,19 @@ bool AudioTrack::Update()
 		}
 
 		env->PopLocalFrame(NULL);
-
+		
 	}
 	else if (res == INFO_FORMAT_CHANGED)
 	{
 		LOGE("Format Changed");
+		pthread_mutex_unlock(&updateMutex);
 		Update();
 	}
 	else if (res == ERROR_END_OF_STREAM)
 	{
 		LOGE("End of Audio Stream");
 		mJvm->DetachCurrentThread();
+		pthread_mutex_unlock(&updateMutex);
 		return false;
 	}
 
@@ -421,9 +452,8 @@ bool AudioTrack::Update()
 		mediaBuffer->release();
 	}
 
+	pthread_mutex_unlock(&updateMutex);
 	return true;
-
-
 }
 
 

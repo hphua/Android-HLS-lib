@@ -64,6 +64,7 @@ private:
 	double mTimeStampOffset;
 
 	sem_t semPause;
+    pthread_mutex_t updateMutex;
 
 };
 

@@ -142,6 +142,8 @@ private:
 	int32_t mScreenHeight;
 
 	int32_t mStartTimeMS;
+
+	pthread_mutex_t lock;
 };
 
 
