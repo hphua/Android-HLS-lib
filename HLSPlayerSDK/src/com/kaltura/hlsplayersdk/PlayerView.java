@@ -47,7 +47,6 @@ public class PlayerView extends SurfaceView implements
 	private native void FeedSegment(String url, int quality, double startTime);
 	private native void SeekTo(double time); // seconds, not miliseconds - I'll change this later if it
 	private native int GetState();
-	private native void SetScreenSize(int width, int height);
 	
 	private static PlayerView currentPlayerView = null;
 	
@@ -72,13 +71,36 @@ public class PlayerView extends SurfaceView implements
 		}
 	}
 	
-	public static void enableHWRendererMode(boolean enable)
+	public static void enableHWRendererMode(boolean enable, int w, int h, int colf)
 	{
 		if(currentPlayerView != null)
 		{
-			currentPlayerView.getHolder().setFixedSize(320, 240);
-			currentPlayerView.getHolder().setFormat(19);
-			currentPlayerView.getHolder().setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);			
+			if(enable)
+			{
+				Log.i("enableHWRendererMode", "HW Renderer mode ON - " + w + "x" + h + " format=" + colf);
+				Log.i("enableHWRendererMode", " Step 1");
+				currentPlayerView.getHolder().setFixedSize(w, h);
+				Log.i("enableHWRendererMode", " Step 2");
+				try
+				{
+					//currentPlayerView.getHolder().setFormat(colf);
+				}
+				catch (Exception e)
+				{
+					Log.i("enableHWRendererMode", "FAILED TO SET STUFF");
+				}
+				Log.i("enableHWRendererMode", " Step 3");
+				currentPlayerView.getHolder().setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);	
+				Log.i("enableHWRendererMode", " DONE");
+			}
+			else
+			{
+				Log.i("enableHWRendererMode", "Going back to normal RGB565 buffer mode.");
+				currentPlayerView.getHolder().setFixedSize(w, h);
+				// Doing these prevents locking surface on 2.3?
+				//currentPlayerView.getHolder().setFormat(colf);
+				//currentPlayerView.getHolder().setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+			}
 		}
 	}
 	
@@ -200,18 +222,7 @@ public class PlayerView extends SurfaceView implements
         setMeasuredDimension(width, height);
     }
 
-	@Override
-	protected void onSizeChanged (int w, int h, int oldw, int oldh)
-	{
-		super.onSizeChanged(w, h, oldw, oldh);
-
-		Log.i("PlayerView.setVideoUrl", "Set size to " + w + "x" + h);
-		SetScreenSize(w, h);
-		//getHolder().setFixedSize(w, h);
-	}
-	
-	// Called when the manifest parser is complete. Once this is done, play can actually start
-	
+	// Called when the manifest parser is complete. Once this is done, play can actually start	
 	public void onParserComplete(ManifestParser parser)
 	{
 		Log.i("PlayerView.onParserComplete", "Entered");

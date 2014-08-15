@@ -2000,7 +2000,7 @@ namespace android_video_shim
             return lfc(this);
         }
 
-        status_t convert(
+        void convert(
                 const void *srcBits,
                 size_t srcWidth, size_t srcHeight,
                 size_t srcCropLeft, size_t srcCropTop,
@@ -2010,7 +2010,7 @@ namespace android_video_shim
                 size_t dstCropLeft, size_t dstCropTop,
                 size_t dstCropRight, size_t dstCropBottom)
         {
-            typedef status_t (*localFuncCast)(void *thiz, const void *srcBits,
+            typedef void (*localFuncCast)(void *thiz, const void *srcBits,
                 size_t srcWidth, size_t srcHeight,
                 size_t srcCropLeft, size_t srcCropTop,
                 size_t srcCropRight, size_t srcCropBottom,
@@ -2018,21 +2018,36 @@ namespace android_video_shim
                 size_t dstWidth, size_t dstHeight,
                 size_t dstCropLeft, size_t dstCropTop,
                 size_t dstCropRight, size_t dstCropBottom);
+
+            typedef void (*localFuncCast2)(void *thiz, size_t width, size_t height, const void *srcBits, size_t srcSkip, void *dstBits, size_t dstSkip);
+
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android14ColorConverter7convertEPKvjjjjjjPvjjjjjj");
-            //localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android14ColorConverter7convertEPKvjjjjjjPvjjjjjj");
+            localFuncCast2 lfc2 = (localFuncCast2)searchSymbol("_ZN7android14ColorConverter7convertEjjPKvjPvj");
 
-            LOGI("color convert = %p", lfc);
+            LOGV("color convert = %p or %p srcBits=%p dstBits=%p", lfc, lfc2, srcBits, dstBits);
 
-            assert(lfc);
-            return lfc(this, srcBits,
-                 srcWidth,  srcHeight,
-                 srcCropLeft,  srcCropTop,
-                 srcCropRight,  srcCropBottom,
-                dstBits,
-                 dstWidth,  dstHeight,
-                 dstCropLeft,  dstCropTop,
-                 dstCropRight,  dstCropBottom);
+            if(lfc)
+                lfc(this, srcBits,
+                     srcWidth,  srcHeight,
+                     srcCropLeft,  srcCropTop,
+                     srcCropRight,  srcCropBottom,
+                    dstBits,
+                     dstWidth,  dstHeight,
+                     dstCropLeft,  dstCropTop,
+                     dstCropRight,  dstCropBottom);
+            else if(lfc2)
+            {
+                lfc2(this, srcWidth, srcHeight, srcBits, 0, dstBits, dstWidth * 2);
+            }
+            else
+            {
+                LOGE("Failed to find conversion function.");
+            }
+
+            // Debug line.
+            //for(int i=0; i<dstWidth*dstHeight; i++) ((unsigned short*)dstBits)[i] = rand();            
         }
+
     };
 
 
