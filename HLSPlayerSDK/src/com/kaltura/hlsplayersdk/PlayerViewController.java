@@ -139,7 +139,8 @@ public class PlayerViewController extends RelativeLayout implements VideoPlayerI
 
     public void seek(int msec) {
         if (mPlayerView != null) {
-            mPlayerView.seek(mPlayerView.getCurrentPosition() + msec);
+        	int curPos = mPlayerView.getCurrentPosition();
+            mPlayerView.seek(curPos + msec);
         }
     }
 

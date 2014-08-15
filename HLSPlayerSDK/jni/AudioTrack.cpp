@@ -93,6 +93,9 @@ bool AudioTrack::Init()
 
 bool AudioTrack::Set(sp<MediaSource> audioSource, bool alreadyStarted)
 {
+	if (mAudioSource.get())
+		mAudioSource->stop();
+
 	LOGI("Set with %p", audioSource.get());
 	mAudioSource = audioSource;
 	if (!alreadyStarted) mAudioSource->start(NULL);
@@ -137,6 +140,9 @@ bool AudioTrack::Set(sp<MediaSource> audioSource, bool alreadyStarted)
 
 bool AudioTrack::Set23(sp<MediaSource23> audioSource, bool alreadyStarted)
 {
+	if (mAudioSource23.get())
+		mAudioSource23->stop();
+
 	LOGI("Set23 with %p", audioSource.get());
 	mAudioSource23 = audioSource;
 	if (!alreadyStarted) mAudioSource23->start(NULL);
@@ -227,6 +233,7 @@ bool AudioTrack::Start()
 		return false;
 	}
 
+
 	mTrack = env->NewGlobalRef(env->NewObject(mCAudioTrack, mAudioTrack, STREAM_MUSIC, mSampleRate, channelConfig, ENCODING_PCM_16BIT, mBufferSizeInBytes * 2, MODE_STREAM ));
 	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mPlay);
 	mPlayState = PLAYING;
@@ -236,27 +243,47 @@ bool AudioTrack::Start()
 
 void AudioTrack::Play()
 {
-	if (mPlayState == PAUSED)
+	if (mPlayState == PLAYING) return;
+	int lastPlayState = mPlayState;
+
+	mPlayState = PLAYING;
+
+	if (lastPlayState == PAUSED || lastPlayState == SEEKING)
 	{
+		LOGI("Playing Audio Thread: state = %s | semPause.count = %d", mPlayState==PAUSED?"PAUSED":(mPlayState==SEEKING?"SEEKING":"Not Possible!"), semPause.count );
 		sem_post(&semPause);
 	}
-	if (mPlayState == PLAYING) return;
-	mPlayState = PLAYING;
-	sem_post(&semPause);
+
+	LOGI("Audio State = PLAYING: semPause.count = %d", semPause.count);
+
+	//sem_post(&semPause);
 	JNIEnv* env;
 	mJvm->AttachCurrentThread(&env, NULL);
 	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mPlay);
 
 }
 
-bool AudioTrack::Stop()
+bool AudioTrack::Stop(bool seeking)
 {
-	if (mPlayState == PAUSED)
+	if (mPlayState == STOPPED) return true;
+
+	int lastPlayState = mPlayState;
+
+	if (seeking)
+		mPlayState = SEEKING;
+	else
+		mPlayState = STOPPED;
+
+	if (lastPlayState == PAUSED)
 	{
+		LOGI("Stopping Audio Thread: state = PAUSED | semPause.count = %d", semPause.count );
 		sem_post(&semPause);
 	}
-	if (mPlayState == STOPPED) return true;
-	mPlayState = STOPPED;
+	else if (lastPlayState == SEEKING)
+	{
+		LOGI("Stopping Audio Thread: state = SEEKING | semPause.count = %d", semPause.count );
+		sem_post(&semPause);
+	}
 	JNIEnv* env;
 	mJvm->AttachCurrentThread(&env, NULL);
 	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mStop);
@@ -280,9 +307,9 @@ void AudioTrack::Flush()
 	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mFlush);
 }
 
-void AudioTrack::SetTimeStampOffset(int64_t offset)
+void AudioTrack::SetTimeStampOffset(double offsetSecs)
 {
-	mTimeStampOffset = offset;
+	mTimeStampOffset = offsetSecs;
 }
 
 
@@ -292,21 +319,36 @@ int64_t AudioTrack::GetTimeStamp()
 	mJvm->AttachCurrentThread(&env, NULL);
 	double frames = env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mGetPlaybackHeadPosition);
 	double secs = frames / (double)mSampleRate;
-	return (secs * 1000000) + mTimeStampOffset;
+	LOGV2("secs = %f | mTimeStampOffset = %f", secs, mTimeStampOffset);
+	return ((secs + mTimeStampOffset) * 1000000);
 }
 
 
 bool AudioTrack::Update()
 {
+	LOGV("Audio Update Thread Running");
 	if (mPlayState != PLAYING)
 	{
 		while (mPlayState == PAUSED)
+		{
+			LOGI("Pausing Audio Thread: state = PAUSED | semPause.count = %d", semPause.count );
 			sem_wait(&semPause);
+		}
+
+		while (mPlayState == SEEKING)
+		{
+			LOGI("Pausing Audio Thread: state = SEEKING | semPause.count = %d", semPause.count );
+			sem_wait(&semPause);
+			LOGI("Resuming Audio Thread: state = %d | semPause.count = %d", mPlayState, semPause.count );
+		}
 
 		if (mPlayState == STOPPED)
+		{
+			LOGI("mPlayState == STOPPED. Ending audio update thread!");
 			return false; // We don't really want to add more stuff to the buffer
 							// and potentially run past the end of buffered source data
 							// if we're not actively playing
+		}
 	}
 	JNIEnv* env;
 	mJvm->AttachCurrentThread(&env, NULL);
@@ -322,9 +364,9 @@ bool AudioTrack::Update()
 	if(mAudioSource23.get())
 		res = mAudioSource23->read(&mediaBuffer, NULL);
 
-	//LOGI("Finished reading from the media buffer");
 	if (res == OK)
 	{
+		LOGI("Finished reading from the media buffer");
 
 
 		RUNDEBUG(mediaBuffer->meta_data()->dumpToLog());
@@ -363,6 +405,7 @@ bool AudioTrack::Update()
 	}
 	else if (res == INFO_FORMAT_CHANGED)
 	{
+		LOGE("Format Changed");
 		Update();
 	}
 	else if (res == ERROR_END_OF_STREAM)

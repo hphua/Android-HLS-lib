@@ -70,6 +70,11 @@ private:
 	void NoteVideoDimensions();
 	void NoteHWRendererMode(bool enabled);
 
+
+	/// seeking methods
+	void StopEverything();
+	///
+
 	std::list<HLSSegment* > mSegments;
 
 	pthread_t audioThread;
@@ -135,6 +140,8 @@ private:
 
 	int32_t mScreenWidth;
 	int32_t mScreenHeight;
+
+	int32_t mStartTimeMS;
 };
 
 

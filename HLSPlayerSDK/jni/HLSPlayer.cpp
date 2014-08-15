@@ -48,7 +48,7 @@ mAudioTrack(NULL), mVideoTrack(NULL), mJvm(jvm), mPlayerViewClass(NULL),
 mNextSegmentMethodID(NULL), mSetVideoResolutionID(NULL), mEnableHWRendererModeID(NULL), 
 mSegmentTimeOffset(0), mVideoFrameDelta(0), mLastVideoTimeUs(0),
 mSegmentForTimeMethodID(NULL), mFrameCount(0), mDataSource(NULL), audioThread(0),
-mScreenHeight(0), mScreenWidth(0), mJAudioTrack(NULL)
+mScreenHeight(0), mScreenWidth(0), mJAudioTrack(NULL), mStartTimeMS(0)
 {
 	status_t status = mClient.connect();
 	LOGI("OMXClient::Connect return %d", status);
@@ -87,9 +87,12 @@ void HLSPlayer::Reset()
 
 	mDataSource.clear();
 	mAudioTrack.clear();
+	mAudioTrack23.clear();
 	mVideoTrack.clear();
+	mVideoTrack23.clear();
 	mExtractor.clear();
 	mAudioSource.clear();
+	mAudioSource23.clear();
 
 	if (mJAudioTrack)
 	{
@@ -103,8 +106,10 @@ void HLSPlayer::Reset()
 		mVideoBuffer->release();
 		mVideoBuffer = NULL;
 	}
-	if (mVideoSource != NULL) mVideoSource->stop();
+	if (mVideoSource.get()) mVideoSource->stop();
+	if (mVideoSource23.get()) mVideoSource23->stop();
 	mVideoSource.clear();
+	mVideoSource23.clear();
 
 	LOGI("Killing the segments");
 	stlwipe(mSegments);
@@ -527,7 +532,7 @@ bool HLSPlayer::UpdateWindowBufferFormat()
 	if(AVSHIM_USE_NEWMEDIASOURCE && mVideoRenderer.get())
 		return true;
 
-	LOGI("screenWidth=%d | screenHeight=%d", mScreenWidth, mScreenHeight);
+	LOGSCREENINFO("screenWidth=%d | screenHeight=%d", mScreenWidth, mScreenHeight);
 
 	int32_t bufferWidth = mWidth;
 	int32_t bufferHeight = mHeight;
@@ -548,7 +553,7 @@ bool HLSPlayer::UpdateWindowBufferFormat()
 		return false;
 	}
 
-	LOGI("bufferWidth=%d | bufferHeight=%d", bufferWidth, bufferHeight);
+	LOGSCREENINFO("bufferWidth=%d | bufferHeight=%d", bufferWidth, bufferHeight);
 
 	// We want to fit our buffer to the screen aspect ratio, but only by
 	// increasing its dimensions. We consider several cases:
@@ -582,7 +587,7 @@ bool HLSPlayer::UpdateWindowBufferFormat()
 	double screenAspect = (double)mScreenWidth / (double)mScreenHeight;
 	double bufferAspect = (double)bufferWidth / (double)bufferHeight;
 
-	LOGI("screenAspect=%f bufferAspect=%f", screenAspect, bufferAspect);
+	LOGSCREENINFO("screenAspect=%f bufferAspect=%f", screenAspect, bufferAspect);
 
 	if(bufferWidth < bufferHeight)
 	{
@@ -595,7 +600,7 @@ bool HLSPlayer::UpdateWindowBufferFormat()
 		bufferHeight = bufferWidth / screenAspect;
 	}
 
-	LOGI("bufferWidth=%d | bufferHeight=%d", bufferWidth, bufferHeight);
+	LOGSCREENINFO("bufferWidth=%d | bufferHeight=%d", bufferWidth, bufferHeight);
 
 	int32_t res = ANativeWindow_setBuffersGeometry(mWindow, bufferWidth, bufferHeight, WINDOW_FORMAT_RGB_565);
 }
@@ -766,9 +771,11 @@ int HLSPlayer::Update()
 			}
 
 #ifdef USE_AUDIO
-			//int64_t audioTime = mAudioPlayer->getRealTimeUs(); //mTimeSource->getRealTimeUs();
-			int64_t audioTime = mJAudioTrack->GetTimeStamp(); // timeUs; // this is just temporary to test the audio player
+			int64_t audioTime = mJAudioTrack->GetTimeStamp();
 #else
+			// Set the audio time to the video time, which will keep the video running.
+			// TODO: This should probably be set to system time with a delta, so that the video doesn't
+			// run too fast.
 			int64_t audioTime = timeUs;
 #endif
 
@@ -776,22 +783,23 @@ int HLSPlayer::Update()
 
 			if (timeUs > mLastVideoTimeUs)
 			{
-				mVideoFrameDelta += timeUs - mLastVideoTimeUs;
-				LOGI("mVideoFrameDelta = %lld", mVideoFrameDelta);
+				mVideoFrameDelta = timeUs - mLastVideoTimeUs;
 			}
 			else if (timeUs < mLastVideoTimeUs)
 			{
+				LOGE("timeUs = %lld | mLastVideoTimeUs = %lld :: Why did this happen? Were we seeking?", timeUs, mLastVideoTimeUs);
 				// okay - we need to do something to timeUs
-				LOGI("mFrameCount = %lld", mFrameCount);
-				if (timeUs + mSegmentTimeOffset + (mVideoFrameDelta / mFrameCount) < mLastVideoTimeUs)
-				{
-					mSegmentTimeOffset = mLastVideoTimeUs + (mVideoFrameDelta / mFrameCount);
-				}
-
-				timeUs += mSegmentTimeOffset;
+//				LOGI("mFrameCount = %lld", mFrameCount);
+//				if (timeUs + mSegmentTimeOffset + (mVideoFrameDelta / mFrameCount) < mLastVideoTimeUs)
+//				{
+//					mSegmentTimeOffset = mLastVideoTimeUs + (mVideoFrameDelta / mFrameCount);
+//					LOGI("mSegmentTimeOffset = %lld", mSegmentTimeOffset);
+//				}
+//
+//				timeUs += mSegmentTimeOffset;
 			}
 
-			LOGI("audioTime = %lld | videoTime = %lld | diff = %lld", audioTime, timeUs, audioTime - timeUs);
+			LOGI("audioTime = %lld | videoTime = %lld | diff = %lld | mVideoFrameDelta = %lld", audioTime, timeUs, audioTime - timeUs, mVideoFrameDelta);
 
 			int64_t delta = audioTime - timeUs;
 
@@ -1229,35 +1237,87 @@ int32_t HLSPlayer::GetCurrentTimeMS()
 {
 	if (mJAudioTrack != NULL)
 	{
-		return mJAudioTrack->GetTimeStamp() / 1000;
+		return (mJAudioTrack->GetTimeStamp() / 1000) + mStartTimeMS;
 	}
 	return 0;
 }
+
+
+void HLSPlayer::StopEverything()
+{
+	mJAudioTrack->Stop(true); // Passing true means we're seeking.
+
+	mAudioTrack.clear();
+	mAudioTrack23.clear();
+	mVideoTrack.clear();
+	mVideoTrack23.clear();
+	mExtractor.clear();
+	mAudioSource.clear();
+	mAudioSource23.clear();
+
+	LOGI("Killing the video buffer");
+	if (mVideoBuffer)
+	{
+		mVideoBuffer->release();
+		mVideoBuffer = NULL;
+	}
+	if (mVideoSource != NULL) mVideoSource->stop();
+	mVideoSource.clear();
+	if (mVideoSource23 != NULL) mVideoSource23->stop();
+	mVideoSource23.clear();
+
+}
+
 
 
 void HLSPlayer::Seek(double time)
 {
 	SetState(SEEKING);
 
-	if (mJAudioTrack)
-	{
-		mJAudioTrack->Pause();
-		mJAudioTrack->Flush();
-	}
-
+	StopEverything();
 	mDataSource->clearsources();
 
+
 	double segTime = RequestSegmentForTime(time);
+
+	mStartTimeMS = (segTime * 1000);
+
+	LOGI("Segment Start Time = %f", segTime);
 
 
 
 	int segCount = ((HLSDataSource*) mDataSource.get())->getPreloadedSegmentCount();
+	if (!InitSources())
+	{
+		LOGE("InitSources failed!");
+		return;
+	}
+
+	status_t err;
+	if(mVideoSource.get())
+		err = mVideoSource->start();
+	else
+		err = mVideoSource23->start();
+
+	if (err == OK)
+	{
+		if(mAudioSource.get())
+			mJAudioTrack->Set(mAudioSource);
+		else
+			mJAudioTrack->Set23(mAudioSource23);
+	}
+	else
+	{
+		LOGI("Video Track failed to start: %s : %d", strerror(-err), __LINE__);
+	}
 	LOGI("Segment Count %d", segCount);
 	SetState(PLAYING);
 	if (mJAudioTrack)
 	{
-		mJAudioTrack->SetTimeStampOffset(segTime * 1000000);
+		//mJAudioTrack->SetTimeStampOffset(segTime);
 		mJAudioTrack->Play();
 	}
+
+	//mVideoSource->start(NULL);
 }
 

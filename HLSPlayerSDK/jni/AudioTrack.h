@@ -24,7 +24,7 @@ public:
 	void Play();
 	void Pause();
 	void Flush();
-	bool Stop();
+	bool Stop(bool seeking = false);
 
 	bool Set(android_video_shim::sp<android_video_shim::MediaSource> audioSource, bool alreadyStarted = false);
 	bool Set23(android_video_shim::sp<android_video_shim::MediaSource23> audioSource, bool alreadyStarted = false);
@@ -32,7 +32,7 @@ public:
 	bool Update();
 
 	int64_t GetTimeStamp();
-	void SetTimeStampOffset(int64_t offset);
+	void SetTimeStampOffset(double offsetSecs);
 
 private:
 	jclass mCAudioTrack;
@@ -61,7 +61,7 @@ private:
 
 	int mPlayState;
 
-	int64_t mTimeStampOffset;
+	double mTimeStampOffset;
 
 	sem_t semPause;
 
