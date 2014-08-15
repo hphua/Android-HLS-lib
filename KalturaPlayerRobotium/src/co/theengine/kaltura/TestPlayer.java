@@ -147,6 +147,76 @@ public class TestPlayer extends ActivityInstrumentationTestCase2<Activity> {
 	public void testKalturaVOD() {
 		streamTest("Kaltura VoD");
 	}
+
+	/**
+	 * Test switching between ABC and Kaltura streams.
+	 */
+	public void testSwitch() {
+		solo.clickOnMenuItem("ABC DVR");
+
+		screenshot();
+		solo.sleep(5000);
+		screenshot();
+		
+		solo.clickOnMenuItem("Kaltura VoD");
+
+		screenshot();
+		solo.sleep(5000);
+		screenshot();
+		
+		solo.clickOnMenuItem("ABC DVR");
+		
+		screenshot();
+		solo.sleep(5000);
+		screenshot();
+		
+		solo.clickOnMenuItem("Kaltura VoD");
+		
+		screenshot();
+		solo.sleep(5000);
+		screenshot();
+	}
+	
+	/**
+	 * Test seeking forward and backward on the Kaltura stream.
+	 */
+	public void testKalturaVODSeek() {
+		solo.clickOnMenuItem("Kaltura VoD");
+
+		screenshot();
+		solo.sleep(3000);
+		screenshot();
+
+		solo.clickOnMenuItem("Seek Fwd");
+
+		screenshot();
+		solo.sleep(2000);
+		screenshot();
+		
+		solo.clickOnMenuItem("Seek Fwd");
+
+		screenshot();
+		solo.sleep(2000);
+		screenshot();
+		
+		solo.clickOnMenuItem("Seek Backward");
+
+		screenshot();
+		solo.sleep(4000);
+		screenshot();
+		
+		solo.clickOnMenuItem("Seek Backward");
+
+		screenshot();
+		solo.sleep(4000);
+		screenshot();
+		
+		solo.clickOnMenuItem("Seek Forward");
+
+		screenshot();
+		solo.sleep(2000);
+		screenshot();
+	}
 	
 	/**
 	 * Finish the test.
