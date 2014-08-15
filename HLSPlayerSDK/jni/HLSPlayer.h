@@ -43,8 +43,6 @@ public:
 
 	void SetJavaVM(JavaVM* jvm);
 
-	bool UpdateWindowBufferFormat();
-
 	void TogglePause();
 
 	int GetState();
@@ -68,7 +66,7 @@ private:
 
 	double RequestSegmentForTime(double time);
 	void NoteVideoDimensions();
-	void NoteHWRendererMode(bool enabled);
+	void NoteHWRendererMode(bool enabled, int w, int h, int colf);
 
 
 	/// seeking methods

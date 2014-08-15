@@ -144,26 +144,6 @@ void HLSPlayer::SetSurface(JNIEnv* env, jobject surface)
 	}
 
 	mSurface = (jobject)env->NewGlobalRef(surface);
-
-	if(AVSHIM_HAS_OMXRENDERERPATH)
-		return;
-
-	::ANativeWindow *window = ANativeWindow_fromSurface(env, mSurface);
-
-	LOGI("Java_com_kaltura_hlsplayersdk_PlayerView_SetSurface() - window = %p", window);
-//	LOGI("window->flags = %x", window->flags);
-//	LOGI("window->swapInterval Min: %d Max: %d", window->minSwapInterval, window->maxSwapInterval);
-//	LOGI("window->dpi  x:%f y:%f", window->xdpi, window->ydpi);
-
-	if (window)
-	{
-		SetNativeWindow(window);
-	}
-
-	if (mStatus == PLAYING)
-	{
-		UpdateWindowBufferFormat();
-	}
 }
 
 void HLSPlayer::SetNativeWindow(::ANativeWindow* window)
@@ -449,6 +429,10 @@ bool HLSPlayer::InitSources()
 		mCropHeight = mHeight;
 	}
 
+	JNIEnv *env = NULL;
+	mJvm->AttachCurrentThread(&env, NULL);
+	LOGV(" env=%p", env);
+
 	const char *component = "";
 	if(AVSHIM_HAS_OMXRENDERERPATH && meta->findCString(kKeyDecoderComponent, &component))
 	{
@@ -458,9 +442,6 @@ bool HLSPlayer::InitSources()
 
 		// Set things up w/ OMX.
 		LOGV("Trying OMXRenderer path!");
-		JNIEnv *env = NULL;
-		mJvm->AttachCurrentThread(&env, NULL);
-		LOGV(" env=%p", env);
 
 		LOGV("Getting IOMX");
 		sp<IOMX> omx = mClient.interface();
@@ -470,13 +451,24 @@ bool HLSPlayer::InitSources()
 		mVideoRenderer = omx.get()->createRendererFromJavaSurface(env, mSurface, 
 			component, (OMX_COLOR_FORMATTYPE)colorFormat, 
 			mWidth, mHeight,
-			320, 240,
+			mWidth, mHeight,
 			0);
 		LOGV("   o got %p", mVideoRenderer.get());
-		assert(mVideoRenderer.get());
+
+		if(mVideoRenderer.get())
+			NoteHWRendererMode(true, mWidth, mHeight, colorFormat);
 	}
 
-	UpdateWindowBufferFormat();
+	if(!mVideoRenderer.get())
+	{
+		::ANativeWindow *window = ANativeWindow_fromSurface(env, mSurface);
+		assert(window);
+		SetNativeWindow(window);
+
+		// Set the window buffer.
+		NoteHWRendererMode(false, mWidth, mHeight, 4);
+		int32_t res = ANativeWindow_setBuffersGeometry(mWindow, mWidth, mHeight, WINDOW_FORMAT_RGB_565);
+	}
 
 	// Audio
 	if(AVSHIM_USE_NEWMEDIASOURCE)
@@ -521,92 +513,6 @@ bool HLSPlayer::InitSources()
 	}
 
 	return true;
-}
-
-
-void HLSPlayer::SetScreenSize(int w, int h)
-{
-	mScreenWidth = w;
-	mScreenHeight = h;
-	LOGI("SET screenWidth=%d | screenHeight=%d", mScreenWidth, mScreenHeight);
-}
-
-bool HLSPlayer::UpdateWindowBufferFormat()
-{
-	if(AVSHIM_USE_NEWMEDIASOURCE && mVideoRenderer.get())
-		return true;
-
-	LOGSCREENINFO("screenWidth=%d | screenHeight=%d", mScreenWidth, mScreenHeight);
-
-	int32_t bufferWidth = mWidth;
-	int32_t bufferHeight = mHeight;
-
-	if(mVideoSource.get())
-	{
-		mVideoSource->getFormat()->findInt32(kKeyWidth, &bufferWidth);
-		mVideoSource->getFormat()->findInt32(kKeyHeight, &bufferHeight);
-	} 
-	else if(mVideoSource23.get())
-	{
-		mVideoSource23->getFormat()->findInt32(kKeyWidth, &bufferWidth);
-		mVideoSource23->getFormat()->findInt32(kKeyHeight, &bufferHeight);
-	}
-	else
-	{
-		LOGE("Failed to get buffer width/height.");
-		return false;
-	}
-
-	LOGSCREENINFO("bufferWidth=%d | bufferHeight=%d", bufferWidth, bufferHeight);
-
-	// We want to fit our buffer to the screen aspect ratio, but only by
-	// increasing its dimensions. We consider several cases:
-	//
-	//    A) Mapping 480x256 to 320x240
-	//    B) Mapping 480x256 to 240x320
-	//    C) Mapping 256x480 to 1920x1080
-	//    D) Mapping 256x480 to 1080x1920
-	//
-	// We want to minimize the size of the buffer, so we'll always take the
-	// smaller dimension and increase it to fit the desired aspect ratio.
-	//
-	// 		aspect = width/height
-	//
-	// In the case of A, the screen aspect is 1.3 and the buffer aspect is
-	// 1.875. We want to modify A to have the same aspect, which we can do
-	// by increasing its height to be 360px. This results in an aspect of
-	// 1.3, allowing correct display.
-	//
-	// In the case of B, the screen aspect is 0.75 and the buffer aspect is
-	// 1.875. We want to modify B to have the same aspect, which we can do
-	// by increasing its height to be 640px. This results in an aspect of
-	// 0.75, allowing correct display.
-	//
-	// In the case of C, the screen aspect is 1.77, and the buffer aspect is
-	// 0.53. We increase the width of C to 853px to match aspect.
-	//
-	// In the case of D, the screen aspect is 0.5625 and the buffer aspect is
-	// 0.53. We increase the width of D to 270px to match aspect.
-	
-	double screenAspect = (double)mScreenWidth / (double)mScreenHeight;
-	double bufferAspect = (double)bufferWidth / (double)bufferHeight;
-
-	LOGSCREENINFO("screenAspect=%f bufferAspect=%f", screenAspect, bufferAspect);
-
-	if(bufferWidth < bufferHeight)
-	{
-		// Increase width to match screen aspect.
-		bufferWidth = bufferHeight * screenAspect;
-	}
-	else
-	{
-		// Increase height to match screen aspect.
-		bufferHeight = bufferWidth / screenAspect;
-	}
-
-	LOGSCREENINFO("bufferWidth=%d | bufferHeight=%d", bufferWidth, bufferHeight);
-
-	int32_t res = ANativeWindow_setBuffersGeometry(mWindow, bufferWidth, bufferHeight, WINDOW_FORMAT_RGB_565);
 }
 
 //
@@ -681,8 +587,6 @@ int HLSPlayer::Update()
 {
 	LOGI("Entered");
 	LogState();
-
-	UpdateWindowBufferFormat();
 
 	pthread_mutex_lock(&lock);
 
@@ -866,16 +770,8 @@ int HLSPlayer::Update()
 
 	}
 
-
-
 	pthread_mutex_unlock(&lock);
-
-//    int64_t nextTimeUs;
-//    mVideoBuffer->meta_data()->findInt64(kKeyTime, &nextTimeUs);
-//    int64_t delayUs = nextTimeUs - ts->getRealTimeUs() + mTimeSourceDeltaUs;
-//    postVideoEvent_l(delayUs > 10000 ? 10000 : delayUs < 0 ? 0 : delayUs);
     return rval; // keep going!
-
 }
 
 bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
@@ -965,17 +861,17 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 	LOGV("Found Frame decoder component: %s %s", res ? "true" : "false", omxCodecString);
 
 	ColorConverter_Local lcc((OMX_COLOR_FORMATTYPE)colf, OMX_COLOR_Format16bitRGB565);
-	LOGV("ColorConversion from %x is valid: %s", colf, lcc.isValid() ? "true" : "false" );
+	LOGV("Local ColorConversion from %x is valid: %s", colf, lcc.isValid() ? "true" : "false" );
 
 	ColorConverter cc((OMX_COLOR_FORMATTYPE)colf, OMX_COLOR_Format16bitRGB565); // Should be getting these from the formats, probably
-	LOGV("ColorConversion from %x is valid: %s", colf, cc.isValid() ? "true" : "false" );
+	LOGV("System ColorConversion from %x is valid: %s", colf, cc.isValid() ? "true" : "false" );
 
-	bool useLocalCC = lcc.isValid();	
-	if (!useLocalCC && !cc.isValid())
+	bool useLocalCC = !cc.isValid();	
+	if (!useLocalCC && !lcc.isValid())
 	{
 		LOGE("No valid color conversion found for %d", colf);
+		return false;
 	}
-
 
 	int64_t timeUs;
     if (buffer->meta_data()->findInt64(kKeyTime, &timeUs))
@@ -1006,12 +902,12 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 
 			LOGV("converting source coords, %d, %d, %d, %d, %d, %d", videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom);
 			LOGV("converting target coords, %d, %d, %d, %d, %d, %d", targetWidth, targetHeight, vbCropLeft + offsetx, vbCropTop + offsety, vbCropRight + offsetx, vbCropBottom + offsety);
-			status_t ccres;
+			status_t ccres = OK;
 			if (useLocalCC)
 				ccres = lcc.convert(buffer->data(), videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom,
 						windowBuffer.bits, targetWidth, targetHeight, vbCropLeft + offsetx, vbCropTop + offsety, vbCropRight + offsetx, vbCropBottom + offsety);
 			else
-				ccres = cc.convert(buffer->data(), videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom,
+				cc.convert(buffer->data(), videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom,
 						windowBuffer.bits, targetWidth, targetHeight, vbCropLeft + offsetx, vbCropTop + offsety, vbCropRight + offsetx, vbCropBottom + offsety);
 
 			if (ccres != OK) LOGE("ColorConversion error: %s (%d)", strerror(-ccres), -ccres);
@@ -1021,19 +917,6 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 			sched_yield();
 		}
 
-
-		//LOGI("%d", __LINE__);
-		//if (err != 0) {
-		//	ALOGE("queueBuffer failed with error %s (%d)", strerror(-err),
-		//			-err);
-		//	return false;
-		//}
-		//LOGI("%d", __LINE__);
-
-//		sp<MetaData> metaData = buffer->meta_data();
-		//LOGI("%d", __LINE__);
-//		metaData->setInt32(kKeyRendered, 1);
-		//LOGI("%d", __LINE__);
 		return true;
     }
     return false;
@@ -1181,7 +1064,7 @@ void HLSPlayer::NoteVideoDimensions()
 }
 
 
-void HLSPlayer::NoteHWRendererMode(bool enabled)
+void HLSPlayer::NoteHWRendererMode(bool enabled, int w, int h, int colf)
 {
 	LOGI("Noting video dimensions.");
 	JNIEnv* env = NULL;
@@ -1201,7 +1084,7 @@ void HLSPlayer::NoteHWRendererMode(bool enabled)
 
 	if (mEnableHWRendererModeID == NULL)
 	{
-		mEnableHWRendererModeID = env->GetStaticMethodID(mPlayerViewClass, "enableHWRendererMode", "(B)V" );
+		mEnableHWRendererModeID = env->GetStaticMethodID(mPlayerViewClass, "enableHWRendererMode", "(ZIII)V" );
 		if (env->ExceptionCheck())
 		{
 			mEnableHWRendererModeID = NULL;
@@ -1210,7 +1093,7 @@ void HLSPlayer::NoteHWRendererMode(bool enabled)
 		}
 	}
 
-	env->CallStaticVoidMethod(mPlayerViewClass, mEnableHWRendererModeID, enabled);
+	env->CallStaticVoidMethod(mPlayerViewClass, mEnableHWRendererModeID, enabled, w, h, colf);
 	if (env->ExceptionCheck())
 	{
 		LOGI("Call to method  com/kaltura/hlsplayersdk/PlayerView.enableHWRendererMode() FAILED" );
