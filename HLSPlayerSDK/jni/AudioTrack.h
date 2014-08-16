@@ -34,6 +34,8 @@ public:
 	int64_t GetTimeStamp();
 	void SetTimeStampOffset(double offsetSecs);
 
+	int getBufferSize();
+
 private:
 	jclass mCAudioTrack;
 	jmethodID mAudioTrack;
@@ -48,6 +50,7 @@ private:
 	jmethodID mGetPlaybackHeadPosition;
 
 	jobject mTrack;
+	jarray buffer;
 
 	JavaVM* mJvm;
 
@@ -62,6 +65,8 @@ private:
 	int mPlayState;
 
 	double mTimeStampOffset;
+
+	long long samplesWritten;
 
 	sem_t semPause;
     pthread_mutex_t updateMutex;

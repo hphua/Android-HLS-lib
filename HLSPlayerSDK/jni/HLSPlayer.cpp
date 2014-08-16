@@ -32,7 +32,11 @@ void* audio_thread_func(void* arg)
 
 	while (audioTrack->Update())
 	{
-		sched_yield();
+		if(audioTrack->getBufferSize() > (44100/15))
+		{
+			LOGI("Buffer full enough yielding");
+			sched_yield();
+		}
 	}
 
 	LOGI("audio_thread_func ending");
@@ -454,7 +458,7 @@ bool HLSPlayer::InitSources()
 
 		//NoteHWRendererMode(true, mWidth, mHeight, 4);
 
-		LOGI("-0xffffffda=%d INVALID_OPERATION=%8x", -0xffffffda, INVALID_OPERATION);
+		//LOGI("-0xffffffda=%d INVALID_OPERATION=%8x", -0xffffffda, INVALID_OPERATION);
 
 		LOGI("Calling createRendererFromJavaSurface component='%s' %dx%d colf=%d", component, mWidth, mHeight, colorFormat);
 		mOMXRenderer = omx.get()->createRendererFromJavaSurface(env, mSurface, 
@@ -731,6 +735,7 @@ int HLSPlayer::Update()
 			if (delta < -10000) // video is running ahead
 			{
 				LOGI("Video is running ahead - waiting til next time");
+				sched_yield();
 				break; // skip out - don't render it yet
 			}
 			else if (delta > 40000) // video is running behind
@@ -799,7 +804,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 			LOGV2("Cond2 for hw path");
             mOMXRenderer->render(id);
 			LOGV2("Cond3 for hw path");
-			sched_yield();
+			//sched_yield();
             return true;
         }
 	}

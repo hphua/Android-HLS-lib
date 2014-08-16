@@ -200,6 +200,7 @@ bool AudioTrack::Set23(sp<MediaSource23> audioSource, bool alreadyStarted)
 
 bool AudioTrack::Start()
 {
+	buffer = NULL;
 
 //	audio_format_t audioFormat = AUDIO_FORMAT_PCM_16_BIT;
 //
@@ -243,6 +244,7 @@ bool AudioTrack::Start()
 	mTrack = env->NewGlobalRef(env->NewObject(mCAudioTrack, mAudioTrack, STREAM_MUSIC, mSampleRate, channelConfig, ENCODING_PCM_16BIT, mBufferSizeInBytes * 2, MODE_STREAM ));
 	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mPlay);
 	mPlayState = PLAYING;
+	samplesWritten = 0;
 	return true;
 
 }
@@ -265,6 +267,7 @@ void AudioTrack::Play()
 	JNIEnv* env;
 	mJvm->AttachCurrentThread(&env, NULL);
 	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mPlay);
+	samplesWritten = 0;
 
 }
 
@@ -330,6 +333,7 @@ void AudioTrack::Flush()
 	JNIEnv* env;
 	mJvm->AttachCurrentThread(&env, NULL);
 	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mFlush);
+	samplesWritten = 0;
 }
 
 void AudioTrack::SetTimeStampOffset(double offsetSecs)
@@ -394,13 +398,14 @@ bool AudioTrack::Update()
 
 	if (res == OK)
 	{
-		LOGI("Finished reading from the media buffer");
+		//LOGI("Finished reading from the media buffer");
 
 
 		RUNDEBUG(mediaBuffer->meta_data()->dumpToLog());
 		env->PushLocalFrame(2);
 
-		jarray buffer = env->NewByteArray(mBufferSizeInBytes);
+		if(!buffer)
+			buffer = env->NewByteArray(mBufferSizeInBytes);
 
 		void* pBuffer = env->GetPrimitiveArrayCritical(buffer, NULL);
 
@@ -419,7 +424,7 @@ bool AudioTrack::Update()
 
 				env->ReleasePrimitiveArrayCritical(buffer, pBuffer, 0);
 				//LOGI("Finished copying audio data to buffer");
-				env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mWrite, buffer, 0, mbufSize  );
+				samplesWritten += env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mWrite, buffer, 0, mbufSize  );
 				//LOGI("Finished Writing Data to jAudioTrack");
 			}
 			else
@@ -456,4 +461,11 @@ bool AudioTrack::Update()
 	return true;
 }
 
+int AudioTrack::getBufferSize()
+{
+	JNIEnv* env;
+	mJvm->AttachCurrentThread(&env, NULL);
+	long long frames = env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mGetPlaybackHeadPosition);
 
+	return (samplesWritten / 2) - frames;
+}

@@ -133,7 +133,26 @@ public class PlayerView extends SurfaceView implements
 	{
 		public void run()
 		{
-			int state = GetState();
+			while(true)
+			{
+				int state = GetState();
+				if (state == STATE_PLAYING)
+				{
+					
+					//Log.i("Runnable.run", "Running!");
+					mTimeMS = NextFrame();
+					if (mPlayheadUpdateListener != null)
+						mPlayheadUpdateListener.onPlayheadUpdated(mTimeMS);
+					//postDelayed(runnable, 0);
+				}
+				else if (state == STATE_SEEKING)
+				{
+					//NextFrame();
+					//postDelayed(runnable, 0);
+				}
+			}
+
+/*			int state = GetState();
 			Log.i("Runnable.run", "PlayState = " + state);
 			if (state == STATE_PLAYING)
 			{
@@ -142,13 +161,14 @@ public class PlayerView extends SurfaceView implements
 				mTimeMS = NextFrame();
 				if (mPlayheadUpdateListener != null)
 					mPlayheadUpdateListener.onPlayheadUpdated(mTimeMS);
-				postDelayed(runnable, frameDelay);
+				postDelayed(runnable, 0);
 			}
 			else if (state == STATE_SEEKING)
 			{
 				//NextFrame();
-				postDelayed(runnable, frameDelay);
+				postDelayed(runnable, 0);
 			}
+			Log.i("Runnable.run", " ************** DONE");*/
 		}
 	};
 	
