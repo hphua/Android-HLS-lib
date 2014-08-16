@@ -88,6 +88,7 @@ bool AudioTrack::Init()
         mFlush = env->GetMethodID(mCAudioTrack, "flush", "()V");
         mRelease = env->GetMethodID(mCAudioTrack, "release", "()V");
         mWrite = env->GetMethodID(mCAudioTrack, "write", "([BII)I");
+        mSetPositionNotificationPeriod = env->GetMethodID(mCAudioTrack, "setPositionNotificationPeriod", "(I)I");
         mGetPlaybackHeadPosition = env->GetMethodID(mCAudioTrack, "getPlaybackHeadPosition", "()I");
     }
     return true;
@@ -242,6 +243,7 @@ bool AudioTrack::Start()
 
 
 	mTrack = env->NewGlobalRef(env->NewObject(mCAudioTrack, mAudioTrack, STREAM_MUSIC, mSampleRate, channelConfig, ENCODING_PCM_16BIT, mBufferSizeInBytes * 2, MODE_STREAM ));
+	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mSetPositionNotificationPeriod, 250);
 	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mPlay);
 	mPlayState = PLAYING;
 	samplesWritten = 0;

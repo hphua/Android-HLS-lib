@@ -460,11 +460,18 @@ bool HLSPlayer::InitSources()
 
 		//LOGI("-0xffffffda=%d INVALID_OPERATION=%8x", -0xffffffda, INVALID_OPERATION);
 
+		int32_t decodedWidth, decodedHeight;
+		meta->findInt32(kKeyWidth, &decodedWidth);
+    	meta->findInt32(kKeyHeight, &decodedHeight);
+    	int32_t vidWidth, vidHeight;
+    	mVideoTrack_md->findInt32(kKeyWidth, &vidWidth);
+        mVideoTrack_md->findInt32(kKeyHeight, &vidHeight);
+
 		LOGI("Calling createRendererFromJavaSurface component='%s' %dx%d colf=%d", component, mWidth, mHeight, colorFormat);
 		mOMXRenderer = omx.get()->createRendererFromJavaSurface(env, mSurface, 
 			component, (OMX_COLOR_FORMATTYPE)colorFormat, 
-			mWidth, mHeight,
-			mWidth, mHeight,
+			decodedWidth, decodedHeight,
+			vidWidth, vidHeight,
 			0);
 		LOGV("   o got %p", mOMXRenderer.get());
 	}
@@ -706,8 +713,6 @@ int HLSPlayer::Update()
 			int64_t audioTime = timeUs;
 #endif
 
-			LOGI("audioTime = %lld | videoTime = %lld | diff = %lld", audioTime, timeUs, audioTime - timeUs);
-
 			if (timeUs > mLastVideoTimeUs)
 			{
 				mVideoFrameDelta = timeUs - mLastVideoTimeUs;
@@ -715,21 +720,11 @@ int HLSPlayer::Update()
 			else if (timeUs < mLastVideoTimeUs)
 			{
 				LOGE("timeUs = %lld | mLastVideoTimeUs = %lld :: Why did this happen? Were we seeking?", timeUs, mLastVideoTimeUs);
-				// okay - we need to do something to timeUs
-//				LOGI("mFrameCount = %lld", mFrameCount);
-//				if (timeUs + mSegmentTimeOffset + (mVideoFrameDelta / mFrameCount) < mLastVideoTimeUs)
-//				{
-//					mSegmentTimeOffset = mLastVideoTimeUs + (mVideoFrameDelta / mFrameCount);
-//					LOGI("mSegmentTimeOffset = %lld", mSegmentTimeOffset);
-//				}
-//
-//				timeUs += mSegmentTimeOffset;
 			}
 
 			LOGI("audioTime = %lld | videoTime = %lld | diff = %lld | mVideoFrameDelta = %lld", audioTime, timeUs, audioTime - timeUs, mVideoFrameDelta);
 
 			int64_t delta = audioTime - timeUs;
-
 
 			mLastVideoTimeUs = timeUs;
 			if (delta < -10000) // video is running ahead

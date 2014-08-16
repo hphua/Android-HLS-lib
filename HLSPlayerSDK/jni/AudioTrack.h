@@ -47,6 +47,7 @@ private:
 	jmethodID mGetTimestamp;
 	jmethodID mWrite;
 	jmethodID mFlush;
+	jmethodID mSetPositionNotificationPeriod;
 	jmethodID mGetPlaybackHeadPosition;
 
 	jobject mTrack;
