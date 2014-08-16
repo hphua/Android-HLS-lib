@@ -533,6 +533,42 @@ namespace android_video_shim
         }
     };
 
+    class VideoRenderer
+    {
+    public:
+        virtual ~VideoRenderer() {}
+        virtual void render(
+                const void *data, size_t size, void *platformPrivate) = 0;
+
+    protected:
+        VideoRenderer() {}
+        VideoRenderer(const VideoRenderer &);
+        VideoRenderer &operator=(const VideoRenderer &);
+    };
+
+    inline VideoRenderer *instantiateSoftwareRenderer(OMX_COLOR_FORMATTYPE colorFormat,
+            const sp<ISurface> &surface,
+            size_t displayWidth, size_t displayHeight,
+            size_t decodedWidth, size_t decodedHeight,
+            int32_t rotationDegrees = 0)
+    {
+        typedef void *(*localFuncCast)(void *thiz, OMX_COLOR_FORMATTYPE colorFormat,
+            const sp<ISurface> &surface,
+            size_t displayWidth, size_t displayHeight,
+            size_t decodedWidth, size_t decodedHeight,
+            int32_t rotationDegrees);
+        localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android16SoftwareRendererC2E20OMX_COLOR_FORMATTYPERKNS_2spINS_8ISurfaceEEEjjjji");
+
+        if(!lfc)
+        {
+            LOGE("Could not resolve software renderer ctor.");
+            return NULL;
+        }
+
+        void *mem = malloc(8192); // Over allocate.
+        return (VideoRenderer*)lfc(mem, colorFormat, surface, displayWidth, displayHeight, decodedWidth, decodedHeight, rotationDegrees);
+    }
+
     class IInterface : public virtual RefBase
     {
 
@@ -619,15 +655,18 @@ namespace android_video_shim
 
             LOGV2("Resolving android.view.Surface class.");
             jclass surfaceClass = env->FindClass("android/view/Surface");
-            if (surfaceClass == NULL) {
+            if (surfaceClass == NULL) 
+            {
                 LOGE("Can't find android/view/Surface");
                 return NULL;
             }
-            LOGV2("   o Got %d", jclass);
+
+            LOGV2("   o Got %p", surfaceClass);
 
             LOGV2("Resolving android.view.Surface field ID");
             jfieldID surfaceID = env->GetFieldID(surfaceClass, ANDROID_VIEW_SURFACE_JNI_ID, "I");
-            if (surfaceID == NULL) {
+            if (surfaceID == NULL) 
+            {
                 LOGE("Can't find Surface.mSurface");
                 return NULL;
             }
@@ -867,9 +906,13 @@ namespace android_video_shim
             return lfc(this);
         }
 
-        size_t range_offset() const
+        size_t range_offset()
         {
-            assert(0);
+            typedef size_t (*localFuncCast)(void *thiz);
+            localFuncCast lfc = (localFuncCast)searchSymbol("_ZNK7android11MediaBuffer12range_offsetEv");
+            assert(lfc);
+            LOGV2("MediaBuffer::range_offset = %p this=%p", lfc, this);
+            return lfc(this);
         }
 
         size_t range_length()

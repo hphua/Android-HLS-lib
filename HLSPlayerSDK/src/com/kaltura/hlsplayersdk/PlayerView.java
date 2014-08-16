@@ -101,7 +101,7 @@ public class PlayerView extends SurfaceView implements
 				currentPlayerView.getHolder().setFixedSize(w, h);
 				// Doing these prevents locking surface on 2.3?
 				//currentPlayerView.getHolder().setFormat(colf);
-				//currentPlayerView.getHolder().setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+				currentPlayerView.getHolder().setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
 			}
 		}
 	}
