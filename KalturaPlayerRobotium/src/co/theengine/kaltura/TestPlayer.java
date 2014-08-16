@@ -133,6 +133,47 @@ public class TestPlayer extends ActivityInstrumentationTestCase2<Activity> {
 		
 		screenshot();
 	}
+
+	/**
+	 * Test seeking forward and backward on the provided stream menu item.
+	 */
+	private void seekTest(String itemStream) {
+		solo.clickOnMenuItem(itemStream);
+
+		screenshot();
+		solo.sleep(3000);
+		screenshot();
+
+		solo.clickOnMenuItem("Seek Fwd");
+
+		screenshot();
+		solo.sleep(2000);
+		screenshot();
+		
+		solo.clickOnMenuItem("Seek Fwd");
+
+		screenshot();
+		solo.sleep(2000);
+		screenshot();
+		
+		solo.clickOnMenuItem("Seek Backward");
+
+		screenshot();
+		solo.sleep(4000);
+		screenshot();
+		
+		solo.clickOnMenuItem("Seek Backward");
+
+		screenshot();
+		solo.sleep(4000);
+		screenshot();
+		
+		solo.clickOnMenuItem("Seek Fwd");
+
+		screenshot();
+		solo.sleep(2000);
+		screenshot();
+	}
 	
 	/**
 	 * Test the ABC live stream via the menu option.
@@ -176,46 +217,19 @@ public class TestPlayer extends ActivityInstrumentationTestCase2<Activity> {
 		solo.sleep(5000);
 		screenshot();
 	}
-	
+
+	/**
+	 * Test seeking forward and backward on the ABC DVR stream.
+	 */
+	public void testABCSeek() {
+		seekTest("ABC DVR");
+	}
+
 	/**
 	 * Test seeking forward and backward on the Kaltura stream.
 	 */
 	public void testKalturaVODSeek() {
-		solo.clickOnMenuItem("Kaltura VoD");
-
-		screenshot();
-		solo.sleep(3000);
-		screenshot();
-
-		solo.clickOnMenuItem("Seek Fwd");
-
-		screenshot();
-		solo.sleep(2000);
-		screenshot();
-		
-		solo.clickOnMenuItem("Seek Fwd");
-
-		screenshot();
-		solo.sleep(2000);
-		screenshot();
-		
-		solo.clickOnMenuItem("Seek Backward");
-
-		screenshot();
-		solo.sleep(4000);
-		screenshot();
-		
-		solo.clickOnMenuItem("Seek Backward");
-
-		screenshot();
-		solo.sleep(4000);
-		screenshot();
-		
-		solo.clickOnMenuItem("Seek Forward");
-
-		screenshot();
-		solo.sleep(2000);
-		screenshot();
+		seekTest("Kaltura VoD");
 	}
 	
 	/**
