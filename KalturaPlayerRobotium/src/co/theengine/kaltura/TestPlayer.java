@@ -141,37 +141,37 @@ public class TestPlayer extends ActivityInstrumentationTestCase2<Activity> {
 		solo.clickOnMenuItem(itemStream);
 
 		screenshot();
-		solo.sleep(3000);
+		sleep(3000);
 		screenshot();
 
 		solo.clickOnMenuItem("Seek Fwd");
 
 		screenshot();
-		solo.sleep(2000);
+		sleep(2000);
 		screenshot();
 		
 		solo.clickOnMenuItem("Seek Fwd");
 
 		screenshot();
-		solo.sleep(2000);
+		sleep(2000);
 		screenshot();
 		
 		solo.clickOnMenuItem("Seek Backward");
 
 		screenshot();
-		solo.sleep(4000);
+		sleep(4000);
 		screenshot();
 		
 		solo.clickOnMenuItem("Seek Backward");
 
 		screenshot();
-		solo.sleep(4000);
+		sleep(4000);
 		screenshot();
 		
 		solo.clickOnMenuItem("Seek Fwd");
 
 		screenshot();
-		solo.sleep(2000);
+		sleep(2000);
 		screenshot();
 	}
 	
@@ -196,25 +196,25 @@ public class TestPlayer extends ActivityInstrumentationTestCase2<Activity> {
 		solo.clickOnMenuItem("ABC DVR");
 
 		screenshot();
-		solo.sleep(5000);
+		sleep(5000);
 		screenshot();
 		
 		solo.clickOnMenuItem("Kaltura VoD");
 
 		screenshot();
-		solo.sleep(5000);
+		sleep(5000);
 		screenshot();
 		
 		solo.clickOnMenuItem("ABC DVR");
 		
 		screenshot();
-		solo.sleep(5000);
+		sleep(5000);
 		screenshot();
 		
 		solo.clickOnMenuItem("Kaltura VoD");
 		
 		screenshot();
-		solo.sleep(5000);
+		sleep(5000);
 		screenshot();
 	}
 
@@ -230,6 +230,78 @@ public class TestPlayer extends ActivityInstrumentationTestCase2<Activity> {
 	 */
 	public void testKalturaVODSeek() {
 		seekTest("Kaltura VoD");
+	}
+	
+	private void streamRunTest(String itemStream) {
+		screenshot();
+		solo.clickOnMenuItem(itemStream);
+		screenshot();
+		sleep(2000);
+		screenshot();
+		sleep(2000);
+		screenshot();
+		sleep(2000);
+		screenshot();
+	}
+
+	/**
+	 * Test a stream in the portrait orientation.
+	 */
+	public void testOrientationPortrait() {
+		solo.setActivityOrientation(Solo.PORTRAIT);
+		sleep(1000);
+		streamRunTest("ABC DVR");
+	}
+
+	/**
+	 * Test a stream in the landscape orientation.
+	 */
+	public void testOrientationLandscape() {
+		solo.setActivityOrientation(Solo.LANDSCAPE);
+		sleep(1000);
+		streamRunTest("ABC DVR");
+	}
+
+	/**
+	 * Test a stream with orientation changing mid-stream.
+	 */
+	public void testOrientationChange() {
+		solo.setActivityOrientation(Solo.PORTRAIT);
+		sleep(1000);
+		screenshot();
+		
+		solo.clickOnMenuItem("ABC DVR");
+		screenshot();
+		
+		sleep(2000);
+		screenshot();
+		sleep(2000);
+		screenshot();
+
+		solo.setActivityOrientation(Solo.LANDSCAPE);
+		
+		screenshot();
+		sleep(1000);
+		
+		screenshot();
+		sleep(2000);
+		
+		screenshot();
+		sleep(2000);
+		
+		screenshot();
+		solo.setActivityOrientation(Solo.PORTRAIT);
+
+		screenshot();
+		sleep(1000);
+		
+		screenshot();
+		sleep(2000);
+		
+		screenshot();
+		sleep(2000);
+		
+		screenshot();
 	}
 	
 	/**
