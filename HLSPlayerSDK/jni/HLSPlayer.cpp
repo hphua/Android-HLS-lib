@@ -435,104 +435,9 @@ bool HLSPlayer::InitSources()
 
 	// HAX for hw renderer path
 	const char *component = "";
-	void *libHandle = dlopen("libstagefrighthw.so", RTLD_NOW);
-
-    typedef VideoRenderer *(*CreateRendererWithRotationFunc)(
-                    const sp<ISurface> &surface,
-                    const char *componentName,
-                    OMX_COLOR_FORMATTYPE colorFormat,
-                    size_t displayWidth, size_t displayHeight,
-                    size_t decodedWidth, size_t decodedHeight,
-                    int32_t rotationDegrees);
-    typedef VideoRenderer *(*CreateRendererFunc)(
-            const sp<ISurface> &surface,
-            const char *componentName,
-            OMX_COLOR_FORMATTYPE colorFormat,
-            size_t displayWidth, size_t displayHeight,
-            size_t decodedWidth, size_t decodedHeight);
-
-	 CreateRendererWithRotationFunc funcWithRotation =
-                (CreateRendererWithRotationFunc)dlsym(
-                        libHandle,
-                        "_Z26createRendererWithRotationRKN7android2spINS_8"
-                        "ISurfaceEEEPKc20OMX_COLOR_FORMATTYPEjjjji");
-     CreateRendererFunc func =
-                    (CreateRendererFunc)dlsym(
-                            libHandle,
-                            "_Z14createRendererRKN7android2spINS_8ISurfaceEEEPKc20"
-                            "OMX_COLOR_FORMATTYPEjjjj");
-
-    LOGI("Looked for HW render path func=%p funcWithRotation=%p", func, funcWithRotation);
 
 	int colorFormat = -1;
 	meta->findInt32(kKeyColorFormat, &colorFormat);
-
-#if 0
-
-    sp<ISurface> surfInterface = NULL;
-    if(func || funcWithRotation)
-    {
-        if(meta->findInt32(kKeyColorFormat, &colorFormat))
-			NoteHWRendererMode(true, mWidth, mHeight, colorFormat);
-
-    	// Get the ISurface
-		LOGV("Resolving android.view.Surface class.");
-        jclass surfaceClass = env->FindClass("android/view/Surface");
-        if (surfaceClass == NULL) 
-        {
-            LOGE("Can't find android/view/Surface");
-            return NULL;
-        }
-
-        LOGV("   o Got %p", surfaceClass);
-
-        LOGV("Resolving android.view.Surface field ID");
-        jfieldID surfaceID = env->GetFieldID(surfaceClass, ANDROID_VIEW_SURFACE_JNI_ID, "I");
-        if (surfaceID == NULL) 
-        {
-            LOGE("Can't find Surface.mSurface");
-            return NULL;
-        }
-        LOGV("   o Got %p", surfaceID);
-
-        LOGV("Getting Surface off of the Java Surface");
-        sp<Surface> surface = (Surface *)env->GetIntField(mSurface, surfaceID);
-        LOGV("   o Got %p", surface.get());
-
-        LOGV("Getting ISurface off of the Surface");
-        surfInterface = surface->getISurface();
-        LOGV("   o Got %p", surfInterface.get());
-    }
-
-    // Call the function
-    if(surfInterface.get() && funcWithRotation && meta->findCString(kKeyDecoderComponent, &component))
-    {
-    	LOGV("attempting renderer init with funcWithRotation=%p", funcWithRotation);
-    	mVideoRenderer = funcWithRotation(surfInterface, component, (OMX_COLOR_FORMATTYPE)colorFormat,
-    								 mWidth, mHeight, mWidth, mHeight, 0);
-    	LOGV("Got %p", mVideoRenderer);
-    }
-    else if(surfInterface.get() && func && meta->findCString(kKeyDecoderComponent, &component))
-    {
-    	LOGV("attempting renderer init with func=%p", func);
-    	mVideoRenderer = func(surfInterface, component, (OMX_COLOR_FORMATTYPE)colorFormat, 
-    								mWidth, mHeight, mWidth, mHeight);
-    	LOGV("Got %p", mVideoRenderer);
-    }
-    else
-    {
-    	LOGE("Failed to get a renderer init func.");
-    }
-
-    if(surfInterface.get() && !mVideoRenderer && false)
-    {
-    	meta->findInt32(kKeyColorFormat, &colorFormat);
-
-    	LOGV("Attempting to instantiate software renderer colf=%d...", colorFormat);
-    	mVideoRenderer = instantiateSoftwareRenderer(OMX_COLOR_FORMATTYPE(colorFormat), surfInterface, mWidth, mHeight, mWidth, mHeight);
-    	LOGV("Got %p", mVideoRenderer);
-    }
-#endif
 
 	if(!mVideoRenderer && AVSHIM_HAS_OMXRENDERERPATH && meta->findCString(kKeyDecoderComponent, &component))
 	{
@@ -547,7 +452,9 @@ bool HLSPlayer::InitSources()
 		sp<IOMX> omx = mClient.interface();
 		LOGV("   got %p", omx.get());
 
-		NoteHWRendererMode(true, mWidth, mHeight, colorFormat);
+		//NoteHWRendererMode(true, mWidth, mHeight, 4);
+
+		LOGI("-0xffffffda=%d INVALID_OPERATION=%8x", -0xffffffda, INVALID_OPERATION);
 
 		LOGI("Calling createRendererFromJavaSurface component='%s' %dx%d colf=%d", component, mWidth, mHeight, colorFormat);
 		mOMXRenderer = omx.get()->createRendererFromJavaSurface(env, mSurface, 
@@ -556,7 +463,6 @@ bool HLSPlayer::InitSources()
 			mWidth, mHeight,
 			0);
 		LOGV("   o got %p", mOMXRenderer.get());
-
 	}
 
 	if(!mOMXRenderer.get() && !mVideoRenderer)

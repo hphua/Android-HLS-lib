@@ -631,10 +631,10 @@ namespace android_video_shim
 
             for(int i=0; i<32; i++)
             {
-                LOGV2("vtable[%d] = %p", i, fakeObj[0][i]);
+                LOGV("vtable[%d] = %p", i, fakeObj[0][i]);
             }
 
-            LOGV2("expected OMX::createRenderer=%p", searchSymbol("_ZN7android3OMX14createRendererERKNS_2spINS_8ISurfaceEEEPKc20OMX_COLOR_FORMATTYPEjjjji"));
+            LOGV("expected OMX::createRenderer=%p", searchSymbol("_ZN7android3OMX14createRendererERKNS_2spINS_8ISurfaceEEEPKc20OMX_COLOR_FORMATTYPEjjjji"));
 
             LOGI("virtual IOMX::createRenderer=%p", lfc);
             sp<IOMXRenderer> r = lfc((void*)this, surface, componentName, colorFormat, encodedWidth, encodedHeight, displayWidth, displayHeight, rotationDegrees);

@@ -75,34 +75,34 @@ public class PlayerView extends SurfaceView implements
 	
 	public static void enableHWRendererMode(boolean enable, int w, int h, int colf)
 	{
-		if(currentPlayerView != null)
+		if(currentPlayerView == null)
+			return;
+
+		if(enable)
 		{
-			if(enable)
+			Log.i("enableHWRendererMode", "HW Renderer mode ON - " + w + "x" + h + " format=" + colf);
+			Log.i("enableHWRendererMode", " Step 1");
+			//currentPlayerView.getHolder().setFixedSize(w, h);
+			Log.i("enableHWRendererMode", " Step 2");
+			try
 			{
-				Log.i("enableHWRendererMode", "HW Renderer mode ON - " + w + "x" + h + " format=" + colf);
-				Log.i("enableHWRendererMode", " Step 1");
-				currentPlayerView.getHolder().setFixedSize(w, h);
-				Log.i("enableHWRendererMode", " Step 2");
-				try
-				{
-					//currentPlayerView.getHolder().setFormat(colf);
-				}
-				catch (Exception e)
-				{
-					Log.i("enableHWRendererMode", "FAILED TO SET STUFF");
-				}
-				Log.i("enableHWRendererMode", " Step 3");
-				currentPlayerView.getHolder().setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);	
-				Log.i("enableHWRendererMode", " DONE");
-			}
-			else
-			{
-				Log.i("enableHWRendererMode", "Going back to normal RGB565 buffer mode.");
-				currentPlayerView.getHolder().setFixedSize(w, h);
-				// Doing these prevents locking surface on 2.3?
 				//currentPlayerView.getHolder().setFormat(colf);
-				currentPlayerView.getHolder().setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
 			}
+			catch (Exception e)
+			{
+				Log.i("enableHWRendererMode", "FAILED TO SET STUFF");
+			}
+			Log.i("enableHWRendererMode", " Step 3");
+			//currentPlayerView.
+			Log.i("enableHWRendererMode", " DONE");
+		}
+		else
+		{
+			Log.i("enableHWRendererMode", "Going back to normal RGB565 buffer mode.");
+			currentPlayerView.getHolder().setFixedSize(w, h);
+			// Doing these prevents locking surface on 2.3?
+			//currentPlayerView.getHolder().setFormat(colf);
+			currentPlayerView.getHolder().setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
 		}
 	}
 	
@@ -277,6 +277,7 @@ public class PlayerView extends SurfaceView implements
 
 		// Set some properties on the SurfaceHolder.
 		getHolder().setKeepScreenOn(true);
+		getHolder().setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
 	}
 	
 	public void close()
