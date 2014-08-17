@@ -704,7 +704,7 @@ int HLSPlayer::Update()
 				return -1;
 			}
 
-#ifdef USE_AUDIO_XXX
+#ifdef USE_AUDIO
 			int64_t audioTime = mJAudioTrack->GetTimeStamp();
 #else
 			// Set the audio time to the video time, which will keep the video running.

@@ -116,8 +116,6 @@ public class PlayerView extends SurfaceView implements
 		}
 	}
 
-	private int frameDelay = 10;
-
 	// This is our root manifest
 	private ManifestParser mManifest = null;
 	
@@ -128,47 +126,37 @@ public class PlayerView extends SurfaceView implements
 	
 	public OnPlayheadUpdateListener mPlayheadUpdateListener;
 
-	private Handler handler = new Handler();
+	private Thread mRenderThread;
+
 	private Runnable runnable = new Runnable()
 	{
 		public void run()
 		{
 			while(true)
 			{
+				int nextDelay = 1;
+
 				int state = GetState();
 				if (state == STATE_PLAYING)
 				{
-					
-					//Log.i("Runnable.run", "Running!");
 					mTimeMS = NextFrame();
 					if (mPlayheadUpdateListener != null)
 						mPlayheadUpdateListener.onPlayheadUpdated(mTimeMS);
-					//postDelayed(runnable, 0);
 				}
-				else if (state == STATE_SEEKING)
+				else
 				{
-					//NextFrame();
-					//postDelayed(runnable, 0);
+					nextDelay = 30;
+				}
+
+				try
+				{
+					Thread.sleep(nextDelay);
+				}
+				catch(InterruptedException ie)
+				{
+					Log.i("video run", "Video thread sleep interrupted!");
 				}
 			}
-
-/*			int state = GetState();
-			Log.i("Runnable.run", "PlayState = " + state);
-			if (state == STATE_PLAYING)
-			{
-				
-				//Log.i("Runnable.run", "Running!");
-				mTimeMS = NextFrame();
-				if (mPlayheadUpdateListener != null)
-					mPlayheadUpdateListener.onPlayheadUpdated(mTimeMS);
-				postDelayed(runnable, 0);
-			}
-			else if (state == STATE_SEEKING)
-			{
-				//NextFrame();
-				postDelayed(runnable, 0);
-			}
-			Log.i("Runnable.run", " ************** DONE");*/
 		}
 	};
 	
@@ -297,7 +285,17 @@ public class PlayerView extends SurfaceView implements
 
 		// Set some properties on the SurfaceHolder.
 		getHolder().setKeepScreenOn(true);
-		//getHolder().setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+
+		// Pre 3.0 we must set this explicitly.
+		if(android.os.Build.VERSION.SDK_INT < 11)
+		{
+			Log.i("PlayerView", "Explcitly setting surface type on pre-api 11 device.");
+			getHolder().setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+		}
+
+		// Kick off render thread.
+		mRenderThread = new Thread(runnable, "RenderThread");
+		mRenderThread.start();		
 	}
 	
 	public void close()
@@ -337,7 +335,6 @@ public class PlayerView extends SurfaceView implements
 	{
 		SetSurface(getHolder().getSurface());
 		PlayFile();
-		this.postDelayed(runnable, frameDelay);
 	}
 	
 	public boolean canPause()
@@ -368,10 +365,6 @@ public class PlayerView extends SurfaceView implements
 	public void pause()
 	{
 		TogglePause();
-		if (isPlaying())
-		{
-			postDelayed(runnable, frameDelay);
-		}
 	}
 	
 	
@@ -379,7 +372,7 @@ public class PlayerView extends SurfaceView implements
 	{
 		StopPlayer();
 		try {
-			Thread.sleep(frameDelay * 2);
+			Thread.sleep(100);
 		} catch (InterruptedException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
