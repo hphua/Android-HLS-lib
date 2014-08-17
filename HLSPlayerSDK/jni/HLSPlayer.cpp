@@ -53,7 +53,7 @@ mAudioTrack(NULL), mVideoTrack(NULL), mJvm(jvm), mPlayerViewClass(NULL),
 mNextSegmentMethodID(NULL), mSetVideoResolutionID(NULL), mEnableHWRendererModeID(NULL), 
 mSegmentTimeOffset(0), mVideoFrameDelta(0), mLastVideoTimeUs(0),
 mSegmentForTimeMethodID(NULL), mFrameCount(0), mDataSource(NULL), audioThread(0),
-mScreenHeight(0), mScreenWidth(0), mJAudioTrack(NULL), mStartTimeMS(0), mVideoRenderer(NULL), mUseOMXRenderer(true)
+mScreenHeight(0), mScreenWidth(0), mJAudioTrack(NULL), mStartTimeMS(0), mUseOMXRenderer(true)
 {
 	status_t status = mClient.connect();
 	LOGI("OMXClient::Connect return %d", status);
@@ -206,7 +206,7 @@ void HLSPlayer::SetSurface(JNIEnv* env, jobject surface)
 			}
 		}
 
-		if(!mOMXRenderer.get() && !mVideoRenderer)
+		if(!mOMXRenderer.get())
 		{
 			LOGI("Initializing SW renderer path.");
 
@@ -224,8 +224,9 @@ void HLSPlayer::SetSurface(JNIEnv* env, jobject surface)
 	else
 	{
 		// Tear down renderers.
-		mVideoRenderer = NULL;
+		mOMXRenderer.clear();
 		mSurface = NULL;
+		SetNativeWindow(NULL);
 	}
 }
 
@@ -831,15 +832,6 @@ int HLSPlayer::Update()
 
 bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 {
-	if(mVideoRenderer)
-	{
-		LOGV("Taking VideoRenderer path %p %d", buffer->data(), buffer->range_length());
-		mVideoRenderer->render((const uint8_t *)buffer->data() + buffer->range_offset(), buffer->range_length(), NULL);
-		buffer->release();
-		sched_yield();
-		return true;
-	}
-
 	if(mOMXRenderer.get())
 	{
         int fmt = -1;

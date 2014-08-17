@@ -532,6 +532,9 @@ namespace android_video_shim
             return lfc(this);
         }
     };
+    
+    /* Can't use VideoRenderer, as it assumes local access to DSP RAM.
+       IOMXRenderer proxies it in correct memory space.
 
     class VideoRenderer
     {
@@ -567,7 +570,7 @@ namespace android_video_shim
 
         void *mem = malloc(8192); // Over allocate.
         return (VideoRenderer*)lfc(mem, colorFormat, surface, displayWidth, displayHeight, decodedWidth, decodedHeight, rotationDegrees);
-    }
+    } */
 
     class IInterface : public virtual RefBase
     {
