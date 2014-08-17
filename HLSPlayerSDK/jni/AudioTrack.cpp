@@ -295,9 +295,10 @@ bool AudioTrack::Stop(bool seeking)
 		sem_post(&semPause);
 	}
 
+	pthread_mutex_lock(&updateMutex);
+
 	if(seeking)
 	{
-		pthread_mutex_lock(&updateMutex);
 
 		if (mAudioSource.get())
 		{
@@ -311,12 +312,14 @@ bool AudioTrack::Stop(bool seeking)
 			mAudioSource23.clear();
 		}
 
-		pthread_mutex_unlock(&updateMutex);
 	}
 
 	JNIEnv* env;
 	mJvm->AttachCurrentThread(&env, NULL);
 	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mStop);
+
+	pthread_mutex_unlock(&updateMutex);
+
 	return true;
 }
 
@@ -335,7 +338,11 @@ void AudioTrack::Flush()
 	JNIEnv* env;
 	mJvm->AttachCurrentThread(&env, NULL);
 	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mFlush);
+	
+	pthread_mutex_lock(&updateMutex);
 	samplesWritten = 0;
+	pthread_mutex_unlock(&updateMutex);
+
 }
 
 void AudioTrack::SetTimeStampOffset(double offsetSecs)
@@ -357,7 +364,7 @@ int64_t AudioTrack::GetTimeStamp()
 
 bool AudioTrack::Update()
 {
-	LOGV("Audio Update Thread Running");
+	//LOGV("Audio Update Thread Running");
 	if (mPlayState != PLAYING)
 	{
 		while (mPlayState == PAUSED)
@@ -460,6 +467,14 @@ bool AudioTrack::Update()
 
 	pthread_mutex_unlock(&updateMutex);
 	return true;
+}
+
+void AudioTrack::shutdown()
+{
+	JNIEnv* env;
+	mJvm->AttachCurrentThread(&env, NULL);
+	env->DeleteGlobalRef(buffer);
+	mJvm->DetachCurrentThread();
 }
 
 int AudioTrack::getBufferSize()

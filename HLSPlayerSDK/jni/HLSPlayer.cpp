@@ -32,13 +32,14 @@ void* audio_thread_func(void* arg)
 
 	while (audioTrack->Update())
 	{
-		if(audioTrack->getBufferSize() > (44100/15))
+		if(audioTrack->getBufferSize() > (44100/10))
 		{
-			LOGI("Buffer full enough yielding");
+			//LOGI("Buffer full enough yielding");
 			sched_yield();
 		}
 	}
 
+	audioTrack->shutdown();
 	LOGI("audio_thread_func ending");
 	return NULL;
 }
@@ -52,7 +53,7 @@ mAudioTrack(NULL), mVideoTrack(NULL), mJvm(jvm), mPlayerViewClass(NULL),
 mNextSegmentMethodID(NULL), mSetVideoResolutionID(NULL), mEnableHWRendererModeID(NULL), 
 mSegmentTimeOffset(0), mVideoFrameDelta(0), mLastVideoTimeUs(0),
 mSegmentForTimeMethodID(NULL), mFrameCount(0), mDataSource(NULL), audioThread(0),
-mScreenHeight(0), mScreenWidth(0), mJAudioTrack(NULL), mStartTimeMS(0), mVideoRenderer(NULL)
+mScreenHeight(0), mScreenWidth(0), mJAudioTrack(NULL), mStartTimeMS(0), mVideoRenderer(NULL), mUseOMXRenderer(true)
 {
 	status_t status = mClient.connect();
 	LOGI("OMXClient::Connect return %d", status);
@@ -147,7 +148,85 @@ void HLSPlayer::SetSurface(JNIEnv* env, jobject surface)
 		mSurface = NULL;
 	}
 
-	mSurface = (jobject)env->NewGlobalRef(surface);
+	if(surface)
+	{
+		// Note the surface.
+		mSurface = (jobject)env->NewGlobalRef(surface);
+
+		// Set up our rendering path.
+		sp<MetaData> meta;
+		if(AVSHIM_USE_NEWMEDIASOURCE)
+			meta = mVideoSource->getFormat();
+		else
+			meta = mVideoSource23->getFormat();
+
+		if(!meta.get())
+		{
+			LOGE("No format available from the video source.");
+			return;
+		}
+
+		// HAX for hw renderer path
+		const char *component = "";
+		bool hasDecoderComponent = meta->findCString(kKeyDecoderComponent, &component);
+
+		int colorFormat = -1;
+		meta->findInt32(kKeyColorFormat, &colorFormat);
+
+		if(mUseOMXRenderer)
+		{
+			// Set things up w/ OMX.
+			LOGV("Trying OMXRenderer path!");
+
+			LOGV("Getting IOMX");
+			sp<IOMX> omx = mClient.interface();
+			LOGV("   got %p", omx.get());
+
+			int32_t decodedWidth, decodedHeight;
+			meta->findInt32(kKeyWidth, &decodedWidth);
+	    	meta->findInt32(kKeyHeight, &decodedHeight);
+	    	int32_t vidWidth, vidHeight;
+	    	mVideoTrack_md->findInt32(kKeyWidth, &vidWidth);
+	        mVideoTrack_md->findInt32(kKeyHeight, &vidHeight);
+
+			LOGI("Calling createRendererFromJavaSurface component='%s' %dx%d colf=%d", component, mWidth, mHeight, colorFormat);
+			mOMXRenderer = omx.get()->createRendererFromJavaSurface(env, mSurface, 
+				component, (OMX_COLOR_FORMATTYPE)colorFormat,
+				decodedWidth, decodedHeight,
+				vidWidth, vidHeight,
+				0);
+			LOGV("   o got %p", mOMXRenderer.get());
+
+			if(!mOMXRenderer.get())
+			{
+				LOGE("OMXRenderer path failed, re-initializing with SW renderer path.");
+				mUseOMXRenderer = false;
+				NoteHWRendererMode(false, mWidth, mHeight, 4);
+				return;
+			}
+		}
+
+		if(!mOMXRenderer.get() && !mVideoRenderer)
+		{
+			LOGI("Initializing SW renderer path.");
+
+			::ANativeWindow *window = ANativeWindow_fromSurface(env, mSurface);
+			if(!window)
+			{
+				LOGE("Failed to get ANativeWindow from mSurface %p", mSurface);
+				assert(window);
+			}
+
+			SetNativeWindow(window);
+			int32_t res = ANativeWindow_setBuffersGeometry(mWindow, mWidth, mHeight, WINDOW_FORMAT_RGB_565);
+		}
+	}
+	else
+	{
+		// Tear down renderers.
+		mVideoRenderer = NULL;
+		mSurface = NULL;
+	}
 }
 
 void HLSPlayer::SetNativeWindow(::ANativeWindow* window)
@@ -439,53 +518,28 @@ bool HLSPlayer::InitSources()
 
 	// HAX for hw renderer path
 	const char *component = "";
+	bool hasDecoderComponent = meta->findCString(kKeyDecoderComponent, &component);
 
 	int colorFormat = -1;
 	meta->findInt32(kKeyColorFormat, &colorFormat);
 
-	if(!mVideoRenderer && AVSHIM_HAS_OMXRENDERERPATH && meta->findCString(kKeyDecoderComponent, &component) && dlopen("libstagefrighthw.so", 0))
+	if(AVSHIM_HAS_OMXRENDERERPATH && hasDecoderComponent 
+		&& colorFormat != OMX_COLOR_Format16bitRGB565 // Don't need this if it's already in a good format.
+		&& dlopen("libstagefrighthw.so", RTLD_LAZY)) // Skip it if the hw lib isn't present as that's where this class comes from.
 	{
-		// Grab the color format, too.
-		colorFormat = -1;
-		meta->findInt32(kKeyColorFormat, &colorFormat);
-
 		// Set things up w/ OMX.
-		LOGV("Trying OMXRenderer path!");
-
-		LOGV("Getting IOMX");
-		sp<IOMX> omx = mClient.interface();
-		LOGV("   got %p", omx.get());
-
-		//NoteHWRendererMode(true, mWidth, mHeight, 4);
-
-		//LOGI("-0xffffffda=%d INVALID_OPERATION=%8x", -0xffffffda, INVALID_OPERATION);
-
-		int32_t decodedWidth, decodedHeight;
-		meta->findInt32(kKeyWidth, &decodedWidth);
-    	meta->findInt32(kKeyHeight, &decodedHeight);
-    	int32_t vidWidth, vidHeight;
-    	mVideoTrack_md->findInt32(kKeyWidth, &vidWidth);
-        mVideoTrack_md->findInt32(kKeyHeight, &vidHeight);
-
-		LOGI("Calling createRendererFromJavaSurface component='%s' %dx%d colf=%d", component, mWidth, mHeight, colorFormat);
-		mOMXRenderer = omx.get()->createRendererFromJavaSurface(env, mSurface, 
-			component, (OMX_COLOR_FORMATTYPE)colorFormat, 
-			decodedWidth, decodedHeight,
-			vidWidth, vidHeight,
-			0);
-		LOGV("   o got %p", mOMXRenderer.get());
+		LOGV("Trying OMXRenderer init path!");
+		mUseOMXRenderer = true;
+		NoteHWRendererMode(true, mWidth, mHeight, 4);
 	}
-
-	if(!mOMXRenderer.get() && !mVideoRenderer)
+	else
 	{
-		::ANativeWindow *window = ANativeWindow_fromSurface(env, mSurface);
-		assert(window);
-		SetNativeWindow(window);
-
-		// Set the window buffer.
-		NoteHWRendererMode(false, mWidth, mHeight, 4);
-		int32_t res = ANativeWindow_setBuffersGeometry(mWindow, mWidth, mHeight, WINDOW_FORMAT_RGB_565);
+		LOGV("Trying OMXRenderer init path!");
+		mUseOMXRenderer = false;
+		NoteHWRendererMode(false, mWidth, mHeight, 4);		
 	}
+
+	// We will get called back later to finish initialization of our renderers.
 
 	// Audio
 	if(AVSHIM_USE_NEWMEDIASOURCE)
@@ -786,7 +840,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 		return true;
 	}
 
-	if(AVSHIM_HAS_OMXRENDERERPATH && mOMXRenderer.get())
+	if(mOMXRenderer.get())
 	{
         int fmt = -1;
         mVideoSource23->getFormat()->findInt32(kKeyColorFormat, &fmt);
@@ -806,8 +860,8 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 
 	//LOGI("Entered");
 	//LOGI("Rendering Buffer size=%d", buffer->size());
-	if (!mWindow) { LOGI("mWindow is NULL"); return false; }
-	if (!buffer) { LOGI("the MediaBuffer is NULL"); return false; }
+	if (!mWindow) { LOGI("mWindow is NULL"); return true; }
+	if (!buffer) { LOGI("the MediaBuffer is NULL"); return true; }
 
 	RUNDEBUG(buffer->meta_data()->dumpToLog());
 
@@ -967,9 +1021,9 @@ void HLSPlayer::RequestNextSegment()
 
 	if (mPlayerViewClass == NULL)
 	{
-		jclass c = env->FindClass("com/kaltura/hlsplayersdk/PlayerView");
+		jclass c = env->FindClass("com/kaltura/hlsplayersdk/PlayerViewController");
 		if ( env->ExceptionCheck() || c == NULL) {
-			LOGI("Could not find class com/kaltura/hlsplayersdk/PlayerView" );
+			LOGI("Could not find class com/kaltura/hlsplayersdk/PlayerViewController" );
 			mPlayerViewClass = NULL;
 			return;
 		}
@@ -984,7 +1038,7 @@ void HLSPlayer::RequestNextSegment()
 		if (env->ExceptionCheck())
 		{
 			mNextSegmentMethodID = NULL;
-			LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerView.requestNextSegment()" );
+			LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerViewController.requestNextSegment()" );
 			return;
 		}
 	}
@@ -992,7 +1046,7 @@ void HLSPlayer::RequestNextSegment()
 	env->CallStaticVoidMethod(mPlayerViewClass, mNextSegmentMethodID);
 	if (env->ExceptionCheck())
 	{
-		LOGI("Call to method  com/kaltura/hlsplayersdk/PlayerView.requestNextSegment() FAILED" );
+		LOGI("Call to method  com/kaltura/hlsplayersdk/PlayerViewController.requestNextSegment() FAILED" );
 	}
 }
 
@@ -1004,9 +1058,9 @@ double HLSPlayer::RequestSegmentForTime(double time)
 
 	if (mPlayerViewClass == NULL)
 	{
-		jclass c = env->FindClass("com/kaltura/hlsplayersdk/PlayerView");
+		jclass c = env->FindClass("com/kaltura/hlsplayersdk/PlayerViewController");
 		if ( env->ExceptionCheck() || c == NULL) {
-			LOGI("Could not find class com/kaltura/hlsplayersdk/PlayerView" );
+			LOGI("Could not find class com/kaltura/hlsplayersdk/PlayerViewController" );
 			mPlayerViewClass = NULL;
 			return 0;
 		}
@@ -1021,7 +1075,7 @@ double HLSPlayer::RequestSegmentForTime(double time)
 		if (env->ExceptionCheck())
 		{
 			mSegmentForTimeMethodID = NULL;
-			LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerView.requestSegmentForTime()" );
+			LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerViewController.requestSegmentForTime()" );
 			return 0;
 		}
 	}
@@ -1029,7 +1083,7 @@ double HLSPlayer::RequestSegmentForTime(double time)
 	jdouble segTime = env->CallStaticDoubleMethod(mPlayerViewClass, mSegmentForTimeMethodID, time);
 	if (env->ExceptionCheck())
 	{
-		LOGI("Call to method  com/kaltura/hlsplayersdk/PlayerView.requestSegmentForTime() FAILED" );
+		LOGI("Call to method  com/kaltura/hlsplayersdk/PlayerViewController.requestSegmentForTime() FAILED" );
 	}
 	return segTime;
 }
@@ -1042,9 +1096,9 @@ void HLSPlayer::NoteVideoDimensions()
 
 	if (mPlayerViewClass == NULL)
 	{
-		jclass c = env->FindClass("com/kaltura/hlsplayersdk/PlayerView");
+		jclass c = env->FindClass("com/kaltura/hlsplayersdk/PlayerViewController");
 		if ( env->ExceptionCheck() || c == NULL) {
-			LOGI("Could not find class com/kaltura/hlsplayersdk/PlayerView" );
+			LOGI("Could not find class com/kaltura/hlsplayersdk/PlayerViewController" );
 			mPlayerViewClass = NULL;
 			return;
 		}
@@ -1058,7 +1112,7 @@ void HLSPlayer::NoteVideoDimensions()
 		if (env->ExceptionCheck())
 		{
 			mSetVideoResolutionID = NULL;
-			LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerView.setVideoResolution()" );
+			LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerViewController.setVideoResolution()" );
 			return;
 		}
 	}
@@ -1066,7 +1120,7 @@ void HLSPlayer::NoteVideoDimensions()
 	env->CallStaticVoidMethod(mPlayerViewClass, mSetVideoResolutionID, mWidth, mHeight);
 	if (env->ExceptionCheck())
 	{
-		LOGI("Call to method  com/kaltura/hlsplayersdk/PlayerView.setVideoResolution() FAILED" );
+		LOGI("Call to method  com/kaltura/hlsplayersdk/PlayerViewController.setVideoResolution() FAILED" );
 	}	
 }
 
@@ -1079,9 +1133,9 @@ void HLSPlayer::NoteHWRendererMode(bool enabled, int w, int h, int colf)
 
 	if (mPlayerViewClass == NULL)
 	{
-		jclass c = env->FindClass("com/kaltura/hlsplayersdk/PlayerView");
+		jclass c = env->FindClass("com/kaltura/hlsplayersdk/PlayerViewController");
 		if ( env->ExceptionCheck() || c == NULL) {
-			LOGI("Could not find class com/kaltura/hlsplayersdk/PlayerView" );
+			LOGI("Could not find class com/kaltura/hlsplayersdk/PlayerViewController" );
 			mPlayerViewClass = NULL;
 			return;
 		}
@@ -1095,7 +1149,7 @@ void HLSPlayer::NoteHWRendererMode(bool enabled, int w, int h, int colf)
 		if (env->ExceptionCheck())
 		{
 			mEnableHWRendererModeID = NULL;
-			LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerView.enableHWRendererMode()" );
+			LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerViewController.enableHWRendererMode()" );
 			return;
 		}
 	}
@@ -1103,7 +1157,8 @@ void HLSPlayer::NoteHWRendererMode(bool enabled, int w, int h, int colf)
 	env->CallStaticVoidMethod(mPlayerViewClass, mEnableHWRendererModeID, enabled, w, h, colf);
 	if (env->ExceptionCheck())
 	{
-		LOGI("Call to method  com/kaltura/hlsplayersdk/PlayerView.enableHWRendererMode() FAILED" );
+		env->ExceptionDescribe();
+		LOGI("Call to method com/kaltura/hlsplayersdk/PlayerView.enableHWRendererMode() FAILED" );
 	}	
 }
 

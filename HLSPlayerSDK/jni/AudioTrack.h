@@ -31,6 +31,8 @@ public:
 
 	bool Update();
 
+	void shutdown();
+
 	int64_t GetTimeStamp();
 	void SetTimeStampOffset(double offsetSecs);
 

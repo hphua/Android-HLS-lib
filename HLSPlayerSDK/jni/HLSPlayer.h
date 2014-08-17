@@ -116,6 +116,7 @@ private:
 
 	AudioTrack *mJAudioTrack;
 
+	bool mUseOMXRenderer;
 	bool mOffloadAudio;
 	int64_t mDurationUs;
 
