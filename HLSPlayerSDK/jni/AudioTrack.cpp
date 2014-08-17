@@ -401,13 +401,14 @@ bool AudioTrack::Update()
 	if (res == OK)
 	{
 		//LOGI("Finished reading from the media buffer");
-
-
 		RUNDEBUG(mediaBuffer->meta_data()->dumpToLog());
 		env->PushLocalFrame(2);
 
-		//if(!buffer)
+		if(!buffer)
+		{
 			buffer = env->NewByteArray(mBufferSizeInBytes);
+			buffer = (jarray)env->NewGlobalRef(buffer);
+		}
 
 		void* pBuffer = env->GetPrimitiveArrayCritical(buffer, NULL);
 
@@ -455,9 +456,7 @@ bool AudioTrack::Update()
 	mJvm->DetachCurrentThread();
 
 	if (mediaBuffer != NULL)
-	{
 		mediaBuffer->release();
-	}
 
 	pthread_mutex_unlock(&updateMutex);
 	return true;
