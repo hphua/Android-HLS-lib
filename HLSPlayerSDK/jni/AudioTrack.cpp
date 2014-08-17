@@ -243,7 +243,7 @@ bool AudioTrack::Start()
 
 
 	mTrack = env->NewGlobalRef(env->NewObject(mCAudioTrack, mAudioTrack, STREAM_MUSIC, mSampleRate, channelConfig, ENCODING_PCM_16BIT, mBufferSizeInBytes * 2, MODE_STREAM ));
-	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mSetPositionNotificationPeriod, 250);
+	//env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mSetPositionNotificationPeriod, 250);
 	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mPlay);
 	mPlayState = PLAYING;
 	samplesWritten = 0;
@@ -406,7 +406,7 @@ bool AudioTrack::Update()
 		RUNDEBUG(mediaBuffer->meta_data()->dumpToLog());
 		env->PushLocalFrame(2);
 
-		if(!buffer)
+		//if(!buffer)
 			buffer = env->NewByteArray(mBufferSizeInBytes);
 
 		void* pBuffer = env->GetPrimitiveArrayCritical(buffer, NULL);

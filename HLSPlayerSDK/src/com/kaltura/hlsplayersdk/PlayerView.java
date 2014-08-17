@@ -297,7 +297,7 @@ public class PlayerView extends SurfaceView implements
 
 		// Set some properties on the SurfaceHolder.
 		getHolder().setKeepScreenOn(true);
-		getHolder().setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
+		//getHolder().setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
 	}
 	
 	public void close()

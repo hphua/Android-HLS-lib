@@ -443,7 +443,7 @@ bool HLSPlayer::InitSources()
 	int colorFormat = -1;
 	meta->findInt32(kKeyColorFormat, &colorFormat);
 
-	if(!mVideoRenderer && AVSHIM_HAS_OMXRENDERERPATH && meta->findCString(kKeyDecoderComponent, &component))
+	if(!mVideoRenderer && AVSHIM_HAS_OMXRENDERERPATH && meta->findCString(kKeyDecoderComponent, &component) && dlopen("libstagefrighthw.so", 0))
 	{
 		// Grab the color format, too.
 		colorFormat = -1;
@@ -704,7 +704,7 @@ int HLSPlayer::Update()
 				return -1;
 			}
 
-#ifdef USE_AUDIO
+#ifdef USE_AUDIO_XXX
 			int64_t audioTime = mJAudioTrack->GetTimeStamp();
 #else
 			// Set the audio time to the video time, which will keep the video running.
