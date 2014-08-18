@@ -1841,18 +1841,14 @@ namespace android_video_shim
 
         status_t append(const char* uri)
         {
-            LOGE("Enter");
-
             AutoLock locker(&lock);
 
             // Small memory leak, look out.
             uri = strdup(uri);
 
-            LOGE("B");
             // Queue cache to load it.
             HLSSegmentCache::precache(uri);
 
-            LOGE("C");
             // Stick it in our sources.
             mSources.push_back(uri);
 
@@ -1879,50 +1875,71 @@ namespace android_video_shim
         {
             AutoLock locker(&lock);
 
-            LOGE("Attempting _readAt %lld %p %d", offset, data, size);
-
             // Sanity check.
             if(mSources.size() == 0)
             {
-                LOGE("No sources in HLSDataSource! Aborting...");
+                LOGE("No sources in HLSDataSource! Aborting read...");
                 return 0;
             }
 
+            LOGE("Attempting _readAt mSources[mSourceIdx]=%s %lld %p %d mOffsetAdjustment=%lld", mSources[mSourceIdx], offset, data, size, mOffsetAdjustment);
+
             // Calculate adjusted offset based on reads so far. The TSExtractor
             // always reads in order.
-            off64_t adjOffset = offset - mOffsetAdjustment;
+            ssize_t adjOffset = offset - mOffsetAdjustment;
 
             // Read chunks from the segment cache until we've fulfilled the request.
-            size_t sizeLeft = size;
-            size_t lastReadSize = 0, readSize = 0;
+            ssize_t sizeLeft = size;
+            ssize_t lastReadSize = 0, readSize = 0;
             int safety = 10;
             while(sizeLeft > 0 && safety--)
             {
+                // If we have a negative adjOffset it means we moved into a new segment - but readSize should compensate.
+                while(adjOffset + readSize < 0)
+                {
+                    LOGE("Got negative offset, adjOffset=%ld readSize=%ld", adjOffset, readSize);
+
+                    assert(mSourceIdx > 0);
+
+                    // Walk back to preceding source!
+                    int64_t sourceSize = HLSSegmentCache::getSize(mSources[mSourceIdx-1]);
+                    LOGE("Retreating by %lld bytes!", sourceSize);
+
+                    mOffsetAdjustment -= sourceSize;
+                    adjOffset += sourceSize;
+
+                    mSourceIdx--;
+                }
+
                 // Attempt a read. Blocking and tries VERY hard not to fail.
-                size_t lastReadSize = HLSSegmentCache::read(mSources[mSourceIdx], adjOffset, sizeLeft, (unsigned char*)data + readSize);
+                ssize_t lastReadSize = HLSSegmentCache::read(mSources[mSourceIdx], adjOffset + readSize, sizeLeft, ((unsigned char*)data) + readSize);
 
                 // Account for read.
                 sizeLeft -= lastReadSize;
                 readSize += lastReadSize;
 
-                // Do we need to advance to next source?
-                if(sizeLeft > 0)
-                {
-                    // Yes.
-                    if(mSourceIdx + 1 < mSources.size())
-                    {
-                        int64_t sourceSize = HLSSegmentCache::getSize(mSources[mSourceIdx]);
-                        mOffsetAdjustment += sourceSize;
-                        adjOffset -= sourceSize;
+                // If done reading, then we can break out.
+                if(sizeLeft == 0)
+                    break;
+                assert(sizeLeft >= 0); // In case we ever get a negative lastReadSize.
 
-                        mSourceIdx++;
-                    }
-                    else
-                    {
-                        // No more sources?
-                        LOGI("Reached end of segment list.");
-                        break;
-                    }
+                // Otherwise, we need to move to the next source if we have one.
+                if(mSourceIdx + 1 < mSources.size())
+                {
+                    // Advance by the current source size.
+                    int64_t sourceSize = HLSSegmentCache::getSize(mSources[mSourceIdx]);
+                    LOGE("Advancing by %lld bytes, size of current source", sourceSize);
+
+                    mOffsetAdjustment += sourceSize;
+                    adjOffset -= sourceSize;
+
+                    mSourceIdx++;
+                }
+                else
+                {
+                    // No more sources?
+                    LOGI("Reached end of segment list.");
+                    break;
                 }
             }
 

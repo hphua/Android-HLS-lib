@@ -67,31 +67,23 @@ void HLSSegmentCache::precache(const char *uri)
 
 int64_t HLSSegmentCache::read(const char *uri, int64_t offset, int64_t size, void *bytes)
 {
-	LOGI("A");
 	assert(mJVM); // Didn't initialize.
-	LOGI("A1");
 	assert(mClass);
-	LOGI("A2");
 	assert(mRead);
 
 	// Set up environment for this thread.
 	JNIEnv *env = NULL;
 	mJVM->AttachCurrentThread(&env, NULL);
-	LOGI("B");
 
 	jobject jbytes = env->NewDirectByteBuffer(bytes, size);
 	jstring juri = env->NewStringUTF(uri);
 
-	LOGI("C");
+	LOGI("C %s offset=%lld size=%lld bytes=%p", uri, offset, size, bytes);
 
 	int64_t res = env->CallStaticLongMethod(mClass, mRead, juri, offset, size, jbytes);
 
-	LOGI("D");
-
 	env->DeleteLocalRef(jbytes);
 	env->DeleteLocalRef(juri);
-
-	LOGI("E");
 
 	return res;
 }
