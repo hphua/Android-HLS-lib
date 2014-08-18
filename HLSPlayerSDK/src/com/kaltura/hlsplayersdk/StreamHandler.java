@@ -540,6 +540,14 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 		return null;
 	}
 	
+	public int getQualityLevels()
+	{
+		if (manifest == null) return 0;
+		if (manifest.streams.size() > 0 ) return manifest.streams.size();
+		return 1;
+		
+	}
+	
 	private Vector<ManifestSegment> getSegmentsForQuality(int quality)
 	{
 		if ( manifest == null) return new Vector<ManifestSegment>();

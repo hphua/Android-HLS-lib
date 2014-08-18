@@ -14,11 +14,12 @@
 
 #define _DEBUG_E
 #define _DEBUG_W
-//#define _DEBUG_I
+#define _DEBUG_I
 //#define _DEBUG_V
 //#define _DEBUG_V2
 //#define _DEBUG_RUN
 
+//#define _DATA_MINING
 //#define _DEBUG_SCREENINFO
 
 //#define _VERBOSE
@@ -57,6 +58,13 @@
 #else
 #define LOGSCREENINFO(...)
 #endif
+
+#ifdef _DATA_MINING
+#define LOGDATAMINING(...) __android_log_print(ANDROID_LOG_VERBOSE, __func__, __VA_ARGS__)
+#else
+#define LOGDATAMINING(...)
+#endif
+
 
 #ifdef _DEBUG_RUN
 #define RUNDEBUG(x)  (x)

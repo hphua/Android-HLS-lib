@@ -52,6 +52,8 @@ public class PlayerViewController extends RelativeLayout implements
 	// Static interface.
 	// TODO Allow multiple active PlayerViewController instances.
 	private static PlayerViewController currentController = null;
+	private static int mQualityLevel = 0;
+
 
 	/**
 	 * Get the next segment in the stream.
@@ -60,11 +62,11 @@ public class PlayerViewController extends RelativeLayout implements
 		if (currentController == null)
 			return;
 		
-		ManifestSegment seg = currentController.getStreamHandler().getNextFile(0);
+		ManifestSegment seg = currentController.getStreamHandler().getNextFile(mQualityLevel);
 		if(seg == null)
 			return;
 
-		currentController.FeedSegment(seg.uri, 0, seg.startTime);
+		currentController.FeedSegment(seg.uri, mQualityLevel, seg.startTime);
 	}
 
 	/**
@@ -76,11 +78,11 @@ public class PlayerViewController extends RelativeLayout implements
 		if(currentController == null)
 			return 0;
 		
-		ManifestSegment seg = currentController.getStreamHandler().getFileForTime(time, 0);
+		ManifestSegment seg = currentController.getStreamHandler().getFileForTime(time, mQualityLevel);
 		if(seg == null)
 			return 0;
 		
-		currentController.FeedSegment(seg.uri, 0, seg.startTime);
+		currentController.FeedSegment(seg.uri, mQualityLevel, seg.startTime);
 		return seg.startTime;
 	}
 
@@ -149,6 +151,7 @@ public class PlayerViewController extends RelativeLayout implements
 	private ManifestParser mManifest = null;
 	private URLLoader manifestLoader;
 	private StreamHandler mStreamHandler = null;
+
 
 	public OnPlayheadUpdateListener mPlayheadUpdateListener;
 	public OnPreparedListener mPreparedListener;
@@ -287,6 +290,24 @@ public class PlayerViewController extends RelativeLayout implements
 
 		stop();
 		close();
+	}
+
+	public void incrementQuality()
+	{
+		if (mStreamHandler != null)
+		{
+			int ql = mStreamHandler.getQualityLevels();
+			if (mQualityLevel < ql -1)
+			{
+				++mQualityLevel;
+			}
+		}
+	}
+	
+	public void decrementQuality()
+	{
+		if (mQualityLevel > 0)
+			--mQualityLevel;
 	}
 
 	// /////////////////////////////////////////////////////////////////////////////////////////////

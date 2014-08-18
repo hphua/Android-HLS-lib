@@ -19,6 +19,7 @@
 
 using namespace android_video_shim;
 
+const int SEGMENTS_TO_BUFFER = 2;
 
 //////////
 //
@@ -672,7 +673,7 @@ int HLSPlayer::Update()
 	{
 		int segCount = ((HLSDataSource*) mDataSource.get())->getPreloadedSegmentCount();
 		//LOGI("Segment Count %d", segCount);
-		if (segCount < 3) // (current segment + 2)
+		if (segCount < SEGMENTS_TO_BUFFER) // (current segment + 2)
 		{
 			LOGI("**** Requesting next segment...");
 			RequestNextSegment();
