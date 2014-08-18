@@ -78,7 +78,7 @@ int64_t HLSSegmentCache::read(const char *uri, int64_t offset, int64_t size, voi
 	jobject jbytes = env->NewDirectByteBuffer(bytes, size);
 	jstring juri = env->NewStringUTF(uri);
 
-	LOGI("C %s offset=%lld size=%lld bytes=%p", uri, offset, size, bytes);
+	LOGV2("%s offset=%lld size=%lld bytes=%p", uri, offset, size, bytes);
 
 	int64_t res = env->CallStaticLongMethod(mClass, mRead, juri, offset, size, jbytes);
 

@@ -114,6 +114,9 @@ public class PlayerViewController extends RelativeLayout implements
 		Log.w("addComponents", "Surface Holder is " + currentController.mPlayerView.getHolder());
 		if (currentController.mPlayerView.getHolder() != null)
 			Log.w("addComponents", "Surface Holder is " + currentController.mPlayerView.getHolder().getSurface());
+
+		// Preserve resolution info for layout.
+		currentController.setVideoResolution(currentController.mVideoWidth, currentController.mVideoHeight);
 	}
 
 	/**
@@ -278,7 +281,7 @@ public class PlayerViewController extends RelativeLayout implements
 	public void destroy() 
 	{
 		Log.i("PlayerViewController", "Destroying...");
-		
+
 		if (mPlayerView == null)
 			return;
 

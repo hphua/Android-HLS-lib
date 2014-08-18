@@ -145,7 +145,7 @@ public class HLSSegmentCache
 	 */
 	static public long read(String segmentUri, long offset, long size, ByteBuffer output)
 	{
-		Log.i("HLS Cache", "Reading " + segmentUri + " offset=" + offset + " size=" + size + " output.capacity()=" + output.capacity());
+		//Log.i("HLS Cache", "Reading " + segmentUri + " offset=" + offset + " size=" + size + " output.capacity()=" + output.capacity());
 		
 		initialize();
 		
