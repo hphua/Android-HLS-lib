@@ -15,7 +15,7 @@ import android.view.View;
 import android.widget.EditText;
 
 import com.kaltura.hlsplayersdk.PlayerViewController;
-import com.kaltura.hlsplayersdk.cache.HTTPSegmentCache;
+import com.kaltura.hlsplayersdk.cache.HLSSegmentCache;
 
 public class VideoPlayerActivity extends ActionBarActivity {
 
@@ -46,7 +46,7 @@ public class VideoPlayerActivity extends ActionBarActivity {
             Log.i("HLS Test", "Reading from goog");
             for(int i=0; i<1000; i++)
             {
-                int readBytes = HTTPSegmentCache.read("https://google.com/?" + Math.random(), 1024, 1024*1024, googBytes);
+                int readBytes = HLSSegmentCache.read("https://google.com/?" + Math.random(), 1024, 1024*1024, googBytes);
                 try {
         			Log.i("HLS Test", "Got test read " + readBytes + " bytes from goog.com:" + new String(googBytes, "UTF-8"));
         		} catch (UnsupportedEncodingException e) {
