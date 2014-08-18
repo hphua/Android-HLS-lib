@@ -1,17 +1,11 @@
 package com.kaltura.hlsplayersdk.manifest;
 
 
-import java.net.MalformedURLException;
-import com.loopj.android.http.*;
-import java.net.URL;
 import java.util.Vector;
 
 import android.util.Log;
 import android.util.EventLog.Event;
-import android.view.View.OnClickListener;
-
 import com.kaltura.hlsplayersdk.URLLoader;
-import com.kaltura.hlsplayersdk.URLLoader.DownloadEventListener;
 import com.kaltura.hlsplayersdk.subtitles.*;
 import com.kaltura.hlsplayersdk.manifest.events.*;
 

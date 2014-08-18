@@ -1,25 +1,22 @@
 package com.example.videoplayer;
 
-import android.support.v7.app.ActionBarActivity;
-import android.support.v7.app.ActionBar;
-import android.support.v4.app.Fragment;
+import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
+
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
-import android.content.res.Configuration;
-import android.net.Uri;
 import android.os.Bundle;
+import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.ViewGroup;
 import android.widget.EditText;
-import android.widget.VideoView;
-import android.os.Build;
 
 import com.kaltura.hlsplayersdk.PlayerViewController;
+import com.kaltura.hlsplayersdk.cache.HLSSegmentCache;
 
 public class VideoPlayerActivity extends ActionBarActivity {
 
@@ -27,7 +24,8 @@ public class VideoPlayerActivity extends ActionBarActivity {
 	final Context context = this;
 	String lastUrl = "";
 	
-    @Override
+    @SuppressWarnings("unused")
+	@Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_video_player);
@@ -41,12 +39,29 @@ public class VideoPlayerActivity extends ActionBarActivity {
         {
         	Log.e("KalturaTestApp", e.getMessage());
         }
+        
+        if(false)
+        {
+/*            // Test the HLS Segment Cache.
+            ByteBuffer googBytes = new ByteBuffer();
+            Log.i("HLS Test", "Reading from goog");
+            for(int i=0; i<1000; i++)
+            {
+                long readBytes = HLSSegmentCache.read("https://google.com/?" + Math.random(), 1024, 1024*1024, googBytes);
+                try {
+        			Log.i("HLS Test", "Got test read " + readBytes + " bytes from goog.com:" + new String(googBytes, "UTF-8"));
+        		} catch (UnsupportedEncodingException e) {
+        			// TODO Auto-generated catch block
+        			e.printStackTrace();
+        		}
+            } */
+        }
     }
     
     @Override
     public void onStop()
     {
-    	if (playerView != null) 
+    	if (playerView != null)
             playerView.close();
     	super.onStop();
     }

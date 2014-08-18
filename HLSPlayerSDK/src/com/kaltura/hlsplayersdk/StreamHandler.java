@@ -1,6 +1,5 @@
 package com.kaltura.hlsplayersdk;
 
-import java.net.URL;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.Vector;
@@ -9,8 +8,6 @@ import android.util.Log;
 
 import com.kaltura.hlsplayersdk.manifest.ManifestParser;
 import com.kaltura.hlsplayersdk.manifest.ManifestSegment;
-import com.kaltura.hlsplayersdk.manifest.events.OnReloadCompleteListener;
-import com.kaltura.hlsplayersdk.manifest.events.OnReloadErrorListener;
 
 
 // This is the confusingly named "HLSIndexHandler" from the flash HLSPlugin

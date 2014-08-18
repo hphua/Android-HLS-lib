@@ -31,8 +31,12 @@ public:
 
 	bool Update();
 
+	void shutdown();
+
 	int64_t GetTimeStamp();
 	void SetTimeStampOffset(double offsetSecs);
+
+	int getBufferSize();
 
 private:
 	jclass mCAudioTrack;
@@ -45,9 +49,11 @@ private:
 	jmethodID mGetTimestamp;
 	jmethodID mWrite;
 	jmethodID mFlush;
+	jmethodID mSetPositionNotificationPeriod;
 	jmethodID mGetPlaybackHeadPosition;
 
 	jobject mTrack;
+	jarray buffer;
 
 	JavaVM* mJvm;
 
@@ -62,6 +68,8 @@ private:
 	int mPlayState;
 
 	double mTimeStampOffset;
+
+	long long samplesWritten;
 
 	sem_t semPause;
     pthread_mutex_t updateMutex;

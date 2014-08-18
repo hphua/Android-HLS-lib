@@ -43,8 +43,6 @@ public:
 
 	void SetJavaVM(JavaVM* jvm);
 
-	bool UpdateWindowBufferFormat();
-
 	void TogglePause();
 
 	int GetState();
@@ -68,7 +66,7 @@ private:
 
 	double RequestSegmentForTime(double time);
 	void NoteVideoDimensions();
-	void NoteHWRendererMode(bool enabled);
+	void NoteHWRendererMode(bool enabled, int w, int h, int colf);
 
 
 	/// seeking methods
@@ -118,12 +116,13 @@ private:
 
 	AudioTrack *mJAudioTrack;
 
+	bool mUseOMXRenderer;
 	bool mOffloadAudio;
 	int64_t mDurationUs;
 
 	android_video_shim::MediaBuffer* mVideoBuffer;
 
-	android_video_shim::sp<android_video_shim::IOMXRenderer> mVideoRenderer;
+	android_video_shim::sp<android_video_shim::IOMXRenderer> mOMXRenderer;
 
 	int64_t mBitrate;
 	int32_t mWidth;
