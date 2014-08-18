@@ -901,7 +901,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 	LOGV("System ColorConversion from %x is valid: %s", colf, cc.isValid() ? "true" : "false" );
 
 	bool useLocalCC = lcc.isValid();	
-	if (!useLocalCC && !lcc.isValid())
+	if (!useLocalCC && !cc.isValid())
 	{
 		LOGE("No valid color conversion found for %d", colf);
 		return false;
