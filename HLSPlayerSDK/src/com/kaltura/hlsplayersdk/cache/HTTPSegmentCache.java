@@ -192,7 +192,7 @@ public class HTTPSegmentCache
 			}
 			
 			// We're over cache target, delete that one.
-			Log.i("HLS Cache", "Purging " + oldestSce.uri);
+			Log.i("HLS Cache", "Purging " + oldestSce.uri + ", freeing " + (oldestSce.data.length/1024) + "kb");
 			segmentCache.remove(oldestSce.uri);
 		}
 	}
