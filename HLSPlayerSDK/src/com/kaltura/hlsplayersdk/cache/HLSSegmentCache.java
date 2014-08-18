@@ -10,7 +10,7 @@ import com.loopj.android.http.AsyncHttpClient;
 
 public class HLSSegmentCache 
 {	
-	protected static long targetSize = 160*1024; // 16mb segment cache.
+	protected static long targetSize = 16*1024*1024; // 16mb segment cache.
 	protected static Map<String, SegmentCacheEntry> segmentCache = null;
 	public static AsyncHttpClient client = null;
 	
