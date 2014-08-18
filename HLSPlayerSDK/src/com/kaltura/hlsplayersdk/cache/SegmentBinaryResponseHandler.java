@@ -27,12 +27,12 @@ public class SegmentBinaryResponseHandler extends BinaryHttpResponseHandler
 	{
 		// Stuff into the cache.
 		Log.i("HLS Cache", "Got segment " + statusCode + " for " + getRequestURI().toString() + " size=" + binaryData.length);
-		HTTPSegmentCache.store(cacheKey, binaryData);
+		HLSSegmentCache.store(cacheKey, binaryData);
 	}
 	
 	public void onFailure(int statusCode, Header[] headers, byte[] binaryData, Throwable error)
 	{
 		Log.i("HLS Cache", "Got segment failure " + statusCode + " for " + cacheKey + ": " + error.toString());
-		HTTPSegmentCache.store(cacheKey, new byte[0]);
+		HLSSegmentCache.store(cacheKey, new byte[0]);
 	}
 }

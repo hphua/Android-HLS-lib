@@ -8,7 +8,7 @@ import android.util.Log;
 
 import com.loopj.android.http.AsyncHttpClient;
 
-public class HTTPSegmentCache 
+public class HLSSegmentCache 
 {	
 	protected static long targetSize = 160*1024; // 16mb segment cache.
 	protected static Map<String, SegmentCacheEntry> segmentCache = null;
@@ -85,6 +85,18 @@ public class HTTPSegmentCache
 			Log.i("HLS Cache", "Initializing concurrent hash map.");
 			segmentCache = new ConcurrentHashMap<String, SegmentCacheEntry>();
 		}
+	}
+	
+	/**
+	 * Hint we will soon be wanting data from this segment and that we should 
+	 * initiate the download.
+	 * 
+	 * @param segmentUri
+	 */
+	static public void precache(String segmentUri)
+	{
+		initialize();
+		populateCache(segmentUri);
 	}
 	
 	/**
