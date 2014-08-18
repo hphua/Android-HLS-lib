@@ -21,6 +21,8 @@
 
 #include "debug.h"
 
+#include "HLSSegmentCache.h"
+
 // Handy pthreads autolocker.
 class AutoLock
 {
@@ -1744,7 +1746,7 @@ namespace android_video_shim
         }
     };
 
-    // How do we override a DataSource?
+    // Provide our own data source with cross-device compatibility.
     class HLSDataSource : public DataSource
     {
     public:
@@ -1837,40 +1839,24 @@ namespace android_video_shim
         	mOffsetAdjustment = 0;
         }
 
-        int64_t getTimeSec() {
-            struct timespec now;
-            clock_gettime(CLOCK_MONOTONIC, &now);
-            return now.tv_sec;
-        }
-
         status_t append(const char* uri)
         {
+            LOGE("Enter");
+
             AutoLock locker(&lock);
-            sp<DataSource> dataSource = DataSource::CreateFromURI(uri);
-            if(!dataSource.get())
-            {
-                LOGI("Failed to create DataSource for %s", uri);
-                return -1;
-            }
 
-            status_t rval = dataSource->initCheck();
-            LOGE("DataSource initCheck() result: %s", strerror(-rval));
+            // Small memory leak, look out.
+            uri = strdup(uri);
 
-            // If it's not OK, then what?!
-            // Wait up to 10 seconds to see if state changes.
-            int64_t start = getTimeSec();
-            while(rval != OK && start - getTimeSec() < 10 )
-            {
-                rval = dataSource->initCheck();
-                LOGE(" Waiting... DataSource initCheck() result: %s", strerror(-rval));
-                sched_yield();
-            }
+            LOGE("B");
+            // Queue cache to load it.
+            HLSSegmentCache::precache(uri);
 
-            LOGE("FINAL DataSource initCheck() result: %s", strerror(-rval));
-
+            LOGE("C");
             // Stick it in our sources.
-            mSources.push_back(dataSource);
-            return rval;
+            mSources.push_back(uri);
+
+            return OK;
         }
 
         int getPreloadedSegmentCount()
@@ -1883,12 +1869,10 @@ namespace android_video_shim
         status_t _initCheck()
         {
             AutoLock locker(&lock);
-            LOGI("_initCheck - Source Count = %d", mSources.size());
-            if (mSources.size() > 0)
-                return mSources[mSourceIdx]->initCheck();
 
-            LOGI("   o Returning NO_INIT");
-            return NO_INIT;
+            // With the new segment cache, we cannot fail!
+
+            return OK;
         }
 
         ssize_t _readAt(off64_t offset, void* data, size_t size)
@@ -1897,110 +1881,61 @@ namespace android_video_shim
 
             LOGE("Attempting _readAt %lld %p %d", offset, data, size);
 
+            // Sanity check.
             if(mSources.size() == 0)
             {
                 LOGE("No sources in HLSDataSource! Aborting...");
                 return 0;
             }
 
-            off64_t sourceSize = 0;
-            if(AVSHIM_USE_NEWDATASOURCEVTABLE)
-                mSources[mSourceIdx]->getSize(&sourceSize);
-            else
-                mSources[mSourceIdx]->getSize_23(&sourceSize);
+            // Calculate adjusted offset based on reads so far. The TSExtractor
+            // always reads in order.
+            off64_t adjOffset = offset - mOffsetAdjustment;
 
-            off64_t adjoffset = offset - mOffsetAdjustment;  // get our adjusted offset. It should always be >= 0
-
-            if (adjoffset >= sourceSize) // The thinking here is that if we run out of sources, we should just let it pass through to read the last source at the invalid buffer, generating the proper return code
-                                         // However, this doesn't solve the problem of delayed fragment downloads... not sure what to do about that, yet
-                                         // This should at least prevent us from crashing
+            // Read chunks from the segment cache until we've fulfilled the request.
+            size_t sizeLeft = size;
+            size_t lastReadSize = 0, readSize = 0;
+            int safety = 10;
+            while(sizeLeft > 0 && safety--)
             {
-                if(mSourceIdx + 1 < mSources.size())
-                {
-                    LOGI("Changing Segments: curIdx=%d, nextIdx=%d", mSourceIdx, mSourceIdx + 1);
-                    adjoffset -= sourceSize; // subtract the size of the current source from the offset
-                    mOffsetAdjustment += sourceSize; // Add the size of the current source to our offset adjustment for the future
-                    ++mSourceIdx;
+                // Attempt a read. Blocking and tries VERY hard not to fail.
+                size_t lastReadSize = HLSSegmentCache::read(mSources[mSourceIdx], adjOffset, sizeLeft, (unsigned char*)data + readSize);
 
-                    if(adjoffset < 0)
+                // Account for read.
+                sizeLeft -= lastReadSize;
+                readSize += lastReadSize;
+
+                // Do we need to advance to next source?
+                if(sizeLeft > 0)
+                {
+                    // Yes.
+                    if(mSourceIdx + 1 < mSources.size())
                     {
-                        LOGE("Got a negative adjoffset %lld - probably bad! Let's make it zero? (1)", adjoffset);
-                        adjoffset = 0;
+                        int64_t sourceSize = HLSSegmentCache::getSize(mSources[mSourceIdx]);
+                        mOffsetAdjustment += sourceSize;
+                        adjOffset -= sourceSize;
+
+                        mSourceIdx++;
                     }
-
-                }
-                else
-                {
-                    LOGI("Reached end of segment list.");
-                }
-            }
-
-            LOGE("Attempting real _readAt %lld %p %d", adjoffset, data, size);
-
-            off64_t rsize = 0, rsize2 = 0;
-            if(AVSHIM_USE_NEWDATASOURCEVTABLE)
-                rsize = mSources[mSourceIdx]->readAt(adjoffset, data, size);
-            else
-                rsize = mSources[mSourceIdx]->readAt_23(adjoffset, data, size);
-
-            if(rsize < 0 || rsize == -1011)
-            {
-                LOGE("Saw error %lld from datasource; advancing!", rsize);
-                rsize = 0;
-            }
-
-            if (rsize < size)
-            {
-                if(mSourceIdx + 1 < mSources.size())
-                {
-                    LOGE("Incomplete Read - Changing Segments : curIdx=%d, nextIdx=%d adjOffset=%lld sourceSize=%lld", mSourceIdx, mSourceIdx + 1, adjoffset, sourceSize);
-                    adjoffset -= sourceSize; // subtract the size of the current source from the offset
-                    mOffsetAdjustment += sourceSize; // Add the size of the current source to our offset adjustment for the future
-                    ++mSourceIdx;
-
-                    if(adjoffset < -rsize)
-                    {
-                        LOGE("Got an adjoffset %lld behind the rsize %lld - probably bad! Let's make it zero? (2)", adjoffset, rsize);
-                        adjoffset = 0;
-                    }
-
-                    long long goalSize = size - rsize;
-
-                    LOGE("Reading At %lld | New size=%lld ", adjoffset + rsize, goalSize);
-
-                    if(AVSHIM_USE_NEWDATASOURCEVTABLE)
-                        rsize += (rsize2 = mSources[mSourceIdx]->readAt(adjoffset + rsize, (unsigned char*)data + rsize, size - rsize));
                     else
-                        rsize += (rsize2 = mSources[mSourceIdx]->readAt_23(adjoffset + rsize, (unsigned char*)data + rsize, size - rsize));
-
-                    if(rsize < 0)
                     {
-                        LOGE("Got error when reading second half from new source.");
+                        // No more sources?
+                        LOGI("Reached end of segment list.");
+                        break;
                     }
-
-                    if(goalSize != rsize2)
-                    {
-                        LOGE("Under-read in fallback case! Only got %lld bytes but wanted %lld to make %d.", rsize2, goalSize, size); 
-                    }
-                }
-                else
-                {
-                    LOGE("Wanted to read %lld more bytes, but no more sources.", (size - rsize));
                 }
             }
 
-            if(rsize != size)
+            // Make sure we didn't do anything weird.
+            if(safety == 0)
             {
-                LOGE("%p | getSize = %lld | offset=%lld | offsetAdjustment = %lld | adjustedOffset = %lld | requested size = %d | rsize = %lld | resize2 = %lld",
-                                this, sourceSize, offset, mOffsetAdjustment, adjoffset, size, rsize, rsize2);
-                LOGE("Failed to fulfill read request!");
-                assert(0);
+                LOGE("****** HIT SAFETY ON READ LOOP");
+                LOGE("****** HIT SAFETY ON READ LOOP");
+                LOGE("****** HIT SAFETY ON READ LOOP");
             }
 
-            LOGV2("%p | getSize = %lld | offset=%lld | offsetAdjustment = %lld | adjustedOffset = %lld | requested size = %lld | rsize = %lld",
-                            this, sourceSize, offset, mOffsetAdjustment, adjoffset, size, rsize);
-
-            return rsize;
+            // Return what we read.
+            return readSize;
         }
 
         ssize_t _readAt_23(int64_t offset, void* data, unsigned int size)
@@ -2021,18 +1956,13 @@ namespace android_video_shim
 
         status_t _getSize_23(off64_t* size)
         {
-            AutoLock locker(&lock);
-
-            LOGV("Attempting _getSize_23 size=%p", size);
-            status_t rval = mSources[mSourceIdx]->getSize_23(size);
-            LOGV("getSize - %p | size = %lld", this, *size);
-            return rval;
+            return _getSize(size);
         }
 
     private:
 
         pthread_mutex_t lock;
-        std::vector< sp<DataSource> > mSources;
+        std::vector< const char * > mSources;
         uint32_t mSourceIdx;
         off64_t mSegmentStartOffset;
         off64_t mOffsetAdjustment;

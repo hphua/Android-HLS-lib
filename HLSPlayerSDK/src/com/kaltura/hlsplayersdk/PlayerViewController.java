@@ -215,6 +215,7 @@ public class PlayerViewController extends RelativeLayout implements
 	 * Terminate render thread and shut down JNI resources.
 	 */
 	public void close() {
+		Log.i("PlayerViewController", "Closing resources.");
 		mRenderThread.interrupt();
 		CloseNativeDecoder();
 	}
@@ -276,6 +277,8 @@ public class PlayerViewController extends RelativeLayout implements
 
 	public void destroy() 
 	{
+		Log.i("PlayerViewController", "Destroying...");
+		
 		if (mPlayerView == null)
 			return;
 

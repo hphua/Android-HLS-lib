@@ -1,6 +1,8 @@
 package com.kaltura.hlsplayersdk.cache;
 
 import java.util.Collection;
+import java.nio.ByteBuffer;
+
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -99,6 +101,40 @@ public class HLSSegmentCache
 		populateCache(segmentUri);
 	}
 	
+	static public long getSize(String segmentUri)
+	{
+		Log.i("HLS Cache", "Querying size of " + segmentUri);
+		SegmentCacheEntry sce = segmentCache.get(segmentUri);
+		waitForLoad(sce);
+		return sce.data.length;
+	}
+	
+	static private void waitForLoad(SegmentCacheEntry sce)
+	{
+		// Wait for data, if required...
+		if(!sce.running)
+			return;
+
+		// Tick the cache.
+		expire();
+		
+		Log.i("HLS Cache", "Waiting on request.");
+		long timerStart = System.currentTimeMillis();
+
+		while(sce.running)
+		{
+			try {
+				Thread.sleep(30);
+				Thread.yield();
+			} catch (InterruptedException e) {
+				// Don't care.
+			}
+		}
+		
+		long timerElapsed = System.currentTimeMillis() - timerStart;
+		Log.i("HLS Cache", "Request finished, " + (sce.data.length/1024) + "kb in " + timerElapsed + "ms");			
+	}
+	
 	/**
 	 * Read from segment and return bytes read + output.
 	 * @param segmentUri URI identifying the segment.
@@ -107,9 +143,9 @@ public class HLSSegmentCache
 	 * @param output Array pre-sized to at least size, to which data is written.
 	 * @return Bytes read.
 	 */
-	static public int read(String segmentUri, int offset, int size, byte[] output)
+	static public long read(String segmentUri, long offset, long size, ByteBuffer output)
 	{
-		Log.i("HLS Cache", "Reading " + segmentUri + " offset=" + offset + " size=" + size + " output.length=" + output.length);
+		Log.i("HLS Cache", "Reading " + segmentUri + " offset=" + offset + " size=" + size + " output.capacity()=" + output.capacity());
 		
 		initialize();
 		
@@ -123,50 +159,30 @@ public class HLSSegmentCache
 			return 0;
 		}
 		
-		// Wait for data, if required...
-		if(sce.running)
+		waitForLoad(sce);
+		
+		synchronized(segmentCache)
 		{
-			// Tick the cache.
-			expire();
-			
-			Log.i("HLS Cache", "Waiting on request.");
-			long timerStart = System.currentTimeMillis();
-
-			while(sce.running)
+			// How many bytes can we serve?
+			if(offset + size > sce.data.length)
 			{
-				try {
-					Thread.sleep(30);
-					Thread.yield();
-				} catch (InterruptedException e) {
-					// Don't care.
-				}
+				long newSize = sce.data.length - offset;
+				Log.i("HLS Cache", "Adjusting size to " + newSize + " from " + size);
+				size = newSize;
 			}
 			
-			long timerElapsed = System.currentTimeMillis() - timerStart;
+			if(size < 0)
+			{
+				Log.i("HLS Cache", "Couldn't return any bytes.");
+				return 0;
+			}
 			
-			Log.i("HLS Cache", "Request finished, " + (sce.data.length/1024) + "kb in " + timerElapsed + "ms");			
+			// Copy the available bytes.
+			output.put(sce.data, (int)offset, (int)size);
+			
+			// Return how much we read.
+			return size;			
 		}
-		
-		// How many bytes can we serve?
-		if(offset + size > sce.data.length)
-		{
-			int newSize = sce.data.length - offset;
-			Log.i("HLS Cache", "Adjusting size to " + newSize + " from " + size);
-			size = newSize;
-		}
-		
-		if(size < 0)
-		{
-			Log.i("HLS Cache", "Couldn't return any bytes.");
-			return 0;
-		}
-		
-		// Copy the available bytes.
-		for(int i=0; i<size; i++)
-			output[i] = sce.data[offset + i];
-		
-		// Return how much we read.
-		return size;
 	}
 	
 	/**

@@ -248,6 +248,7 @@ void HLSPlayer::SetNativeWindow(::ANativeWindow* window)
 status_t HLSPlayer::FeedSegment(const char* path, int quality, double time )
 {
 	AutoLock locker(&lock);
+
 	// Make a data source from the file
 	LOGI("path = '%s'", path);
 	if (mDataSource == NULL)
@@ -295,7 +296,6 @@ bool HLSPlayer::InitTracks()
 		// internal race conditions.
 		//return false;
 	}
-
 
 	mExtractor = MediaExtractor::Create(mDataSource, "video/mp2ts");
 	if (mExtractor == NULL)
@@ -602,12 +602,6 @@ bool HLSPlayer::Play()
 	LOGI("Entered");
 	
 	if (!InitSources()) return false;
-
-	/*if (!mWindow) 
-	{
-		LOGI("mWindow is NULL"); 
-		return false; 
-	}*/
 
 	status_t err = OK;
 	

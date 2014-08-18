@@ -15,6 +15,7 @@
 #include "debug.h"
 #include "constants.h"
 #include "androidVideoShim.h"
+#include "HLSSegmentCache.h"
 
 HLSPlayerSDK* gHLSPlayerSDK = NULL;
 
@@ -24,17 +25,37 @@ extern "C"
 	void Java_com_kaltura_hlsplayersdk_PlayerViewController_InitNativeDecoder(JNIEnv * env, jobject jcaller)
 	{
 		android_video_shim::initLibraries();
+		
 		JavaVM* jvm = NULL;
 		env->GetJavaVM(&jvm);
+
+		HLSSegmentCache::initialize(jvm);
+
+		// Handy test for the C++ segment cache API.
+		/*
+		unsigned char buff[200];
+		int64_t readBytes = HLSSegmentCache::read("https://google.com/", 100, 199, buff);
+		buff[199] = 0;
+		LOGI("Attempting goog read: %lld bytes and got %s", readBytes, buff);
+		*/
+
 		if (gHLSPlayerSDK == NULL)
+		{
+			LOGI("Initializing player SDK.");
 			gHLSPlayerSDK = new HLSPlayerSDK(jvm);
-		if (gHLSPlayerSDK && gHLSPlayerSDK->GetPlayer() == NULL) gHLSPlayerSDK->CreateDecoder();
+		}
+		if (gHLSPlayerSDK && gHLSPlayerSDK->GetPlayer() == NULL) 
+		{
+			LOGI("Initializing decoder.");
+			gHLSPlayerSDK->CreateDecoder();
+		}
 	}
 
 	void Java_com_kaltura_hlsplayersdk_PlayerViewController_CloseNativeDecoder(JNIEnv* env, jobject jcaller)
 	{
 		if (gHLSPlayerSDK != NULL)
 		{
+			LOGE("Closing decoder");
 			gHLSPlayerSDK->Close(env);
 			delete gHLSPlayerSDK;
 			gHLSPlayerSDK = NULL;
@@ -80,18 +101,12 @@ extern "C"
 		//LOGI("Entered");
 		if (gHLSPlayerSDK != NULL)
 		{
-			if (gHLSPlayerSDK->GetPlayer() == NULL) gHLSPlayerSDK->CreateDecoder();
+			if (gHLSPlayerSDK->GetPlayer() == NULL) 
+				gHLSPlayerSDK->CreateDecoder();
+
 			LOGI("HLSPlayerSDK is not null");
 
 			gHLSPlayerSDK->GetPlayer()->SetSurface(env, surface);
-
-//			ANativeWindow* window = ANativeWindow_fromSurface(env, surface);
-//			LOGI(CLASS_NAME, "Java_com_kaltura_hlsplayersdk_PlayerViewController_SetSurface() - window = %0x", window);
-//			if (window)
-//			{
-//				HLSDecoder* decoder = gHLSPlayerSDK->GetDecoder();
-//				if (decoder) decoder->SetNativeWindow(window);
-//			}
 		}
 	}
 
@@ -110,15 +125,22 @@ extern "C"
 	void Java_com_kaltura_hlsplayersdk_PlayerViewController_FeedSegment(JNIEnv* env, jobject jcaller, jstring jurl, jint quality, jdouble startTime )
 	{
 		LOGI("Entered");
-		if (gHLSPlayerSDK != NULL)
+		
+		if (gHLSPlayerSDK == NULL)
 		{
-			if (gHLSPlayerSDK->GetPlayer())
-			{
-				const char* url = env->GetStringUTFChars(jurl, 0);
-				gHLSPlayerSDK->GetPlayer()->FeedSegment(url, quality, startTime);
-				env->ReleaseStringUTFChars(jurl, url);
-			}
+			LOGE("No player SDK!");
+			return;
 		}
+		
+		if (gHLSPlayerSDK->GetPlayer() == NULL)
+		{
+			LOGE("No Player instance on the SDK!");
+			return;
+		}
+
+		const char* url = env->GetStringUTFChars(jurl, 0);
+		gHLSPlayerSDK->GetPlayer()->FeedSegment(url, quality, startTime);
+		env->ReleaseStringUTFChars(jurl, url);
 	}
 
 	void Java_com_kaltura_hlsplayersdk_PlayerViewController_SeekTo(JNIEnv* env, jobject jcaller, jdouble time )
@@ -188,7 +210,11 @@ HLSPlayer* HLSPlayerSDK::GetPlayer()
 void HLSPlayerSDK::PlayFile()
 {
 	LOGI("::PlayFile()");
-	if (!mPlayer && !CreateDecoder()) return;
+	if (!mPlayer && !CreateDecoder()) 
+	{
+		LOGE("Failed to initialize player.");
+		return;
+	}
 
 	if (mPlayer->Play())
 	{

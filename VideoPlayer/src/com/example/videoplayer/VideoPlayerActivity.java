@@ -1,6 +1,7 @@
 package com.example.videoplayer;
 
 import java.io.UnsupportedEncodingException;
+import java.nio.ByteBuffer;
 
 import android.app.AlertDialog;
 import android.content.Context;
@@ -41,26 +42,26 @@ public class VideoPlayerActivity extends ActionBarActivity {
         
         if(false)
         {
-            // Test the HLS Segment Cache.
-            byte[] googBytes = new byte[1024*1024];
+/*            // Test the HLS Segment Cache.
+            ByteBuffer googBytes = new ByteBuffer();
             Log.i("HLS Test", "Reading from goog");
             for(int i=0; i<1000; i++)
             {
-                int readBytes = HLSSegmentCache.read("https://google.com/?" + Math.random(), 1024, 1024*1024, googBytes);
+                long readBytes = HLSSegmentCache.read("https://google.com/?" + Math.random(), 1024, 1024*1024, googBytes);
                 try {
         			Log.i("HLS Test", "Got test read " + readBytes + " bytes from goog.com:" + new String(googBytes, "UTF-8"));
         		} catch (UnsupportedEncodingException e) {
         			// TODO Auto-generated catch block
         			e.printStackTrace();
         		}
-            }        	
+            } */
         }
     }
     
     @Override
     public void onStop()
     {
-    	if (playerView != null) 
+    	if (playerView != null)
             playerView.close();
     	super.onStop();
     }
