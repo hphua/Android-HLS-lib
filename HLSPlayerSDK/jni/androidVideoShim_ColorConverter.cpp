@@ -93,7 +93,6 @@ status_t ColorConverter_Local::convert(
 	LOGV("source coords, %d, %d, %d, %d, %d, %d", srcWidth, srcHeight, srcCropLeft, srcCropTop, srcCropRight, srcCropBottom);
 	LOGV("dest coords, %d, %d, %d, %d, %d, %d", dstWidth, dstHeight, dstCropLeft, dstCropTop, dstCropRight, dstCropBottom);
 
-
     BitmapParams src(
             const_cast<void *>(srcBits),
             srcWidth, srcHeight,

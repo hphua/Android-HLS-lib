@@ -6,6 +6,7 @@ import android.media.MediaPlayer.OnErrorListener;
 import android.media.MediaPlayer.OnPreparedListener;
 import android.util.AttributeSet;
 import android.util.Log;
+import android.util.MonthDisplayHelper;
 import android.view.Surface;
 import android.view.ViewGroup;
 import android.widget.RelativeLayout;
@@ -18,63 +19,81 @@ import com.kaltura.hlsplayersdk.manifest.ManifestParser;
 import com.kaltura.hlsplayersdk.manifest.ManifestSegment;
 import com.kaltura.hlsplayersdk.manifest.events.OnParseCompleteListener;
 
+/**
+ * Main class for HLS video playback on the Java side.
+ * 
+ * PlayerViewController is responsible for integrating the JNI/Native side
+ * with the Java APIs and interfaces. This is the central point for HLS
+ * video playback!
+ */
 public class PlayerViewController extends RelativeLayout implements
 		VideoPlayerInterface, URLLoader.DownloadEventListener,
 		OnParseCompleteListener {
-	private PlayerView mPlayerView;
-	private Activity mActivity;
 
+	// State constants.
 	private final int STATE_STOPPED = 1;
 	private final int STATE_PAUSED = 2;
 	private final int STATE_PLAYING = 3;
 	private final int STATE_SEEKING = 4;
 
-	// Native Methods
-	private native void InitNativeDecoder();
-
-	private native void CloseNativeDecoder();
-
-	private native void ResetPlayer();
-
-	private native void PlayFile();
-
-	private native void StopPlayer();
-
-	private native void TogglePause();
-
-	public native void SetSurface(Surface surface);
-
-	private native int NextFrame();
-
-	private native void FeedSegment(String url, int quality, double startTime);
-
-	private native void SeekTo(double time); // seconds, not miliseconds - I'll
-												// change this later if it
-
+	// Native methods
 	private native int GetState();
+	private native void InitNativeDecoder();
+	private native void CloseNativeDecoder();
+	private native void ResetPlayer();
+	private native void PlayFile();
+	private native void StopPlayer();
+	private native void TogglePause();
+	public native void SetSurface(Surface surface);
+	private native int NextFrame();
+	private native void FeedSegment(String url, int quality, double startTime);
+	private native void SeekTo(double timeInSeconds);
 
+	// Static interface.
+	// TODO Allow multiple active PlayerViewController instances.
 	private static PlayerViewController currentController = null;
 
+	/**
+	 * Get the next segment in the stream.
+	 */
 	public static void requestNextSegment() {
-		if (currentController != null) {
-			ManifestSegment seg = currentController.getStreamHandler()
-					.getNextFile(0);
-			if (seg != null) {
-				currentController.FeedSegment(seg.uri, 0, seg.startTime);
-			}
-		}
+		if (currentController == null)
+			return;
+		
+		ManifestSegment seg = currentController.getStreamHandler().getNextFile(0);
+		if(seg == null)
+			return;
+
+		currentController.FeedSegment(seg.uri, 0, seg.startTime);
 	}
 
+	/**
+	 * Initiate loading of the segment corresponding to the specified time.
+	 * @param time The time in seconds to request.
+	 * @return Offset into the segment to get to exactly the requested time.
+	 */
 	public static double requestSegmentForTime(double time) {
-		if (currentController != null) {
-			ManifestSegment seg = currentController.getStreamHandler()
-					.getFileForTime(time, 0);
-			currentController.FeedSegment(seg.uri, 0, seg.startTime);
-			return seg.startTime;
-		}
-		return 0;
+		if(currentController == null)
+			return 0;
+		
+		ManifestSegment seg = currentController.getStreamHandler().getFileForTime(time, 0);
+		if(seg == null)
+			return 0;
+		
+		currentController.FeedSegment(seg.uri, 0, seg.startTime);
+		return seg.startTime;
 	}
 
+	/**
+	 * Internal helper. Creates a SurfaceView with proper parameters for display.
+	 * This is needed for compatibility with older devices. When the surface is
+	 * ready, SetSurface() is called back from the SurfaceView.
+	 * 
+	 * @param enablePushBuffers Use the PUSH_BUFFERS surface type?
+	 * @param w Desired surface width.
+	 * @param h Desired surface height.
+	 * @param colf Desired color format.
+	 */
 	public static void enableHWRendererMode(boolean enablePushBuffers, int w,
 			int h, int colf) {
 
@@ -92,13 +111,16 @@ public class PlayerViewController extends RelativeLayout implements
 				enablePushBuffers);
 		currentController.addView(currentController.mPlayerView, lp);
 
-		Log.w("addComponents", "Surface Holder is "
-				+ currentController.mPlayerView.getHolder());
+		Log.w("addComponents", "Surface Holder is " + currentController.mPlayerView.getHolder());
 		if (currentController.mPlayerView.getHolder() != null)
-			Log.w("addComponents", "Surface Holder is "
-					+ currentController.mPlayerView.getHolder().getSurface());
+			Log.w("addComponents", "Surface Holder is " + currentController.mPlayerView.getHolder().getSurface());
 	}
 
+	/**
+	 * Handle changes in the video resolution. Primarily for correct layout.
+	 * @param w Actual width of video.
+	 * @param h Actual height of video.
+	 */
 	public static void setVideoResolution(int w, int h) {
 		if (currentController != null) 
 		{
@@ -116,22 +138,24 @@ public class PlayerViewController extends RelativeLayout implements
 		}
 	}
 
+	// Instance members.
+	private Activity mActivity;
+	private PlayerView mPlayerView;
+
 	// This is our root manifest
 	private ManifestParser mManifest = null;
-
 	private URLLoader manifestLoader;
 	private StreamHandler mStreamHandler = null;
 
-	protected StreamHandler getStreamHandler() {
-		return mStreamHandler;
-	}
+	public OnPlayheadUpdateListener mPlayheadUpdateListener;
+	public OnPreparedListener mPreparedListener;
 
+	// Video state.
+	public int mVideoWidth = 640, mVideoHeight = 480;
 	private int mTimeMS = 0;
 
-	public OnPlayheadUpdateListener mPlayheadUpdateListener;
-
+	// Thread to run video rendering.
 	private Thread mRenderThread;
-
 	private Runnable runnable = new Runnable() {
 		public void run() {
 			while (true) {
@@ -152,33 +176,6 @@ public class PlayerViewController extends RelativeLayout implements
 		}
 	};
 
-	public int mVideoWidth = 640, mVideoHeight = 480;
-
-	// Called when the manifest parser is complete. Once this is done, play can
-	// actually start
-	public void onParserComplete(ManifestParser parser) {
-		Log.i("PlayerView.onParserComplete", "Entered");
-		mStreamHandler = new StreamHandler(parser);
-		// mStreamHandler.initialize(parser);
-		ManifestSegment seg = getStreamHandler().getFileForTime(0, 0);
-		currentController.FeedSegment(seg.uri, 0, seg.startTime);
-		seg = getStreamHandler().getNextFile(0);
-		currentController.FeedSegment(seg.uri, 0, seg.startTime);
-		play();
-		// parser.dumpToLog();
-	}
-
-	@Override
-	public void onDownloadComplete(URLLoader loader, String response) {
-		mManifest = new ManifestParser();
-		mManifest.setOnParseCompleteListener(this);
-		mManifest.parse(response, loader.getRequestURI().toString());
-	}
-
-	public void onDownloadFailed(URLLoader loader, String response) {
-
-	}
-
 	public PlayerViewController(Context context) {
 		super(context);
 		initializeNative();
@@ -195,6 +192,9 @@ public class PlayerViewController extends RelativeLayout implements
 		initializeNative();
 	}
 
+	/**
+	 * Load JNI libraries and set up the render thread.
+	 */
 	private void initializeNative() {
 		try {
 			System.loadLibrary("HLSPlayerSDK");
@@ -203,6 +203,7 @@ public class PlayerViewController extends RelativeLayout implements
 			Log.i("PlayerViewController", "Failed to initialize native video library.");
 		}
 		
+		// Note the active controller.
 		currentController = this;
 
 		// Kick off render thread.
@@ -210,9 +211,48 @@ public class PlayerViewController extends RelativeLayout implements
 		mRenderThread.start();
 	}
 
+	/**
+	 * Terminate render thread and shut down JNI resources.
+	 */
 	public void close() {
 		mRenderThread.interrupt();
 		CloseNativeDecoder();
+	}
+
+	/**
+	 * Called when the manifest parser is complete. Once this is done, play can
+	 * actually start.
+	 */
+	public void onParserComplete(ManifestParser parser) {
+		Log.i("PlayerView.onParserComplete", "Entered");
+		mStreamHandler = new StreamHandler(parser);
+		
+		ManifestSegment seg = getStreamHandler().getFileForTime(0, 0);
+		FeedSegment(seg.uri, 0, seg.startTime);
+
+		seg = getStreamHandler().getNextFile(0);
+		FeedSegment(seg.uri, 0, seg.startTime);
+		
+		play();
+		
+		// Fire prepared event.
+		if(mPreparedListener != null)
+			mPreparedListener.onPrepared(null);		
+	}
+
+	@Override
+	public void onDownloadComplete(URLLoader loader, String response) {
+		mManifest = new ManifestParser();
+		mManifest.setOnParseCompleteListener(this);
+		mManifest.parse(response, loader.getRequestURI().toString());
+	}
+
+	public void onDownloadFailed(URLLoader loader, String response) {
+		Log.i("PlayerViewController", "Download failed: " + response);
+	}
+
+	protected StreamHandler getStreamHandler() {
+		return mStreamHandler;
 	}
 
 	public void setOnFullScreenListener(OnToggleFullScreenListener listener) {
@@ -223,28 +263,19 @@ public class PlayerViewController extends RelativeLayout implements
 		return GetState() == STATE_PLAYING;
 	}
 
-	/**
-	 * load given url to the player view
-	 * 
-	 * @param iframeUrl
-	 *            url to payer
-	 * @param activity
-	 *            bounding activity
-	 */
 	public void addComponents(String iframeUrl, Activity activity) {
 		mActivity = activity;
-
 		setBackgroundColor(0xFF000000);
 	}
 
 	@Override
 	protected void onSizeChanged(int w, int h, int oldw, int oldh) {
 		super.onSizeChanged(w, h, oldw, oldh);
-		Log.i("PlayerViewController.onSizeChanged", "Set size to " + w + "x"
-				+ h);
+		Log.i("PlayerViewController.onSizeChanged", "Set size to " + w + "x" + h);
 	}
 
-	public void destroy() {
+	public void destroy() 
+	{
 		if (mPlayerView == null)
 			return;
 
@@ -298,10 +329,10 @@ public class PlayerViewController extends RelativeLayout implements
 
 	public void setVideoUrl(String url) {
 		Log.i("PlayerView.setVideoUrl", url);
-		// layoutParams lp = this.getLayoutParams();
-		stop(); // We don't call StopPlayer here because we want to stop
-				// everything, including the update pump
+		StopPlayer();
 		ResetPlayer();
+		
+		// Init loading.
 		manifestLoader = new URLLoader(this, null);
 		manifestLoader.get(url);
 	}
@@ -315,7 +346,7 @@ public class PlayerViewController extends RelativeLayout implements
 	@Override
 	public void registerReadyToPlay(OnPreparedListener listener) {
 		// TODO Auto-generated method stub
-
+		mPreparedListener = listener;
 	}
 
 	@Override
@@ -334,5 +365,4 @@ public class PlayerViewController extends RelativeLayout implements
 		// TODO Auto-generated method stub
 
 	}
-
 }

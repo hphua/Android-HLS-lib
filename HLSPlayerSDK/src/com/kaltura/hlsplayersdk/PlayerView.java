@@ -24,7 +24,7 @@ public class PlayerView extends SurfaceView implements SurfaceHolder.Callback {
 		getHolder().setKeepScreenOn(true);
 
 		// Pre 3.0 we must set this explicitly.
-		if (android.os.Build.VERSION.SDK_INT < 11 && wantPushBuffers) {
+		if ((android.os.Build.VERSION.SDK_INT < 11) && wantPushBuffers) {
 			Log.i("PlayerView",
 					"Explcitly setting surface type to push on pre-api 11 device.");
 			getHolder().setType(SurfaceHolder.SURFACE_TYPE_PUSH_BUFFERS);
@@ -33,23 +33,7 @@ public class PlayerView extends SurfaceView implements SurfaceHolder.Callback {
 		mOwner = owner;
 	}
 
-	// SurfaceHolder.Callback implementation
-	public void surfaceChanged(SurfaceHolder holder, int format, int width,
-			int height) {
-		Log.i("PlayerView", "Saw new format " + format + " " + width + "x"
-				+ height + " on surface " + holder.getSurface());
-	}
-
-	public void surfaceCreated(SurfaceHolder holder) {
-		Log.i("PlayerView", "**** Surface created.");
-		mOwner.SetSurface(this.getHolder().getSurface());
-	}
-
-	public void surfaceDestroyed(SurfaceHolder holder) {
-		Log.i("PlayerView", "**** Surface destroyed.");
-		mOwner.SetSurface(null);
-	}
-
+	// Layout logic.
 	@Override
 	protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
 		// Log.i("@@@@", "onMeasure(" + MeasureSpec.toString(widthMeasureSpec) +
@@ -58,34 +42,34 @@ public class PlayerView extends SurfaceView implements SurfaceHolder.Callback {
 
 		int width = getDefaultSize(mVideoWidth, widthMeasureSpec);
 		int height = getDefaultSize(mVideoHeight, heightMeasureSpec);
-		if (mVideoWidth > 0 && mVideoHeight > 0) {
+		if ((mVideoWidth > 0) && (mVideoHeight > 0)) {
 
 			int widthSpecMode = MeasureSpec.getMode(widthMeasureSpec);
 			int widthSpecSize = MeasureSpec.getSize(widthMeasureSpec);
 			int heightSpecMode = MeasureSpec.getMode(heightMeasureSpec);
 			int heightSpecSize = MeasureSpec.getSize(heightMeasureSpec);
 
-			if (widthSpecMode == MeasureSpec.EXACTLY
-					&& heightSpecMode == MeasureSpec.EXACTLY) {
+			if ((widthSpecMode == MeasureSpec.EXACTLY)
+					&& (heightSpecMode == MeasureSpec.EXACTLY)) {
 				// the size is fixed
 				width = widthSpecSize;
 				height = heightSpecSize;
 
 				// for compatibility, we adjust size based on aspect ratio
-				if (mVideoWidth * height < width * mVideoHeight) {
+				if ((mVideoWidth * height) < (width * mVideoHeight)) {
 					// Log.i("@@@", "image too wide, correcting");
-					width = height * mVideoWidth / mVideoHeight;
-				} else if (mVideoWidth * height > width * mVideoHeight) {
+					width = (height * mVideoWidth) / mVideoHeight;
+				} else if ((mVideoWidth * height) > (width * mVideoHeight)) {
 					// Log.i("@@@", "image too tall, correcting");
-					height = width * mVideoHeight / mVideoWidth;
+					height = (width * mVideoHeight) / mVideoWidth;
 				}
 			} else if (widthSpecMode == MeasureSpec.EXACTLY) {
 				// only the width is fixed, adjust the height to match aspect
 				// ratio if possible
 				width = widthSpecSize;
-				height = width * mVideoHeight / mVideoWidth;
-				if (heightSpecMode == MeasureSpec.AT_MOST
-						&& height > heightSpecSize) {
+				height = (width * mVideoHeight) / mVideoWidth;
+				if ((heightSpecMode == MeasureSpec.AT_MOST)
+						&& (height > heightSpecSize)) {
 					// couldn't match aspect ratio within the constraints
 					height = heightSpecSize;
 				}
@@ -93,9 +77,9 @@ public class PlayerView extends SurfaceView implements SurfaceHolder.Callback {
 				// only the height is fixed, adjust the width to match aspect
 				// ratio if possible
 				height = heightSpecSize;
-				width = height * mVideoWidth / mVideoHeight;
-				if (widthSpecMode == MeasureSpec.AT_MOST
-						&& width > widthSpecSize) {
+				width = (height * mVideoWidth) / mVideoHeight;
+				if ((widthSpecMode == MeasureSpec.AT_MOST)
+						&& (width > widthSpecSize)) {
 					// couldn't match aspect ratio within the constraints
 					width = widthSpecSize;
 				}
@@ -104,22 +88,42 @@ public class PlayerView extends SurfaceView implements SurfaceHolder.Callback {
 				// video size
 				width = mVideoWidth;
 				height = mVideoHeight;
-				if (heightSpecMode == MeasureSpec.AT_MOST
-						&& height > heightSpecSize) {
+				if ((heightSpecMode == MeasureSpec.AT_MOST)
+						&& (height > heightSpecSize)) {
 					// too tall, decrease both width and height
 					height = heightSpecSize;
-					width = height * mVideoWidth / mVideoHeight;
+					width = (height * mVideoWidth) / mVideoHeight;
 				}
-				if (widthSpecMode == MeasureSpec.AT_MOST
-						&& width > widthSpecSize) {
+				if ((widthSpecMode == MeasureSpec.AT_MOST)
+						&& (width > widthSpecSize)) {
 					// too wide, decrease both width and height
 					width = widthSpecSize;
-					height = width * mVideoHeight / mVideoWidth;
+					height = (width * mVideoHeight) / mVideoWidth;
 				}
 			}
 		} else {
 			// no size yet, just adopt the given spec sizes
 		}
 		setMeasuredDimension(width, height);
+	}
+
+	// SurfaceHolder.Callback implementation
+	@Override
+	public void surfaceChanged(SurfaceHolder holder, int format, int width,
+			int height) {
+		Log.i("PlayerView", "Saw new format " + format + " " + width + "x"
+				+ height + " on surface " + holder.getSurface());
+	}
+
+	@Override
+	public void surfaceCreated(SurfaceHolder holder) {
+		Log.i("PlayerView", "**** Surface created.");
+		mOwner.SetSurface(this.getHolder().getSurface());
+	}
+
+	@Override
+	public void surfaceDestroyed(SurfaceHolder holder) {
+		Log.i("PlayerView", "**** Surface destroyed.");
+		mOwner.SetSurface(null);
 	}
 }
