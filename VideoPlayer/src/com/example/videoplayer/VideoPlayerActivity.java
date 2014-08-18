@@ -1,5 +1,7 @@
 package com.example.videoplayer;
 
+import java.io.UnsupportedEncodingException;
+
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -13,6 +15,7 @@ import android.view.View;
 import android.widget.EditText;
 
 import com.kaltura.hlsplayersdk.PlayerViewController;
+import com.kaltura.hlsplayersdk.cache.HTTPSegmentCache;
 
 public class VideoPlayerActivity extends ActionBarActivity {
 
@@ -20,7 +23,8 @@ public class VideoPlayerActivity extends ActionBarActivity {
 	final Context context = this;
 	String lastUrl = "";
 	
-    @Override
+    @SuppressWarnings("unused")
+	@Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_video_player);
@@ -33,6 +37,23 @@ public class VideoPlayerActivity extends ActionBarActivity {
         catch (Exception e)
         {
         	Log.e("KalturaTestApp", e.getMessage());
+        }
+        
+        if(false)
+        {
+            // Test the HLS Segment Cache.
+            byte[] googBytes = new byte[1024*1024];
+            Log.i("HLS Test", "Reading from goog");
+            for(int i=0; i<1000; i++)
+            {
+                int readBytes = HTTPSegmentCache.read("https://google.com/?" + Math.random(), 1024, 1024*1024, googBytes);
+                try {
+        			Log.i("HLS Test", "Got test read " + readBytes + " bytes from goog.com:" + new String(googBytes, "UTF-8"));
+        		} catch (UnsupportedEncodingException e) {
+        			// TODO Auto-generated catch block
+        			e.printStackTrace();
+        		}
+            }        	
         }
     }
     
