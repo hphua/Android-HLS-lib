@@ -68,13 +68,17 @@ private:
 	void NoteVideoDimensions();
 	void NoteHWRendererMode(bool enabled, int w, int h, int colf);
 
+	void ApplyFormatChange();
 
 	/// seeking methods
 	void StopEverything();
 	///
 
-	std::list<HLSSegment* > mSegments;
-	std::list<android_video_shim::sp<android_video_shim::HLSDataSource> > mDataSourceCache;
+	typedef std::list<android_video_shim::sp<android_video_shim::HLSDataSource> > DATASRC_CACHE;
+	DATASRC_CACHE mDataSourceCache;
+
+	//std::list<HLSSegment* > mSegments;
+
 
 	pthread_t audioThread;
 

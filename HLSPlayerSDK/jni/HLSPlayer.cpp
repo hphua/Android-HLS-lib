@@ -124,8 +124,8 @@ void HLSPlayer::Reset()
 	mVideoSource.clear();
 	mVideoSource23.clear();
 
-	LOGI("Killing the segments");
-	stlwipe(mSegments);
+	//LOGI("Killing the segments");
+	//stlwipe(mSegments);
 	LOGI("Killing the audio & video tracks");
 
 	mLastVideoTimeUs = 0;
@@ -273,14 +273,14 @@ status_t HLSPlayer::FeedSegment(const char* path, int quality, int continuityEra
 
 	LOGI("mDataSource = %p", mDataSource.get());
 
-	status_t err = mDataSource->append(path, quality, continuityEra);
+	status_t err = mDataSource->append(path, quality, continuityEra, time);
 	if (err == INFO_DISCONTINUITY)
 	{
 		// First, try to append it to the last source in the cache
 
 		if (mDataSourceCache.size() > 0)
 		{
-			err = mDataSourceCache.back()->append(path, quality, continuityEra);
+			err = mDataSourceCache.back()->append(path, quality, continuityEra, time);
 		}
 
 		// If we still get INFO_DISCONTINUITY, it didn't apply to that one, either,
@@ -292,7 +292,7 @@ status_t HLSPlayer::FeedSegment(const char* path, int quality, int continuityEra
 			{
 				return NO_MEMORY;
 			}
-			err = dataSource->append(path, quality, continuityEra);
+			err = dataSource->append(path, quality, continuityEra, time);
 			if (err == OK)
 			{
 				mDataSourceCache.push_back(dataSource);
@@ -311,12 +311,12 @@ status_t HLSPlayer::FeedSegment(const char* path, int quality, int continuityEra
 	}
 
 	// I don't know if we still need this - might need to pass in the URL instead of the datasource
-	HLSSegment* s = new HLSSegment(quality, time);
-	if (s)
-	{
-		mSegments.push_back(s);
-		return OK;
-	}
+//	HLSSegment* s = new HLSSegment(quality, time);
+//	if (s)
+//	{
+//		mSegments.push_back(s);
+//		return OK;
+//	}
 	return NO_MEMORY;
 }
 
@@ -685,6 +685,11 @@ int HLSPlayer::Update()
 
 	LogState();
 
+	if (GetState() == FORMAT_CHANGING)
+	{
+		return 0;
+	}
+
 	if (GetState() == SEEKING)
 	{
 		int segCount = ((HLSDataSource*) mDataSource.get())->getPreloadedSegmentCount();
@@ -706,12 +711,26 @@ int HLSPlayer::Update()
 
 	if (mDataSource != NULL)
 	{
+
 		int segCount = ((HLSDataSource*) mDataSource.get())->getPreloadedSegmentCount();
 		//LOGI("Segment Count %d", segCount);
 		if (segCount < SEGMENTS_TO_BUFFER) // (current segment + 2)
 		{
-			LOGI("**** Requesting next segment...");
-			RequestNextSegment();
+			if (mDataSourceCache.size() > 0)
+			{
+				DATASRC_CACHE::iterator cur = mDataSourceCache.begin();
+				DATASRC_CACHE::iterator end = mDataSourceCache.end();
+				while (cur != end)
+				{
+					segCount += (*cur)->getPreloadedSegmentCount();
+					++cur;
+				}
+			}
+			if (segCount < SEGMENTS_TO_BUFFER)
+			{
+				LOGI("**** Requesting next segment...");
+				RequestNextSegment();
+			}
 		}
 	}
 
@@ -749,6 +768,11 @@ int HLSPlayer::Update()
 				}
 				break;
 			case ERROR_END_OF_STREAM:
+				if (mDataSourceCache.size() > 0)
+				{
+					ApplyFormatChange();
+					return 0;
+				}
 				//SetState(STOPPED);
 				//PlayNextSegment();
 				return -1;
@@ -1015,10 +1039,13 @@ void HLSPlayer::LogState()
 		LOGI("State = PAUSED");
 		break;
 	case PLAYING:
-		//LOGI("State = PLAYING");
+		LOGI("State = PLAYING");
 		break;
 	case SEEKING:
 		LOGI("State = SEEKING");
+		break;
+	case FORMAT_CHANGING:
+		LOGI("State = FORMAT_CHANGING");
 		break;
 	}
 }
@@ -1259,6 +1286,52 @@ void HLSPlayer::StopEverything()
 	mFrameCount = 0;
 }
 
+void HLSPlayer::ApplyFormatChange()
+{
+	AutoLock locker(&lock);
+
+	SetState(FORMAT_CHANGING); // may need to add a different state, but for now...
+	StopEverything();
+	if (mDataSourceCache.size() > 0)
+	{
+		mDataSource.clear();
+		mDataSource = *mDataSourceCache.begin();
+		mDataSourceCache.pop_front();
+	}
+
+	mStartTimeMS = (mDataSource->getStartTime() * 1000);
+
+	LOGI("DataSource Start Time = %f", mDataSource->getStartTime());
+
+	if (!InitSources())
+	{
+		LOGE("InitSources failed!");
+		return;
+	}
+
+	status_t err;
+	if(mVideoSource.get())
+		err = mVideoSource->start();
+	else
+		err = mVideoSource23->start();
+
+	if (err == OK)
+	{
+		if(mAudioSource.get())
+			mJAudioTrack->Set(mAudioSource);
+		else
+			mJAudioTrack->Set23(mAudioSource23);
+	}
+	else
+	{
+		LOGI("Video Track failed to start: %s : %d", strerror(-err), __LINE__);
+	}
+	SetState(PLAYING);
+	if (mJAudioTrack)
+	{
+		mJAudioTrack->Play();
+	}
+}
 
 void HLSPlayer::Seek(double time)
 {

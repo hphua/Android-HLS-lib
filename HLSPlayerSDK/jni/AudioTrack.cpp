@@ -12,10 +12,10 @@
 
 using namespace android_video_shim;
 
-AudioTrack::AudioTrack(JavaVM* jvm) : mJvm(jvm), mAudioTrack(NULL), mGetMinBufferSize(NULL), mPlay(NULL), mPause(NULL), mStop(NULL), mFlush(NULL),
-										mRelease(NULL), mGetTimestamp(NULL), mCAudioTrack(NULL), mWrite(NULL), mGetPlaybackHeadPosition(NULL),
+AudioTrack::AudioTrack(JavaVM* jvm) : mJvm(jvm), mAudioTrack(NULL), mGetMinBufferSize(NULL), mPlay(NULL), mPause(NULL), mStop(NULL), mFlush(NULL), buffer(NULL),
+										mRelease(NULL), mGetTimestamp(NULL), mCAudioTrack(NULL), mWrite(NULL), mGetPlaybackHeadPosition(NULL), mSetPositionNotificationPeriod(NULL),
 										mSampleRate(0), mNumChannels(0), mBufferSizeInBytes(0), mChannelMask(0), mTrack(NULL), mPlayState(STOPPED),
-										mTimeStampOffset(0)
+										mTimeStampOffset(0), samplesWritten(0)
 {
 	// TODO Auto-generated constructor stub
 	if (!mJvm)

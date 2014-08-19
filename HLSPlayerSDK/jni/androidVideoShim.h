@@ -1750,7 +1750,8 @@ namespace android_video_shim
     class HLSDataSource : public DataSource
     {
     public:
-        HLSDataSource(): mSourceIdx(0), mSegmentStartOffset(0), mOffsetAdjustment(0), mContinuityEra(0), mQuality(0)
+        HLSDataSource(): mSourceIdx(0), mSegmentStartOffset(0), mOffsetAdjustment(0),
+        				 mContinuityEra(0), mQuality(0), mStartTime(0)
         {
             // Initialize our mutex.
             int err = initRecursivePthreadMutex(&lock);
@@ -1839,12 +1840,15 @@ namespace android_video_shim
         	mOffsetAdjustment = 0;
         }
 
-        status_t append(const char* uri, int quality, int continuityEra)
+        status_t append(const char* uri, int quality, int continuityEra, double startTime)
         {
             AutoLock locker(&lock);
 
             if (mSources.size() > 0 && (quality != mQuality || continuityEra != mContinuityEra))
             	return INFO_DISCONTINUITY;
+
+            if (mSources.size() == 0) // storing the start time of the first segment in the source list
+            	mStartTime = startTime;
 
             mQuality = quality;
             mContinuityEra = continuityEra;
@@ -1859,6 +1863,11 @@ namespace android_video_shim
             mSources.push_back(uri);
 
             return OK;
+        }
+
+        double getStartTime()
+        {
+        	return mStartTime;
         }
 
         int getPreloadedSegmentCount()
@@ -1991,6 +2000,7 @@ namespace android_video_shim
         off64_t mOffsetAdjustment;
         int mQuality;
         int mContinuityEra;
+        double mStartTime;
 
     };
 
