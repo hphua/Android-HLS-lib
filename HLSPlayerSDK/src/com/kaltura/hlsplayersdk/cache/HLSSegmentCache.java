@@ -12,7 +12,9 @@ import com.loopj.android.http.AsyncHttpClient;
 
 public class HLSSegmentCache 
 {	
-	protected static long targetSize = 16*1024*1024; // 16mb segment cache.
+	protected static long targetSize = 16*1024; // 16mb segment cache.
+	protected static long minimumExpireAge = 5000; // Keep everything touched in last 5 seconds.
+	
 	protected static Map<String, SegmentCacheEntry> segmentCache = null;
 	public static AsyncHttpClient client = null;
 	
@@ -70,8 +72,9 @@ public class HLSSegmentCache
 			// All done!
 			sce.lastTouchedMillis = System.currentTimeMillis();
 			sce.running = false;
-			
 		}
+
+		expire();
 	}
 	
 	static protected void initialize()
@@ -114,9 +117,6 @@ public class HLSSegmentCache
 		// Wait for data, if required...
 		if(!sce.running)
 			return;
-
-		// Tick the cache.
-		expire();
 		
 		Log.i("HLS Cache", "Waiting on request.");
 		long timerStart = System.currentTimeMillis();
@@ -207,7 +207,7 @@ public class HLSSegmentCache
 			if(totalSize <= targetSize)
 				return;
 			
-			// Otherwise, find the oldest.
+			// Otherwise, find the oldest segment.
 			long oldestTime = System.currentTimeMillis();
 			SegmentCacheEntry oldestSce = null;
 			for(SegmentCacheEntry v : values)
@@ -219,8 +219,15 @@ public class HLSSegmentCache
 				oldestTime = v.lastTouchedMillis;
 			}
 			
+			long entryAge = System.currentTimeMillis() - oldestTime;
+			if(entryAge < minimumExpireAge)
+			{
+				Log.i("HLS Cache", "Tried to purge segment that is less than " + minimumExpireAge/1000 + " seconds old. Ignoring... (" + oldestSce.uri + ", " + entryAge/1000 + ")");
+				return;
+			}
+			
 			// We're over cache target, delete that one.
-			Log.i("HLS Cache", "Purging " + oldestSce.uri + ", freeing " + (oldestSce.data.length/1024) + "kb");
+			Log.i("HLS Cache", "Purging " + oldestSce.uri + ", freeing " + (oldestSce.data.length/1024) + "kb, age " + (entryAge/1000) + "sec");
 			segmentCache.remove(oldestSce.uri);
 		}
 	}
