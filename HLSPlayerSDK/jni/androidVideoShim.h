@@ -1750,7 +1750,7 @@ namespace android_video_shim
     class HLSDataSource : public DataSource
     {
     public:
-        HLSDataSource(): mSourceIdx(0), mSegmentStartOffset(0), mOffsetAdjustment(0)
+        HLSDataSource(): mSourceIdx(0), mSegmentStartOffset(0), mOffsetAdjustment(0), mContinuityEra(0), mQuality(0)
         {
             // Initialize our mutex.
             int err = initRecursivePthreadMutex(&lock);
@@ -1839,9 +1839,15 @@ namespace android_video_shim
         	mOffsetAdjustment = 0;
         }
 
-        status_t append(const char* uri)
+        status_t append(const char* uri, int quality, int continuityEra)
         {
             AutoLock locker(&lock);
+
+            if (mSources.size() > 0 && (quality != mQuality || continuityEra != mContinuityEra))
+            	return INFO_DISCONTINUITY;
+
+            mQuality = quality;
+            mContinuityEra = continuityEra;
 
             // Small memory leak, look out.
             uri = strdup(uri);
@@ -1983,6 +1989,8 @@ namespace android_video_shim
         uint32_t mSourceIdx;
         off64_t mSegmentStartOffset;
         off64_t mOffsetAdjustment;
+        int mQuality;
+        int mContinuityEra;
 
     };
 

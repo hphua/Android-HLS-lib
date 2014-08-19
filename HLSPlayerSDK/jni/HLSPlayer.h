@@ -33,7 +33,7 @@ public:
 	void Reset();
 
 	void SetSurface(JNIEnv* env, jobject surface);
-	android_video_shim::status_t FeedSegment(const char* path, int32_t quality, double time );
+	android_video_shim::status_t FeedSegment(const char* path, int32_t quality, int continuityEra, double time );
 
 	bool Play();
 	void Stop();
@@ -74,6 +74,7 @@ private:
 	///
 
 	std::list<HLSSegment* > mSegments;
+	std::list<android_video_shim::sp<android_video_shim::HLSDataSource> > mDataSourceCache;
 
 	pthread_t audioThread;
 

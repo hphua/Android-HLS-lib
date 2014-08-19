@@ -246,7 +246,17 @@ void HLSPlayer::SetNativeWindow(::ANativeWindow* window)
 	mWindow = window;
 }
 
-status_t HLSPlayer::FeedSegment(const char* path, int quality, double time )
+sp<HLSDataSource> MakeHLSDataSource()
+{
+	sp<HLSDataSource> ds = new HLSDataSource();
+	if (ds.get())
+	{
+		ds->patchTable();
+	}
+	return ds;
+}
+
+status_t HLSPlayer::FeedSegment(const char* path, int quality, int continuityEra, double time )
 {
 	AutoLock locker(&lock);
 
@@ -254,12 +264,8 @@ status_t HLSPlayer::FeedSegment(const char* path, int quality, double time )
 	LOGI("path = '%s'", path);
 	if (mDataSource == NULL)
 	{
-		mDataSource = new HLSDataSource();
-		if (mDataSource.get())
-		{
-			mDataSource->patchTable();
-		}
-		else
+		mDataSource = MakeHLSDataSource();
+		if (!mDataSource.get())
 		{
 			return NO_MEMORY;
 		}
@@ -267,7 +273,36 @@ status_t HLSPlayer::FeedSegment(const char* path, int quality, double time )
 
 	LOGI("mDataSource = %p", mDataSource.get());
 
-	status_t err = mDataSource->append(path);
+	status_t err = mDataSource->append(path, quality, continuityEra);
+	if (err == INFO_DISCONTINUITY)
+	{
+		// First, try to append it to the last source in the cache
+
+		if (mDataSourceCache.size() > 0)
+		{
+			err = mDataSourceCache.back()->append(path, quality, continuityEra);
+		}
+
+		// If we still get INFO_DISCONTINUITY, it didn't apply to that one, either,
+		// so we need to create a new one.
+		if (err == INFO_DISCONTINUITY)
+		{
+			sp<HLSDataSource> dataSource = MakeHLSDataSource();
+			if (!dataSource.get())
+			{
+				return NO_MEMORY;
+			}
+			err = dataSource->append(path, quality, continuityEra);
+			if (err == OK)
+			{
+				mDataSourceCache.push_back(dataSource);
+			}
+		}
+
+	}
+
+
+
 	if (err != OK)
 	{
 		LOGE("append Failed: %s", strerror(-err));

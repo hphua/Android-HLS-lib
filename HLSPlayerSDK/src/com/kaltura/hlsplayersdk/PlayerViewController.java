@@ -46,7 +46,7 @@ public class PlayerViewController extends RelativeLayout implements
 	private native void TogglePause();
 	public native void SetSurface(Surface surface);
 	private native int NextFrame();
-	private native void FeedSegment(String url, int quality, double startTime);
+	private native void FeedSegment(String url, int quality, int continuityEra, double startTime);
 	private native void SeekTo(double timeInSeconds);
 
 	// Static interface.
@@ -66,7 +66,7 @@ public class PlayerViewController extends RelativeLayout implements
 		if(seg == null)
 			return;
 
-		currentController.FeedSegment(seg.uri, mQualityLevel, seg.startTime);
+		currentController.FeedSegment(seg.uri, mQualityLevel, seg.continuityEra, seg.startTime);
 	}
 
 	/**
@@ -82,7 +82,7 @@ public class PlayerViewController extends RelativeLayout implements
 		if(seg == null)
 			return 0;
 		
-		currentController.FeedSegment(seg.uri, mQualityLevel, seg.startTime);
+		currentController.FeedSegment(seg.uri, mQualityLevel, seg.continuityEra, seg.startTime);
 		return seg.startTime;
 	}
 
@@ -235,10 +235,10 @@ public class PlayerViewController extends RelativeLayout implements
 		mStreamHandler = new StreamHandler(parser);
 		
 		ManifestSegment seg = getStreamHandler().getFileForTime(0, 0);
-		FeedSegment(seg.uri, 0, seg.startTime);
+		FeedSegment(seg.uri, 0, seg.continuityEra, seg.startTime);
 
 		seg = getStreamHandler().getNextFile(0);
-		FeedSegment(seg.uri, 0, seg.startTime);
+		FeedSegment(seg.uri, 0, seg.continuityEra, seg.startTime);
 		
 		play();
 		
