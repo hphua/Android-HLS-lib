@@ -68,6 +68,16 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 		return sb.toString();
 	}
 	
+	public double estimatedWindowDuration()
+	{
+		return segments.size() * targetDuration;
+	}
+	
+	public boolean isDVR()
+	{
+		return allowCache && !streamEnds;
+	}
+	
 	public void dumpToLog()
 	{
 		Log.i("ManifestParser.dumpToLog", this.toString());
@@ -104,12 +114,11 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 		for ( i = 0; i < lines.length; ++i)
 		{
 			String curLine = lines[i];
+
 			// Ignore empty lines;
 			if (curLine.length() == 0) continue;
-
 			
 			String curPrefix = curLine.substring(0, 1);
-			
 			
 			if (!curPrefix.endsWith("#") && curLine.length() > 0)
 			{
@@ -142,6 +151,13 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 				{
 // TODO - SubTitleParser!!!
 					//((SubTitleParser)lastHint).load( getNormalizedUrl ( baseUrl, curLine) );
+					SubTitleParser sp = as(SubTitleParser.class, lastHint);
+					if (sp != null)
+						sp.load(getNormalizedUrl(baseUrl, curLine));
+					else
+					{
+						Log.e("ManifestParser.parse", "UnknownType. Can't call SubTitleParser.load(): " + lastHint.toString());
+					}
 				}
 				continue;
 			}
@@ -205,7 +221,6 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 			else if (tagType.equals("EXT-X-STREAM-INF"))
 			{
 				streams.add(ManifestStream.fromString(tagParams));
-// TODO: Last Hint
 				lastHint = streams.get(streams.size() - 1);
 			}
 			else if (tagType.equals("EXTINF"))
@@ -213,11 +228,11 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 				if ( type.equals(SUBTITLES ))
 				{
 					//TODO: SUBTITLES!!!
-//					SubTitleParser subTitle = new SubTitleParser();
-//					subTitle.addEventListener( Event.COMPLETE, onSubtitleLoaded );
-//					subtitles.add( subTitle );
-//					lastHint = subTitle;
-//					_subtitlesLoading++;
+					SubTitleParser subTitle = new SubTitleParser();
+// TODO:					subTitle.addEventListener( Event.COMPLETE, onSubtitleLoaded );
+					subtitles.add( subTitle );
+					lastHint = subTitle;
+					_subtitlesLoading++;
 				}
 				else
 				{
