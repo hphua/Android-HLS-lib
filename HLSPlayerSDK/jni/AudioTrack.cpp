@@ -12,10 +12,10 @@
 
 using namespace android_video_shim;
 
-AudioTrack::AudioTrack(JavaVM* jvm) : mJvm(jvm), mAudioTrack(NULL), mGetMinBufferSize(NULL), mPlay(NULL), mPause(NULL), mStop(NULL), mFlush(NULL),
-										mRelease(NULL), mGetTimestamp(NULL), mCAudioTrack(NULL), mWrite(NULL), mGetPlaybackHeadPosition(NULL),
+AudioTrack::AudioTrack(JavaVM* jvm) : mJvm(jvm), mAudioTrack(NULL), mGetMinBufferSize(NULL), mPlay(NULL), mPause(NULL), mStop(NULL), mFlush(NULL), buffer(NULL),
+										mRelease(NULL), mGetTimestamp(NULL), mCAudioTrack(NULL), mWrite(NULL), mGetPlaybackHeadPosition(NULL), mSetPositionNotificationPeriod(NULL),
 										mSampleRate(0), mNumChannels(0), mBufferSizeInBytes(0), mChannelMask(0), mTrack(NULL), mPlayState(STOPPED),
-										mTimeStampOffset(0)
+										mTimeStampOffset(0), samplesWritten(0)
 {
 	// TODO Auto-generated constructor stub
 	if (!mJvm)
@@ -253,6 +253,7 @@ bool AudioTrack::Start()
 
 void AudioTrack::Play()
 {
+	LOGI("Trying to play: state = %d", mPlayState);
 	if (mPlayState == PLAYING) return;
 	int lastPlayState = mPlayState;
 
@@ -260,7 +261,7 @@ void AudioTrack::Play()
 
 	if (lastPlayState == PAUSED || lastPlayState == SEEKING)
 	{
-		LOGI("Playing Audio Thread: state = %s | semPause.count = %d", mPlayState==PAUSED?"PAUSED":(mPlayState==SEEKING?"SEEKING":"Not Possible!"), semPause.count );
+		LOGI("Playing Audio Thread: state = %s | semPause.count = %d", lastPlayState==PAUSED?"PAUSED":(lastPlayState==SEEKING?"SEEKING":"Not Possible!"), semPause.count );
 		sem_post(&semPause);
 	}
 
@@ -362,9 +363,9 @@ int64_t AudioTrack::GetTimeStamp()
 }
 
 
-bool AudioTrack::Update()
+int AudioTrack::Update()
 {
-	//LOGV("Audio Update Thread Running");
+	LOGV("Audio Update Thread Running");
 	if (mPlayState != PLAYING)
 	{
 		while (mPlayState == PAUSED)
@@ -383,7 +384,7 @@ bool AudioTrack::Update()
 		if (mPlayState == STOPPED)
 		{
 			LOGI("mPlayState == STOPPED. Ending audio update thread!");
-			return false; // We don't really want to add more stuff to the buffer
+			return AUDIOTHREAD_FINISH; // We don't really want to add more stuff to the buffer
 							// and potentially run past the end of buffered source data
 							// if we're not actively playing
 		}
@@ -457,7 +458,7 @@ bool AudioTrack::Update()
 		LOGE("End of Audio Stream");
 		mJvm->DetachCurrentThread();
 		pthread_mutex_unlock(&updateMutex);
-		return false;
+		return AUDIOTHREAD_WAIT;
 	}
 
 	mJvm->DetachCurrentThread();
@@ -466,7 +467,7 @@ bool AudioTrack::Update()
 		mediaBuffer->release();
 
 	pthread_mutex_unlock(&updateMutex);
-	return true;
+	return AUDIOTHREAD_CONTINUE;
 }
 
 void AudioTrack::shutdown()

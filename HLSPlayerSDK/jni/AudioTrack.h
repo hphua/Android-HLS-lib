@@ -12,6 +12,13 @@
 #include <androidVideoShim.h>
 #include <semaphore.h>
 
+enum
+{
+	AUDIOTHREAD_WAIT,
+	AUDIOTHREAD_CONTINUE,
+	AUDIOTHREAD_FINISH
+};
+
 class AudioTrack {
 public:
 	AudioTrack(JavaVM* jvm);
@@ -29,7 +36,7 @@ public:
 	bool Set(android_video_shim::sp<android_video_shim::MediaSource> audioSource, bool alreadyStarted = false);
 	bool Set23(android_video_shim::sp<android_video_shim::MediaSource23> audioSource, bool alreadyStarted = false);
 
-	bool Update();
+	int Update();
 
 	void shutdown();
 

@@ -1750,7 +1750,8 @@ namespace android_video_shim
     class HLSDataSource : public DataSource
     {
     public:
-        HLSDataSource(): mSourceIdx(0), mSegmentStartOffset(0), mOffsetAdjustment(0)
+        HLSDataSource(): mSourceIdx(0), mSegmentStartOffset(0), mOffsetAdjustment(0),
+        				 mContinuityEra(0), mQuality(0), mStartTime(0)
         {
             // Initialize our mutex.
             int err = initRecursivePthreadMutex(&lock);
@@ -1839,9 +1840,18 @@ namespace android_video_shim
         	mOffsetAdjustment = 0;
         }
 
-        status_t append(const char* uri)
+        status_t append(const char* uri, int quality, int continuityEra, double startTime)
         {
             AutoLock locker(&lock);
+
+            if (mSources.size() > 0 && (quality != mQuality || continuityEra != mContinuityEra))
+            	return INFO_DISCONTINUITY;
+
+            if (mSources.size() == 0) // storing the start time of the first segment in the source list
+            	mStartTime = startTime;
+
+            mQuality = quality;
+            mContinuityEra = continuityEra;
 
             // Small memory leak, look out.
             uri = strdup(uri);
@@ -1853,6 +1863,16 @@ namespace android_video_shim
             mSources.push_back(uri);
 
             return OK;
+        }
+
+        void logContinuityInfo()
+        {
+        	LOGI("Quality = %d | Continuity Era = %d | Time = %f | First URI = %s ", mQuality, mContinuityEra, mStartTime, *mSources.begin()  );
+        }
+
+        double getStartTime()
+        {
+        	return mStartTime;
         }
 
         int getPreloadedSegmentCount()
@@ -1882,7 +1902,7 @@ namespace android_video_shim
                 return 0;
             }
 
-            LOGE("Attempting _readAt mSources[mSourceIdx]=%s %lld %p %d mOffsetAdjustment=%lld", mSources[mSourceIdx], offset, data, size, mOffsetAdjustment);
+            LOGDATAMINING("Attempting _readAt mSources[mSourceIdx]=%s %lld %p %d mOffsetAdjustment=%lld", mSources[mSourceIdx], offset, data, size, mOffsetAdjustment);
 
             // Calculate adjusted offset based on reads so far. The TSExtractor
             // always reads in order.
@@ -1897,13 +1917,13 @@ namespace android_video_shim
                 // If we have a negative adjOffset it means we moved into a new segment - but readSize should compensate.
                 while(adjOffset + readSize < 0)
                 {
-                    LOGE("Got negative offset, adjOffset=%ld readSize=%ld", adjOffset, readSize);
+                	LOGDATAMINING("Got negative offset, adjOffset=%ld readSize=%ld", adjOffset, readSize);
 
                     assert(mSourceIdx > 0);
 
                     // Walk back to preceding source!
                     int64_t sourceSize = HLSSegmentCache::getSize(mSources[mSourceIdx-1]);
-                    LOGE("Retreating by %lld bytes!", sourceSize);
+                    LOGDATAMINING("Retreating by %lld bytes!", sourceSize);
 
                     mOffsetAdjustment -= sourceSize;
                     adjOffset += sourceSize;
@@ -1928,7 +1948,7 @@ namespace android_video_shim
                 {
                     // Advance by the current source size.
                     int64_t sourceSize = HLSSegmentCache::getSize(mSources[mSourceIdx]);
-                    LOGE("Advancing by %lld bytes, size of current source", sourceSize);
+                    LOGDATAMINING("Advancing by %lld bytes, size of current source", sourceSize);
 
                     mOffsetAdjustment += sourceSize;
                     adjOffset -= sourceSize;
@@ -1983,6 +2003,9 @@ namespace android_video_shim
         uint32_t mSourceIdx;
         off64_t mSegmentStartOffset;
         off64_t mOffsetAdjustment;
+        int mQuality;
+        int mContinuityEra;
+        double mStartTime;
 
     };
 

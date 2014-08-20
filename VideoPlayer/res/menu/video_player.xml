@@ -15,5 +15,7 @@
     <item android:id="@+id/testUrl" android:title="@string/testURL" android:orderInCategory="7" android:visible="false"></item>
     <item android:id="@+id/openUrl" android:title="@string/OpenURL" android:orderInCategory="1"></item>
     <item android:id="@+id/play_pause" android:title="@string/play_pause" android:orderInCategory="2"></item>
+    <item android:id="@+id/quality_up" android:title="Quality Up" android:orderInCategory="7"></item>
+    <item android:id="@+id/quality_down" android:title="Quality Down" android:orderInCategory="8"></item>
 
 </menu>

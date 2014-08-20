@@ -46,12 +46,15 @@ public class PlayerViewController extends RelativeLayout implements
 	private native void TogglePause();
 	public native void SetSurface(Surface surface);
 	private native int NextFrame();
-	private native void FeedSegment(String url, int quality, double startTime);
+	private native void FeedSegment(String url, int quality, int continuityEra, double startTime);
 	private native void SeekTo(double timeInSeconds);
+	private native void ApplyFormatChange();
 
 	// Static interface.
 	// TODO Allow multiple active PlayerViewController instances.
 	private static PlayerViewController currentController = null;
+	private static int mQualityLevel = 0;
+
 
 	/**
 	 * Get the next segment in the stream.
@@ -60,11 +63,11 @@ public class PlayerViewController extends RelativeLayout implements
 		if (currentController == null)
 			return;
 		
-		ManifestSegment seg = currentController.getStreamHandler().getNextFile(0);
+		ManifestSegment seg = currentController.getStreamHandler().getNextFile(mQualityLevel);
 		if(seg == null)
 			return;
 
-		currentController.FeedSegment(seg.uri, 0, seg.startTime);
+		currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.startTime);
 	}
 
 	/**
@@ -76,11 +79,11 @@ public class PlayerViewController extends RelativeLayout implements
 		if(currentController == null)
 			return 0;
 		
-		ManifestSegment seg = currentController.getStreamHandler().getFileForTime(time, 0);
+		ManifestSegment seg = currentController.getStreamHandler().getFileForTime(time, mQualityLevel);
 		if(seg == null)
 			return 0;
 		
-		currentController.FeedSegment(seg.uri, 0, seg.startTime);
+		currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.startTime);
 		return seg.startTime;
 	}
 
@@ -150,6 +153,7 @@ public class PlayerViewController extends RelativeLayout implements
 	private URLLoader manifestLoader;
 	private StreamHandler mStreamHandler = null;
 
+
 	public OnPlayheadUpdateListener mPlayheadUpdateListener;
 	public OnPreparedListener mPreparedListener;
 
@@ -164,9 +168,22 @@ public class PlayerViewController extends RelativeLayout implements
 			while (true) {
 				int state = GetState();
 				if (state == STATE_PLAYING) {
-					mTimeMS = NextFrame();
-					if (mPlayheadUpdateListener != null)
+					int rval = NextFrame();
+					if (rval >= 0) mTimeMS = rval;
+					if (rval < 0) Log.i("videoThread", "NextFrame() returned " + rval);
+					if (rval == -1013) // INFO_DISCONTINUITY
+					{
+						Log.i("videoThread", "Ran into a discontinuity");
+						HandleFormatChange();
+					}
+					else if (mPlayheadUpdateListener != null)
 						mPlayheadUpdateListener.onPlayheadUpdated(mTimeMS);
+					try {
+						Thread.yield();
+					} catch (Exception e) {
+						Log.i("video run", "Video thread sleep interrupted!");
+					}
+
 				} else {
 					try {
 						Thread.sleep(30);
@@ -178,6 +195,19 @@ public class PlayerViewController extends RelativeLayout implements
 			}
 		}
 	};
+	
+	// Handle discontinuity/format change
+	public void HandleFormatChange()
+	{
+		mActivity.runOnUiThread(new Runnable()
+			{
+				public void run() {
+					Log.i("HandleFormatChange", "UI Thread calling ApplyFormatChange()");
+					ApplyFormatChange();
+				}
+			}
+		);
+	}
 
 	public PlayerViewController(Context context) {
 		super(context);
@@ -232,10 +262,10 @@ public class PlayerViewController extends RelativeLayout implements
 		mStreamHandler = new StreamHandler(parser);
 		
 		ManifestSegment seg = getStreamHandler().getFileForTime(0, 0);
-		FeedSegment(seg.uri, 0, seg.startTime);
+		FeedSegment(seg.uri, 0, seg.continuityEra, seg.startTime);
 
 		seg = getStreamHandler().getNextFile(0);
-		FeedSegment(seg.uri, 0, seg.startTime);
+		FeedSegment(seg.uri, 0, seg.continuityEra, seg.startTime);
 		
 		play();
 		
@@ -287,6 +317,24 @@ public class PlayerViewController extends RelativeLayout implements
 
 		stop();
 		close();
+	}
+
+	public void incrementQuality()
+	{
+		if (mStreamHandler != null)
+		{
+			int ql = mStreamHandler.getQualityLevels();
+			if (mQualityLevel < ql -1)
+			{
+				++mQualityLevel;
+			}
+		}
+	}
+	
+	public void decrementQuality()
+	{
+		if (mQualityLevel > 0)
+			--mQualityLevel;
 	}
 
 	// /////////////////////////////////////////////////////////////////////////////////////////////

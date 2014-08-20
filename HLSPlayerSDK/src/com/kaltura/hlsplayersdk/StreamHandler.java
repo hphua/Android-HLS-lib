@@ -406,7 +406,9 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 			if (curSegment.duration >= time - accum)
 			{
 				lastSegmentIndex = i;
-				return segments.get(lastSegmentIndex);
+				ManifestSegment seg = segments.get(lastSegmentIndex);
+				seg.quality = quality;
+				return seg;
 			}
 			
 			accum += curSegment.duration;
@@ -451,6 +453,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 			}
 			Log.i("StreamHandler.getNextFile", "Getting Next Segment[" + lastSegmentIndex + "]\n" + lastSegment.toString());
 
+			lastSegment.quality = quality;
 			return lastSegment;
 			
 		}
@@ -538,6 +541,14 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 			return segments.get(idx);
 		
 		return null;
+	}
+	
+	public int getQualityLevels()
+	{
+		if (manifest == null) return 0;
+		if (manifest.streams.size() > 0 ) return manifest.streams.size();
+		return 1;
+		
 	}
 	
 	private Vector<ManifestSegment> getSegmentsForQuality(int quality)

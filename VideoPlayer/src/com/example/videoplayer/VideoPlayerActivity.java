@@ -115,6 +115,14 @@ public class VideoPlayerActivity extends ActionBarActivity {
         {
         	playerView.pause();
         }
+        else if (id == R.id.quality_up)
+        {
+        	playerView.incrementQuality();
+        }
+        else if (id == R.id.quality_down)
+        {
+        	playerView.decrementQuality();
+        }
         else if (id == R.id.openUrl)
         {
         	// start another popup to enter the URL, somehow

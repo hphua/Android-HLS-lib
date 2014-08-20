@@ -33,7 +33,7 @@ public:
 	void Reset();
 
 	void SetSurface(JNIEnv* env, jobject surface);
-	android_video_shim::status_t FeedSegment(const char* path, int32_t quality, double time );
+	android_video_shim::status_t FeedSegment(const char* path, int32_t quality, int continuityEra, double time );
 
 	bool Play();
 	void Stop();
@@ -49,6 +49,8 @@ public:
 	int32_t GetCurrentTimeMS();
 
 	void SetScreenSize(int w, int h);
+
+	void ApplyFormatChange();
 
 private:
 	void SetState(int status);
@@ -69,11 +71,16 @@ private:
 	void NoteHWRendererMode(bool enabled, int w, int h, int colf);
 
 
+
 	/// seeking methods
 	void StopEverything();
 	///
 
-	std::list<HLSSegment* > mSegments;
+	typedef std::list<android_video_shim::sp<android_video_shim::HLSDataSource> > DATASRC_CACHE;
+	DATASRC_CACHE mDataSourceCache;
+
+	//std::list<HLSSegment* > mSegments;
+
 
 	pthread_t audioThread;
 

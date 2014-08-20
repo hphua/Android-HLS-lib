@@ -117,12 +117,13 @@ extern "C"
 			return 0;
 		if (!gHLSPlayerSDK->GetPlayer())
 			return 0;
-		if (gHLSPlayerSDK->GetPlayer()->Update() >= 0)
+		int rval = gHLSPlayerSDK->GetPlayer()->Update();
+		if (rval >= 0)
 			return gHLSPlayerSDK->GetPlayer()->GetCurrentTimeMS();
-		return 0;
+		return rval;
 	}
 
-	void Java_com_kaltura_hlsplayersdk_PlayerViewController_FeedSegment(JNIEnv* env, jobject jcaller, jstring jurl, jint quality, jdouble startTime )
+	void Java_com_kaltura_hlsplayersdk_PlayerViewController_FeedSegment(JNIEnv* env, jobject jcaller, jstring jurl, jint quality, jint continuityEra, jdouble startTime )
 	{
 		LOGI("Entered");
 		
@@ -139,7 +140,7 @@ extern "C"
 		}
 
 		const char* url = env->GetStringUTFChars(jurl, 0);
-		gHLSPlayerSDK->GetPlayer()->FeedSegment(url, quality, startTime);
+		gHLSPlayerSDK->GetPlayer()->FeedSegment(url, quality, continuityEra, startTime);
 		env->ReleaseStringUTFChars(jurl, url);
 	}
 
@@ -162,6 +163,14 @@ extern "C"
 			return gHLSPlayerSDK->GetPlayer()->GetState();
 		}
 		return STOPPED;
+	}
+
+	void Java_com_kaltura_hlsplayersdk_PlayerViewController_ApplyFormatChange(JNIEnv* env, jobject jcaller)
+	{
+		if (gHLSPlayerSDK != NULL && gHLSPlayerSDK->GetPlayer())
+		{
+			gHLSPlayerSDK->GetPlayer()->ApplyFormatChange();
+		}
 	}
 
 }

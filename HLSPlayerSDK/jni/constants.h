@@ -15,7 +15,8 @@ enum Playstate
 	STOPPED = 1,
 	PAUSED,
 	PLAYING,
-	SEEKING
+	SEEKING,
+	FORMAT_CHANGING
 };
 
 
