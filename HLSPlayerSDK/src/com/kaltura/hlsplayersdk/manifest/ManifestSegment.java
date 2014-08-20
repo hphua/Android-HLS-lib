@@ -13,6 +13,7 @@ public class ManifestSegment extends BaseManifestItem
 	public String title;
 	public double startTime;
 	public int continuityEra;
+	public int quality = 0;
 	
 	// Byte Range support. -1 means no byte range.
 	public int byteRangeStart = -1;
@@ -27,6 +28,7 @@ public class ManifestSegment extends BaseManifestItem
 		sb.append("title : " + title + " | ");
 		sb.append("startTime : " + startTime + " | ");
 		sb.append("continuityEra : " + continuityEra + " | ");
+		sb.append("quality : " + quality + " | ");
 		sb.append("byteRangeStart : " + byteRangeStart + " | ");
 		sb.append("byteRangeEnd : " + byteRangeEnd + "\n");
 		sb.append("uri : " + uri + "\n");

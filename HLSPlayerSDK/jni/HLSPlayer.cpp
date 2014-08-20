@@ -31,7 +31,7 @@ void* audio_thread_func(void* arg)
 {
 	AudioTrack* audioTrack = (AudioTrack*)arg;
 
-	while (audioTrack->Update())
+	while (audioTrack->Update() != AUDIOTHREAD_FINISH)
 	{
 		if(audioTrack->getBufferSize() > (44100/10))
 		{
@@ -683,7 +683,7 @@ int HLSPlayer::Update()
 
 	LOGV("Entered");
 
-	LogState();
+	RUNDEBUG(LogState());
 
 	if (GetState() == FORMAT_CHANGING)
 	{
@@ -770,8 +770,11 @@ int HLSPlayer::Update()
 			case ERROR_END_OF_STREAM:
 				if (mDataSourceCache.size() > 0)
 				{
-					ApplyFormatChange();
-					return 0;
+					SetState(FORMAT_CHANGING);
+					mDataSource->logContinuityInfo();
+					LOGI("End Of Stream: Detected additional sources.");
+					 //ApplyFormatChange();
+					return INFO_DISCONTINUITY;
 				}
 				//SetState(STOPPED);
 				//PlayNextSegment();
@@ -1298,6 +1301,8 @@ void HLSPlayer::ApplyFormatChange()
 		mDataSource = *mDataSourceCache.begin();
 		mDataSourceCache.pop_front();
 	}
+
+	mDataSource->logContinuityInfo();
 
 	mStartTimeMS = (mDataSource->getStartTime() * 1000);
 

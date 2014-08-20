@@ -253,6 +253,7 @@ bool AudioTrack::Start()
 
 void AudioTrack::Play()
 {
+	LOGI("Trying to play: state = %d", mPlayState);
 	if (mPlayState == PLAYING) return;
 	int lastPlayState = mPlayState;
 
@@ -260,7 +261,7 @@ void AudioTrack::Play()
 
 	if (lastPlayState == PAUSED || lastPlayState == SEEKING)
 	{
-		LOGI("Playing Audio Thread: state = %s | semPause.count = %d", mPlayState==PAUSED?"PAUSED":(mPlayState==SEEKING?"SEEKING":"Not Possible!"), semPause.count );
+		LOGI("Playing Audio Thread: state = %s | semPause.count = %d", lastPlayState==PAUSED?"PAUSED":(lastPlayState==SEEKING?"SEEKING":"Not Possible!"), semPause.count );
 		sem_post(&semPause);
 	}
 
@@ -362,9 +363,9 @@ int64_t AudioTrack::GetTimeStamp()
 }
 
 
-bool AudioTrack::Update()
+int AudioTrack::Update()
 {
-	//LOGV("Audio Update Thread Running");
+	LOGV("Audio Update Thread Running");
 	if (mPlayState != PLAYING)
 	{
 		while (mPlayState == PAUSED)
@@ -383,7 +384,7 @@ bool AudioTrack::Update()
 		if (mPlayState == STOPPED)
 		{
 			LOGI("mPlayState == STOPPED. Ending audio update thread!");
-			return false; // We don't really want to add more stuff to the buffer
+			return AUDIOTHREAD_FINISH; // We don't really want to add more stuff to the buffer
 							// and potentially run past the end of buffered source data
 							// if we're not actively playing
 		}
@@ -457,7 +458,7 @@ bool AudioTrack::Update()
 		LOGE("End of Audio Stream");
 		mJvm->DetachCurrentThread();
 		pthread_mutex_unlock(&updateMutex);
-		return false;
+		return AUDIOTHREAD_WAIT;
 	}
 
 	mJvm->DetachCurrentThread();
@@ -466,7 +467,7 @@ bool AudioTrack::Update()
 		mediaBuffer->release();
 
 	pthread_mutex_unlock(&updateMutex);
-	return true;
+	return AUDIOTHREAD_CONTINUE;
 }
 
 void AudioTrack::shutdown()

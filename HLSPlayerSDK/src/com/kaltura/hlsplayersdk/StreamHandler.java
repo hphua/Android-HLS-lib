@@ -406,7 +406,9 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 			if (curSegment.duration >= time - accum)
 			{
 				lastSegmentIndex = i;
-				return segments.get(lastSegmentIndex);
+				ManifestSegment seg = segments.get(lastSegmentIndex);
+				seg.quality = quality;
+				return seg;
 			}
 			
 			accum += curSegment.duration;
@@ -451,6 +453,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 			}
 			Log.i("StreamHandler.getNextFile", "Getting Next Segment[" + lastSegmentIndex + "]\n" + lastSegment.toString());
 
+			lastSegment.quality = quality;
 			return lastSegment;
 			
 		}

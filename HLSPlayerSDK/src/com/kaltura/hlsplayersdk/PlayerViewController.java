@@ -48,6 +48,7 @@ public class PlayerViewController extends RelativeLayout implements
 	private native int NextFrame();
 	private native void FeedSegment(String url, int quality, int continuityEra, double startTime);
 	private native void SeekTo(double timeInSeconds);
+	private native void ApplyFormatChange();
 
 	// Static interface.
 	// TODO Allow multiple active PlayerViewController instances.
@@ -66,7 +67,7 @@ public class PlayerViewController extends RelativeLayout implements
 		if(seg == null)
 			return;
 
-		currentController.FeedSegment(seg.uri, mQualityLevel, seg.continuityEra, seg.startTime);
+		currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.startTime);
 	}
 
 	/**
@@ -82,7 +83,7 @@ public class PlayerViewController extends RelativeLayout implements
 		if(seg == null)
 			return 0;
 		
-		currentController.FeedSegment(seg.uri, mQualityLevel, seg.continuityEra, seg.startTime);
+		currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.startTime);
 		return seg.startTime;
 	}
 
@@ -167,9 +168,22 @@ public class PlayerViewController extends RelativeLayout implements
 			while (true) {
 				int state = GetState();
 				if (state == STATE_PLAYING) {
-					mTimeMS = NextFrame();
-					if (mPlayheadUpdateListener != null)
+					int rval = NextFrame();
+					if (rval >= 0) mTimeMS = rval;
+					if (rval < 0) Log.i("videoThread", "NextFrame() returned " + rval);
+					if (rval == -1013) // INFO_DISCONTINUITY
+					{
+						Log.i("videoThread", "Ran into a discontinuity");
+						HandleFormatChange();
+					}
+					else if (mPlayheadUpdateListener != null)
 						mPlayheadUpdateListener.onPlayheadUpdated(mTimeMS);
+					try {
+						Thread.yield();
+					} catch (Exception e) {
+						Log.i("video run", "Video thread sleep interrupted!");
+					}
+
 				} else {
 					try {
 						Thread.sleep(30);
@@ -181,6 +195,19 @@ public class PlayerViewController extends RelativeLayout implements
 			}
 		}
 	};
+	
+	// Handle discontinuity/format change
+	public void HandleFormatChange()
+	{
+		mActivity.runOnUiThread(new Runnable()
+			{
+				public void run() {
+					Log.i("HandleFormatChange", "UI Thread calling ApplyFormatChange()");
+					ApplyFormatChange();
+				}
+			}
+		);
+	}
 
 	public PlayerViewController(Context context) {
 		super(context);

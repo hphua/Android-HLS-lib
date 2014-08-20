@@ -1865,6 +1865,11 @@ namespace android_video_shim
             return OK;
         }
 
+        void logContinuityInfo()
+        {
+        	LOGI("Quality = %d | Continuity Era = %d | Time = %f | First URI = %s ", mQuality, mContinuityEra, mStartTime, *mSources.begin()  );
+        }
+
         double getStartTime()
         {
         	return mStartTime;

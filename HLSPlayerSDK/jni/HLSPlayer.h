@@ -50,6 +50,8 @@ public:
 
 	void SetScreenSize(int w, int h);
 
+	void ApplyFormatChange();
+
 private:
 	void SetState(int status);
 	void SetNativeWindow(ANativeWindow* window);
@@ -68,7 +70,7 @@ private:
 	void NoteVideoDimensions();
 	void NoteHWRendererMode(bool enabled, int w, int h, int colf);
 
-	void ApplyFormatChange();
+
 
 	/// seeking methods
 	void StopEverything();
