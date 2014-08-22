@@ -5,11 +5,12 @@ import java.util.Vector;
 
 import android.util.Log;
 import android.util.EventLog.Event;
+
 import com.kaltura.hlsplayersdk.URLLoader;
 import com.kaltura.hlsplayersdk.subtitles.*;
 import com.kaltura.hlsplayersdk.manifest.events.*;
 
-public class ManifestParser implements OnParseCompleteListener, URLLoader.DownloadEventListener {
+public class ManifestParser implements OnParseCompleteListener, URLLoader.DownloadEventListener, OnSubtitleParseCompleteListener {
 	public static final String DEFAULT = "DEFAULT";
 	public static final String AUDIO = "AUDIO";
 	public static final String VIDEO = "VIDEO";
@@ -126,7 +127,6 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 				if ( !type.equals(SUBTITLES ))
 				{
 					String targetUrl = getNormalizedUrl(baseUrl, curLine);
-// TODO - lastHint!!!
 					ManifestSegment segment = as(ManifestSegment.class, lastHint);
 					if (segment != null && segment.byteRangeStart != -1)
 					{
@@ -134,9 +134,6 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 						String urlPostFix = targetUrl.indexOf( "?" ) == -1 ? "?" : "&";
 						targetUrl += urlPostFix + "range=" + segment.byteRangeStart + "-" + segment.byteRangeEnd;
 					}
-//TODO - figure out what to do about lastHint, because it isn't going to work the way it's being used
-					//lastHint.getClass().getField("uri").set(lastHint, targetUrl);
-					
 					
 					BaseManifestItem mi = as(BaseManifestItem.class, lastHint);
 					if (mi != null)
@@ -149,8 +146,7 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 				}
 				else
 				{
-// TODO - SubTitleParser!!!
-					//((SubTitleParser)lastHint).load( getNormalizedUrl ( baseUrl, curLine) );
+					// SUBTITLES
 					SubTitleParser sp = as(SubTitleParser.class, lastHint);
 					if (sp != null)
 						sp.load(getNormalizedUrl(baseUrl, curLine));
@@ -229,10 +225,11 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 				{
 					//TODO: SUBTITLES!!!
 					SubTitleParser subTitle = new SubTitleParser();
-// TODO:					subTitle.addEventListener( Event.COMPLETE, onSubtitleLoaded );
+					subTitle.setOnParseCompleteListener(this);
+					_subtitlesLoading++;
 					subtitles.add( subTitle );
 					lastHint = subTitle;
-					_subtitlesLoading++;
+					
 				}
 				else
 				{
@@ -301,7 +298,7 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 			timeAccum += segments.get(m).duration;
 		}
 		
-		if (manifestLoaders.size() == 0 && this.mOnParseCompleteListener != null)
+		if (manifestLoaders.size() == 0 && subtitles.size() == 0 && this.mOnParseCompleteListener != null)
 			mOnParseCompleteListener.onParserComplete(this);
 			
 	}
@@ -393,16 +390,27 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 		manifestLoader.get(fullUrl);
 	}
 	
-	private void onSubtitleLoaded(Event e)
+	public boolean subtitlesLoading()
 	{
-		Log.i("ManifestParser.onSubtitleLoaded", "SUBTITLE LOADED");
-		_subtitlesLoading--;
-		announceIfComplete();
+		boolean loading = _subtitlesLoading != 0;
+		if (!loading)
+		{
+			for (int i = 0; i < manifestParsers.size(); ++i)
+			{
+				// check any submanifests for subtitles
+				if (manifestParsers.get(i).subtitlesLoading())
+					return true;
+				
+			}
+		}
+		return loading;
+			
 	}
 	
 	private void announceIfComplete()
 	{
-		if (_subtitlesLoading == 0 && manifestParsers.size() == 0 && manifestLoaders.size() == 0)
+		Log.i(this.getClass().getName() + ".announceIfComplete()", "_subtitles = " + _subtitlesLoading);
+		if (!subtitlesLoading() && manifestParsers.size() == 0 && manifestLoaders.size() == 0)
 		{
 			verifyManifestItemIntegrity();
 			//PostEvent (COMPLETE);
@@ -430,25 +438,11 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 		mOnParseCompleteListener = listener;
 	}
 	private OnParseCompleteListener mOnParseCompleteListener;
-//	
-//	
-//	public void setOnLoadErrorListener(OnLoadErrorListener listener)
-//	{
-//		mOnLoadErrorListener = listener;
-//	}
-//	private OnLoadErrorListener mOnLoadErrorListener;
-//	
-//	public void setOnReloadErrorListener(OnReloadErrorListener listener)
-//	{
-//		mOnReloadErrorListener = listener;
-//	}
-//	
-//	private OnReloadErrorListener mOnReloadErrorListener; 
-//	
-//	public void setOnReloadCompleteListener(OnReloadCompleteListener listener)
-//	{
-//		mOnReloadCompleteListener = listener;
-//	}
-//	
-//	private OnReloadCompleteListener mOnReloadCompleteListener;
+
+	@Override
+	public void onSubtitleParserComplete(SubTitleParser parser) {
+		Log.i("ManifestParser.onSubtitleLoaded", "SUBTITLE LOADED");
+		_subtitlesLoading--;
+		announceIfComplete();		
+	}
 }

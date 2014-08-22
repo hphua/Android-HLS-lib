@@ -257,7 +257,7 @@ public class PlayerViewController extends RelativeLayout implements
 	 * actually start.
 	 */
 	public void onParserComplete(ManifestParser parser) {
-		Log.i("PlayerView.onParserComplete", "Entered");
+		Log.i(this.getClass().getName() + ".onParserComplete", "Entered");
 		mStreamHandler = new StreamHandler(parser);
 		
 		ManifestSegment seg = getStreamHandler().getFileForTime(0, 0);

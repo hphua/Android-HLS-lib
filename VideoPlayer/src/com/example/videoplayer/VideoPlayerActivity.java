@@ -76,7 +76,7 @@ public class VideoPlayerActivity extends ActionBarActivity {
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
-        if (id == R.id.action_settings) {
+        if (id == R.id.kaltura_vod) {
         	lastUrl = "http://www.kaltura.com/p/0/playManifest/entryId/1_0i2t7w0i/format/applehttp";
         	playerView.setVideoUrl(lastUrl);
         	//playerView.setVideoUrl("http://kalturavod-vh.akamaihd.net/i/p/1281471/sp/128147100/serveFlavor/entryId/1_0i2t7w0i/v/1/flavorId/1_rncam6d3/index_0_av.m3u8");
@@ -88,6 +88,12 @@ public class VideoPlayerActivity extends ActionBarActivity {
         	lastUrl = "http://abclive.abcnews.com/i/abc_live4@136330/index_500_av-p.m3u8?sd=10&rebase=on";
         	playerView.setVideoUrl(lastUrl);
         	//playerView.setVideoUrl("http://abclive.abcnews.com/i/abc_live4@136330/master.m3u8");
+        	return true;
+        }
+        else if (id == R.id.folgers)
+        {
+        	lastUrl = "http://cdnbakmi.kaltura.com/p/243342/sp/24334200/playManifest/entryId/0_uka1msg4/flavorIds/1_vqhfu6uy,1_80sohj7p/format/applehttp/protocol/http/a.m3u8";
+        	playerView.setVideoUrl(lastUrl);
         	return true;
         }
         else if (id == R.id.seekFwd)

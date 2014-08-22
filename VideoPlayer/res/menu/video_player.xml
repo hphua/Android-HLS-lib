@@ -3,13 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     tools:context="com.example.videoplayer.VideoPlayerActivity" >
 
-    <item
-        android:id="@+id/action_settings"
-        android:orderInCategory="6"
-        android:title="@string/action_settings"
-        app:showAsAction="never">
-    </item>
-    <item android:id="@+id/abc_dvr_item" android:title="@string/abc_dvr" android:orderInCategory="5"></item>
+
     <item android:id="@+id/seekFwd" android:title="@string/seekFwd" android:orderInCategory="3" android:visible="true"></item>
     <item android:id="@+id/seekBwd" android:title="@string/seekBackward" android:orderInCategory="4" android:visible="true"></item>
     <item android:id="@+id/testUrl" android:title="@string/testURL" android:orderInCategory="7" android:visible="false"></item>
@@ -17,5 +11,17 @@
     <item android:id="@+id/play_pause" android:title="@string/play_pause" android:orderInCategory="2"></item>
     <item android:id="@+id/quality_up" android:title="Quality Up" android:orderInCategory="7"></item>
     <item android:id="@+id/quality_down" android:title="Quality Down" android:orderInCategory="8"></item>
+    <item android:id="@+id/streams" android:orderInCategory="0" android:title="Streams">
+        <menu>
+		    <item
+		        android:id="@+id/kaltura_vod"
+		        android:orderInCategory="6"
+		        android:title="@string/action_settings"
+		        app:showAsAction="never">
+		    </item>
+            <item android:id="@+id/folgers" android:title="Folgers"/>
+    		<item android:id="@+id/abc_dvr_item" android:title="@string/abc_dvr" android:orderInCategory="5"></item>
+        </menu>
+    </item>
 
 </menu>

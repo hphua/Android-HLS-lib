@@ -3,9 +3,10 @@ package com.kaltura.hlsplayersdk.subtitles;
 
 import java.util.Vector;
 
+import com.kaltura.hlsplayersdk.URLLoader;
 import android.util.Log;
 
-public class SubTitleParser {
+public class SubTitleParser implements URLLoader.DownloadEventListener {
 	public Vector<WebVTTRegion> regions = new Vector<WebVTTRegion>();
 	
 	enum ParseState
@@ -34,6 +35,7 @@ public class SubTitleParser {
 	public double endTime = -1;
 	
 	private String _url;
+	private URLLoader _loader = null;
 	
 	public SubTitleParser()
 	{
@@ -61,9 +63,8 @@ public class SubTitleParser {
 	public void load(String url)
 	{
 		_url = url;
-		_loader.addEventListener(Event.COMPLETE, onLoaded );
-		_loader.addEventListener(IOErrorEvent.IO_ERROR, onLoadError);
-		_loader.addEventListener(SecurityErrorEvent.SECURITY_ERROR, onLoadError);
+		_loader = new URLLoader(this, null);
+		_loader.get(_url);
 	}
 	
 	public void parse(String input)
@@ -77,7 +78,8 @@ public class SubTitleParser {
 		if (lines.length < 1 || lines[9].indexOf("WEBVTT") == -1)
 		{
 			Log.i("SubTitleParser.parse", "Not a valid WEBVTT file " + _url);
-//TODO:			// dispatch event complete (whatever it is)
+			if (this.mOnParseCompleteListener != null)
+				mOnParseCompleteListener.onSubtitleParserComplete(this);
 			return;
 		}
 		
@@ -89,7 +91,7 @@ public class SubTitleParser {
 		for (int i = 1; i < lines.length; ++i)
 		{
 			String line = lines[i];
-			if (line == "")
+			if (line.equals(""))
 			{
 				// if new line, we're done with the last parsing step. Make sure we skip all new lines.
 				state = ParseState.IDLE;
@@ -123,7 +125,7 @@ public class SubTitleParser {
 				break;
 				
 			case PARSE_CUE_TEXT:
-				if (textTrackCue.text != "") textTrackCue.text += "\n";
+				if (textTrackCue.text.length() > 0) textTrackCue.text += "\n";
 				textTrackCue.text += line;
 				textTrackCue.buffer += "\n" + line;
 				break;
@@ -141,7 +143,8 @@ public class SubTitleParser {
 			endTime = lastElement.endTime;
 		}
 		
-//TODO:		// dispatch event complete
+		if (this.mOnParseCompleteListener != null)
+			mOnParseCompleteListener.onSubtitleParserComplete(this);
 	}
 	
 	public static double parseTimeStamp(String input)
@@ -170,6 +173,25 @@ public class SubTitleParser {
 		if (secondUnits.length > 1) milliseconds = Integer.parseInt(secondUnits[1]);
 		
 		return (double)(hours * 60 * 60 + minutes * 60 + seconds) + ((double)milliseconds / (double)1000);
+	}
+	
+	// Event Listeners
+	public void setOnParseCompleteListener(OnSubtitleParseCompleteListener listener)
+	{
+		mOnParseCompleteListener = listener;
+	}
+	private OnSubtitleParseCompleteListener mOnParseCompleteListener;
+
+	@Override
+	public void onDownloadComplete(URLLoader loader, String response) {
+		parse (response);
+	}
+
+	@Override
+	public void onDownloadFailed(URLLoader loader, String response) {
+		Log.i("SubTitleParser", "Download Failed : " + loader.getRequestURI().toASCIIString());
+		if (this.mOnParseCompleteListener != null)
+			mOnParseCompleteListener.onSubtitleParserComplete(this);
 	}
 
 }
