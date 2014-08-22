@@ -53,6 +53,8 @@ public class TextTrackCue {
 				else state = ParseState.PARSE_TOKENS;
 				break;
 			case TIMESTAMP:
+				if (c != ' ')
+					accum += c;
 				if (c == ' ' || position == input.length() - 1)
 				{
 					double timeStamp = SubTitleParser.parseTimeStamp(accum);
@@ -64,7 +66,6 @@ public class TextTrackCue {
 					state = ParseState.WHITESPACE;
 					break;
 				}
-				accum += c;
 				++position;
 				break;
 				
