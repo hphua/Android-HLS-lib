@@ -75,7 +75,7 @@ public class SubTitleParser implements URLLoader.DownloadEventListener {
 		// split into array
 		String[] lines = input.split("\n");
 		
-		if (lines.length < 1 || lines[9].indexOf("WEBVTT") == -1)
+		if (lines.length < 1 || lines[0].indexOf("WEBVTT") == -1)
 		{
 			Log.i("SubTitleParser.parse", "Not a valid WEBVTT file " + _url);
 			if (this.mOnParseCompleteListener != null)
@@ -155,19 +155,24 @@ public class SubTitleParser implements URLLoader.DownloadEventListener {
 		int seconds = 0;
 		int milliseconds = 0;
 		String[] units = input.split(":");
-		String[] secondUnits;
+		
+
+		String secondValues = "";
 		
 		if (units.length < 3)
 		{
 			minutes = Integer.parseInt(units[0]);
-			secondUnits = units[1].split(".");
+			secondValues = units[1];
+			//secondUnits = units[1].split(".");
 		}
 		else
 		{
 			hours = Integer.parseInt(units[0]);
 			minutes = Integer.parseInt(units[1]);
-			secondUnits = units[2].split(".");
+			secondValues = units[2];
 		}
+		
+		String[] secondUnits = secondValues.split("[.]");
 		
 		seconds = Integer.parseInt(secondUnits[0]);
 		if (secondUnits.length > 1) milliseconds = Integer.parseInt(secondUnits[1]);

@@ -34,33 +34,33 @@ public class WebVTTRegion {
 			String name = token.substring(0, equalsIndex);
 			String value = token.substring(equalsIndex + 1);
 			
-			if (name == "id")
+			if (name.equals("id"))
 			{
 				result.id = value;
 			}
-			else if (name == "width")
+			else if (name.equals("width"))
 			{
 				result.width = parsePercentage(value);
 			}
-			else if (name == "lines")
+			else if (name.equals("lines"))
 			{
 				result.lines = Integer.parseInt(value);
 			}
-			else if (name == "regionanchor")
+			else if (name.equals("regionanchor"))
 			{
 				int commaIndex = value.indexOf(',');
 				result.anchorX = parsePercentage(value.substring(0, commaIndex));
 				result.anchorY = parsePercentage(value.substring(commaIndex + 1));
 			}
-			else if (name == "viewportanchor")
+			else if (name.equals("viewportanchor"))
 			{
 				int commaIndex = value.indexOf(',');
 				result.viewportAnchorX = parsePercentage(value.substring(0, commaIndex));
 				result.viewportAnchorY = parsePercentage(value.substring(commaIndex + 1));
 			}
-			else if (name == "scroll")
+			else if (name.equals("scroll"))
 			{
-				if (value == "up") result.scroll = "scroll up";
+				if (value.equals("up")) result.scroll = "scroll up";
 			}
 			else
 			{

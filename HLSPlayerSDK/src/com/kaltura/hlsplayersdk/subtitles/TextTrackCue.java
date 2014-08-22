@@ -92,19 +92,19 @@ public class TextTrackCue {
 //			boolean positionSet = false;
 //			boolean positionAlignSet = false;
 			
-			if (name == "region")
+			if (name.equals("region"))
 			{
 				regionName = value;
 			}
-			else if (name == "vertical")
+			else if (name.equals("vertical"))
 			{
 				writingDirection = value;
 			}
-			else if (name == "line")
+			else if (name.equals("line"))
 			{
 				// Not yet implemented
 			}
-			else if (name == "size")
+			else if (name.equals("size"))
 			{
 				// not yet implemented
 			}
