@@ -4,11 +4,14 @@ import android.app.Activity;
 import android.content.Context;
 import android.media.MediaPlayer.OnErrorListener;
 import android.media.MediaPlayer.OnPreparedListener;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.Surface;
 import android.view.ViewGroup;
 import android.widget.RelativeLayout;
+import android.widget.Toast;
 
 import com.kaltura.hlsplayersdk.events.OnPlayerStateChangeListener;
 import com.kaltura.hlsplayersdk.events.OnPlayheadUpdateListener;
@@ -380,11 +383,25 @@ public class PlayerViewController extends RelativeLayout implements
 		SeekTo((curPos + msec) / 1000);
 	}
 
+	// Helper to check network status.
+	public boolean isOnline() {
+	    ConnectivityManager connMgr = (ConnectivityManager) 
+	            getContext().getSystemService(Context.CONNECTIVITY_SERVICE);
+	    NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
+	    return (networkInfo != null && networkInfo.isConnected());
+	}  
+	
 	public void setVideoUrl(String url) {
 		Log.i("PlayerView.setVideoUrl", url);
 		StopPlayer();
 		ResetPlayer();
-		
+
+		// Confirm network is ready to go.
+		if(!isOnline())
+		{
+			Toast.makeText(getContext(), "Not connnected to network; video may not play.", Toast.LENGTH_LONG).show();
+		}
+
 		// Init loading.
 		manifestLoader = new URLLoader(this, null);
 		manifestLoader.get(url);
