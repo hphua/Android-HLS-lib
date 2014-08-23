@@ -1,8 +1,5 @@
 package com.example.videoplayer;
 
-import java.io.UnsupportedEncodingException;
-import java.nio.ByteBuffer;
-
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -16,7 +13,6 @@ import android.view.View;
 import android.widget.EditText;
 
 import com.kaltura.hlsplayersdk.PlayerViewController;
-import com.kaltura.hlsplayersdk.cache.HLSSegmentCache;
 
 public class VideoPlayerActivity extends ActionBarActivity {
 

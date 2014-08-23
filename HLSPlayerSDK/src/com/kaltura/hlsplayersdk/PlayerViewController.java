@@ -6,7 +6,6 @@ import android.media.MediaPlayer.OnErrorListener;
 import android.media.MediaPlayer.OnPreparedListener;
 import android.util.AttributeSet;
 import android.util.Log;
-import android.util.MonthDisplayHelper;
 import android.view.Surface;
 import android.view.ViewGroup;
 import android.widget.RelativeLayout;
@@ -119,7 +118,7 @@ public class PlayerViewController extends RelativeLayout implements
 			Log.w("addComponents", "Surface Holder is " + currentController.mPlayerView.getHolder().getSurface());
 
 		// Preserve resolution info for layout.
-		currentController.setVideoResolution(currentController.mVideoWidth, currentController.mVideoHeight);
+		setVideoResolution(currentController.mVideoWidth, currentController.mVideoHeight);
 	}
 
 	/**

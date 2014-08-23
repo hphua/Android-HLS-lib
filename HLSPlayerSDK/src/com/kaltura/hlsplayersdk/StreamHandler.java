@@ -419,6 +419,8 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 		return null;
 	}
 	
+	// Called by C++.
+	@SuppressWarnings("unused")
 	private ManifestSegment getSegmentforSegmentId(int quality, int segmentId)
 	{
 		Vector<ManifestSegment> segments = getSegmentsForQuality(quality);
@@ -528,6 +530,8 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 		return 0;
 	}
 	
+	// Called by C++.
+	@SuppressWarnings("unused")
 	private ManifestSegment getSegmentForTime(double time)
 	{
 		Log.i("StreamHandler.getSegmentForTime(" + time + ")", "Time == " + time);
