@@ -107,41 +107,7 @@ bool AudioTrack::Set(sp<MediaSource> audioSource, bool alreadyStarted)
 	mAudioSource = audioSource;
 	if (!alreadyStarted) mAudioSource->start(NULL);
 
-	sp<MetaData> format = mAudioSource->getFormat();
-	RUNDEBUG(format->dumpToLog());
-	const char* mime;
-	bool success = format->findCString(kKeyMIMEType, &mime);
-	if (!success)
-	{
-		LOGE("Could not find mime type");
-		return false;
-	}
-	if (strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_RAW))
-	{
-		LOGE("Mime Type was not audio/raw. Was: %s", mime);
-		return false;
-	}
-	success = format->findInt32(kKeySampleRate, &mSampleRate);
-	if (!success)
-	{
-		LOGE("Could not find audio sample rate");
-		return false;
-	}
-
-	success = format->findInt32(kKeyChannelCount, &mNumChannels);
-	if (!success)
-	{
-		LOGE("Could not find channel count");
-		return false;
-	}
-	if (!format->findInt32(kKeyChannelMask, &mChannelMask))
-	{
-		if (mNumChannels > 2)
-		{
-			LOGI("Source format didn't specify channel mask. Using (%d) channel order", mNumChannels);
-		}
-		mChannelMask = 0; // CHANNEL_MASK_USE_CHANNEL_ORDER
-	}
+	return UpdateFormatInfo();
 }
 
 
@@ -154,8 +120,24 @@ bool AudioTrack::Set23(sp<MediaSource23> audioSource, bool alreadyStarted)
 	mAudioSource23 = audioSource;
 	if (!alreadyStarted) mAudioSource23->start(NULL);
 
-	sp<MetaData> format = mAudioSource23->getFormat();
+	return UpdateFormatInfo();
+}
+
+bool AudioTrack::UpdateFormatInfo()
+{
+	sp<MetaData> format;
+	if(mAudioSource.get())
+		format = mAudioSource->getFormat();
+	else if(mAudioSource23.get())
+		format = mAudioSource23->getFormat();
+	else
+	{
+		LOGE("Couldn't find format!");
+		return false;
+	}
+
 	RUNDEBUG(format->dumpToLog());
+
 	const char* mime;
 	bool success = format->findCString(kKeyMIMEType, &mime);
 	if (!success)
@@ -181,6 +163,7 @@ bool AudioTrack::Set23(sp<MediaSource23> audioSource, bool alreadyStarted)
 		LOGE("Could not find channel count");
 		return false;
 	}
+	
 	if (!format->findInt32(kKeyChannelMask, &mChannelMask))
 	{
 		if (mNumChannels > 2)
@@ -189,6 +172,8 @@ bool AudioTrack::Set23(sp<MediaSource23> audioSource, bool alreadyStarted)
 		}
 		mChannelMask = 0; // CHANNEL_MASK_USE_CHANNEL_ORDER
 	}
+
+	return true;
 }
 
 #define STREAM_MUSIC 3
@@ -211,6 +196,13 @@ bool AudioTrack::Start()
 	JNIEnv* env;
 	mJvm->AttachCurrentThread(&env, NULL);
 
+	// Refresh our format information.
+	if(!UpdateFormatInfo())
+	{
+		LOGE("Failed to update format info!");
+		return false;
+	}
+
 	int channelConfig = CHANNEL_CONFIGURATION_STEREO;
 	switch (mNumChannels)
 	{
@@ -228,9 +220,11 @@ bool AudioTrack::Start()
 		break;
 	}
 
-	LOGI("mNumChannels=%d | channelConfig=%d | mSampleRate=%d", mNumChannels, channelConfig, mSampleRate);
+	LOGI("Creating AudioTrack mNumChannels=%d | channelConfig=%d | mSampleRate=%d", mNumChannels, channelConfig, mSampleRate);
 
-	mBufferSizeInBytes = env->CallStaticIntMethod(mCAudioTrack, mGetMinBufferSize, mSampleRate, channelConfig,ENCODING_PCM_16BIT) * 4; // HACK ALERT!! Note that this value was originally 2... this is a quick hack to test the audio sending since the media buffer I am seeing is exactly the same size as this value * 4
+	// HACK ALERT!! Note that this value was originally 2... this is a quick hack to test the audio sending since 
+	// the media buffer I am seeing is exactly the same size as this value * 4
+	mBufferSizeInBytes = env->CallStaticIntMethod(mCAudioTrack, mGetMinBufferSize, mSampleRate, channelConfig,ENCODING_PCM_16BIT) * 4; 
 
 	LOGI("mBufferSizeInBytes=%d", mBufferSizeInBytes);
 
@@ -241,6 +235,12 @@ bool AudioTrack::Start()
 		return false;
 	}
 
+	// Release our old track.
+	if(mTrack)
+	{
+		env->DeleteGlobalRef(mTrack);
+		mTrack = NULL;
+	}
 
 	mTrack = env->NewGlobalRef(env->NewObject(mCAudioTrack, mAudioTrack, STREAM_MUSIC, mSampleRate, channelConfig, ENCODING_PCM_16BIT, mBufferSizeInBytes * 2, MODE_STREAM ));
 	//env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mSetPositionNotificationPeriod, 250);
@@ -450,6 +450,13 @@ int AudioTrack::Update()
 	else if (res == INFO_FORMAT_CHANGED)
 	{
 		LOGE("Format Changed");
+
+		// Flush our existing track.
+		Flush();
+
+		// Create new one.
+		Start();
+
 		pthread_mutex_unlock(&updateMutex);
 		Update();
 	}
