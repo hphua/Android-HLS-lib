@@ -1,4 +1,4 @@
-/*
+ /*
  * HLSPlayerSDK.cpp
  *
  *  Created on: Apr 11, 2014
@@ -18,7 +18,6 @@
 #include "HLSSegmentCache.h"
 
 HLSPlayerSDK* gHLSPlayerSDK = NULL;
-
 
 extern "C"
 {

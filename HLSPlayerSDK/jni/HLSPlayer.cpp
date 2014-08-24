@@ -681,12 +681,13 @@ int HLSPlayer::Update()
 {
 	AutoLock locker(&lock);
 
-	LOGV("Entered");
+	LOGV2("Entered");
 
 	RUNDEBUG(LogState());
 
 	if (GetState() == FORMAT_CHANGING)
 	{
+		LOGI("Video changing format!");
 		return 0;
 	}
 

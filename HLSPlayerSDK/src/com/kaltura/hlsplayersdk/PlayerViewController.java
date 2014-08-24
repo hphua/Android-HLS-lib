@@ -213,18 +213,15 @@ public class PlayerViewController extends RelativeLayout implements
 
 	public PlayerViewController(Context context) {
 		super(context);
-		initializeNative();
 	}
 
 	public PlayerViewController(Context context, AttributeSet attrs) {
 		super(context, attrs);
-		initializeNative();
 	}
 
 	public PlayerViewController(Context context, AttributeSet attrs,
 			int defStyle) {
 		super(context, attrs, defStyle);
-		initializeNative();
 	}
 
 	/**
@@ -302,6 +299,7 @@ public class PlayerViewController extends RelativeLayout implements
 	public void addComponents(String iframeUrl, Activity activity) {
 		mActivity = activity;
 		setBackgroundColor(0xFF000000);
+		initializeNative();
 	}
 
 	@Override

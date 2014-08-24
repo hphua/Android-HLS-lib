@@ -45,6 +45,8 @@ public:
 
 	int getBufferSize();
 
+	bool UpdateFormatInfo();
+
 private:
 	jclass mCAudioTrack;
 	jmethodID mAudioTrack;
