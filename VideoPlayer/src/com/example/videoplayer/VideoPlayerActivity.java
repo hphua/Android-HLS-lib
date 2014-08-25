@@ -176,6 +176,7 @@ public class VideoPlayerActivity extends ActionBarActivity implements OnSubtitle
 		for (int i = 0; i < languages.length; ++i)
 			Log.i("VideoPlayer.onSubtitlesAvailable", "Language[" + i + "] = " + languages[i]);
 
+		playerView.setActiveSubtitleLanguage(defaultLanguage);
 
 	}
 

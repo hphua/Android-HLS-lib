@@ -423,7 +423,15 @@ public class PlayerViewController extends RelativeLayout implements
 	public boolean isOnline() {
 	    ConnectivityManager connMgr = (ConnectivityManager) 
 	            getContext().getSystemService(Context.CONNECTIVITY_SERVICE);
-	    NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
+	    NetworkInfo networkInfo = null;
+	    try
+	    {
+	    	networkInfo = connMgr.getActiveNetworkInfo();
+	    }
+	    catch (Exception e)
+	    {
+	    	
+	    }
 	    return (networkInfo != null && networkInfo.isConnected());
 	}  
 	
