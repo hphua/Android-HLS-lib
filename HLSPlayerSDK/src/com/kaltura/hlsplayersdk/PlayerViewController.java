@@ -1,5 +1,7 @@
 package com.kaltura.hlsplayersdk;
 
+import java.util.Vector;
+
 import android.app.Activity;
 import android.content.Context;
 import android.media.MediaPlayer.OnErrorListener;
@@ -20,6 +22,9 @@ import com.kaltura.hlsplayersdk.events.OnToggleFullScreenListener;
 import com.kaltura.hlsplayersdk.manifest.ManifestParser;
 import com.kaltura.hlsplayersdk.manifest.ManifestSegment;
 import com.kaltura.hlsplayersdk.manifest.events.OnParseCompleteListener;
+import com.kaltura.hlsplayersdk.subtitles.SubTitleParser;
+import com.kaltura.hlsplayersdk.subtitles.SubtitleHandler;
+import com.kaltura.hlsplayersdk.subtitles.TextTrackCue;
 
 /**
  * Main class for HLS video playback on the Java side.
@@ -154,6 +159,7 @@ public class PlayerViewController extends RelativeLayout implements
 	private ManifestParser mManifest = null;
 	private URLLoader manifestLoader;
 	private StreamHandler mStreamHandler = null;
+	private SubtitleHandler mSubtitleHandler = null;
 
 
 	public OnPlayheadUpdateListener mPlayheadUpdateListener;
@@ -180,6 +186,15 @@ public class PlayerViewController extends RelativeLayout implements
 					}
 					else if (mPlayheadUpdateListener != null)
 						mPlayheadUpdateListener.onPlayheadUpdated(mTimeMS);
+
+					// SUBTITLES!
+					
+					if (mSubtitleHandler != null)
+					{
+						double time = ( (double)mTimeMS / 1000.0);
+						mSubtitleHandler.update(time, 0);
+					}
+					
 					try {
 						Thread.yield();
 					} catch (Exception e) {
@@ -259,6 +274,11 @@ public class PlayerViewController extends RelativeLayout implements
 	public void onParserComplete(ManifestParser parser) {
 		Log.i(this.getClass().getName() + ".onParserComplete", "Entered");
 		mStreamHandler = new StreamHandler(parser);
+		mSubtitleHandler = new SubtitleHandler(parser);
+		if (!mSubtitleHandler.hasSubtitles())
+		{
+			mSubtitleHandler = null;
+		}
 		
 		ManifestSegment seg = getStreamHandler().getFileForTime(0, 0);
 		FeedSegment(seg.uri, 0, seg.continuityEra, seg.startTime);
