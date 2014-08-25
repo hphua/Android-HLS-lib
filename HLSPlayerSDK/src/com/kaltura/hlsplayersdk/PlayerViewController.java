@@ -24,7 +24,6 @@ import com.kaltura.hlsplayersdk.manifest.ManifestSegment;
 import com.kaltura.hlsplayersdk.manifest.events.OnParseCompleteListener;
 import com.kaltura.hlsplayersdk.subtitles.OnSubtitleTextListener;
 import com.kaltura.hlsplayersdk.subtitles.OnSubtitlesAvailableListener;
-import com.kaltura.hlsplayersdk.subtitles.SubTitleParser;
 import com.kaltura.hlsplayersdk.subtitles.SubtitleHandler;
 import com.kaltura.hlsplayersdk.subtitles.TextTrackCue;
 
