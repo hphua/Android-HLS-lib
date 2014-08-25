@@ -22,6 +22,8 @@ import com.kaltura.hlsplayersdk.events.OnToggleFullScreenListener;
 import com.kaltura.hlsplayersdk.manifest.ManifestParser;
 import com.kaltura.hlsplayersdk.manifest.ManifestSegment;
 import com.kaltura.hlsplayersdk.manifest.events.OnParseCompleteListener;
+import com.kaltura.hlsplayersdk.subtitles.OnSubtitleTextListener;
+import com.kaltura.hlsplayersdk.subtitles.OnSubtitlesAvailableListener;
 import com.kaltura.hlsplayersdk.subtitles.SubTitleParser;
 import com.kaltura.hlsplayersdk.subtitles.SubtitleHandler;
 import com.kaltura.hlsplayersdk.subtitles.TextTrackCue;
@@ -61,6 +63,7 @@ public class PlayerViewController extends RelativeLayout implements
 	// TODO Allow multiple active PlayerViewController instances.
 	private static PlayerViewController currentController = null;
 	private static int mQualityLevel = 0;
+	private static int mSubtitleLanguage = 0;
 
 
 	/**
@@ -192,7 +195,15 @@ public class PlayerViewController extends RelativeLayout implements
 					if (mSubtitleHandler != null)
 					{
 						double time = ( (double)mTimeMS / 1000.0);
-						mSubtitleHandler.update(time, 0);
+						Vector<TextTrackCue> cues = mSubtitleHandler.update(time, mSubtitleLanguage);
+						if (cues != null && mSubtitleTextListener != null)
+						{
+							for (int i = 0; i < cues.size(); ++i)
+							{
+								TextTrackCue cue = cues.get(i);
+								mSubtitleTextListener.onSubtitleText(cue.startTime, cue.endTime - cue.startTime, cue.buffer);
+							}
+						}
 					}
 					
 					try {
@@ -275,7 +286,15 @@ public class PlayerViewController extends RelativeLayout implements
 		Log.i(this.getClass().getName() + ".onParserComplete", "Entered");
 		mStreamHandler = new StreamHandler(parser);
 		mSubtitleHandler = new SubtitleHandler(parser);
-		if (!mSubtitleHandler.hasSubtitles())
+		if (mSubtitleHandler.hasSubtitles())
+		{
+			if (mSubtitlesAvailableListener != null)
+			{
+				String[] languages = mSubtitleHandler.getLanguages();
+				mSubtitlesAvailableListener.onSubtitlesAvailable(languages, mSubtitleHandler.getDefaultLanguageIndex());
+			}
+		}
+		else
 		{
 			mSubtitleHandler = null;
 		}
@@ -452,5 +471,28 @@ public class PlayerViewController extends RelativeLayout implements
 	public void registerProgressUpdate(OnProgressListener listener) {
 		// TODO Auto-generated method stub
 
+	}
+	
+	//////////////////////////////////////////////////////////
+	// Subtitle interface
+	//////////////////////////////////////////////////////////
+	private OnSubtitlesAvailableListener mSubtitlesAvailableListener = null;
+	public void registerSubtitlesAvailable(OnSubtitlesAvailableListener listener)
+	{
+		mSubtitlesAvailableListener = listener;
+	}
+	
+	private OnSubtitleTextListener mSubtitleTextListener = null;
+	public void registerSubtitleTextListener(OnSubtitleTextListener listener)
+	{
+		mSubtitleTextListener = listener;
+	}
+	
+	public void setActiveSubtitleLanguage(int index)
+	{
+		if (mSubtitleHandler != null && index < mSubtitleHandler.getLanguageCount())
+		{
+			mSubtitleLanguage = index;
+		}
 	}
 }

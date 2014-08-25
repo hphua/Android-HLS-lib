@@ -1,5 +1,5 @@
 package com.kaltura.hlsplayersdk.subtitles;
 
-public interface OnSubtitleText {
+public interface OnSubtitleTextListener {
 	void onSubtitleText(double startTime, double length, String buffer);
 }

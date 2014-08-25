@@ -24,22 +24,49 @@ public class SubtitleHandler {
 		return rval;
 	}
 	
-	public void update(double time, int language)
+	public String[] getLanguages()
+	{
+		if (mManifest.subtitlePlayLists.size() > 0)
+		{
+			String[] languages = new String[mManifest.subtitlePlayLists.size()];
+			for (int i = 0; i < mManifest.subtitlePlayLists.size(); ++i)
+			{
+				languages[i] = mManifest.subtitlePlayLists.get(i).language;
+			}
+			return languages;
+		}
+		return null;
+	}
+	
+	public int getDefaultLanguageIndex()
+	{
+		for (int i = 0; i < mManifest.subtitlePlayLists.size(); ++i)
+		{
+			if (mManifest.subtitlePlayLists.get(i).isDefault)
+				return i;
+		}
+		return 0;		
+	}
+	
+	public int getLanguageCount()
+	{
+		if (mManifest.subtitlePlayLists.size() > 0) return mManifest.subtitlePlayLists.size();
+		if (mManifest.subtitles.size() > 0) return 1;
+		return 0;
+	}
+	
+	public Vector<TextTrackCue> update(double time, int language)
 	{
 		SubTitleParser stp = getParserForTime(time, language);
 		
 		if (stp != null)
 		{
-
 			Vector<TextTrackCue> cues = stp.getCuesForTimeRange(mLastTime, time);
 			mLastTime = time;
 			
-			for (int i = 0; i < cues.size(); ++i)
-			{
-				TextTrackCue cue = cues.get(i);
-				Log.i("TextCue", "Start: " + cue.startTime + " | End: " + cue.endTime + " | " + cue.buffer);
-			}
+			return cues;
 		}
+		return null;
 	}
 	
 	private SubTitleParser getParserForTime(double time, int language)
