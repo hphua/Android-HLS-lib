@@ -256,6 +256,47 @@ sp<HLSDataSource> MakeHLSDataSource()
 	return ds;
 }
 
+void HLSPlayer::ClearAlternateAudio()
+{
+	if(mAlternateAudioDataSource.get() != NULL)
+	{
+		LOGI("Clearing alternate audio sources...");
+		mAlternateAudioExtractor.clear();
+		mAlternateAudioDataSource.clear();
+
+		// Seek to the curent time to force a decoder flush.
+		LOGI("Triggering decoder flush with seek...");
+		Seek(double(GetCurrentTimeMS()) / 1000.0);
+	}
+	else
+	{
+		// NOP.
+	}
+}
+
+android_video_shim::status_t HLSPlayer::FeedAlternateAudioSegment(const char* path)
+{
+	// Create the alternate audio source path if needed.
+	if(mAlternateAudioDataSource.get() == NULL)
+	{
+		// Set up the audio source.
+		LOGI("Creating alternate audio data sources.");
+		mAlternateAudioDataSource = MakeHLSDataSource();
+
+		// Add the segment.
+		mAlternateAudioDataSource->append(path, 0, 0, 0.0f);
+
+		// Seek to the curent time to force a decoder flush.
+		LOGI("Triggering decoder flush with seek...");
+		Seek(double(GetCurrentTimeMS()) / 1000.0);
+	}
+	else
+	{
+		// Otherwise, just add to the alt. source's queue.
+		mAlternateAudioDataSource->append(path, 0, 0, 0.0f);
+	}
+}
+
 status_t HLSPlayer::FeedSegment(const char* path, int quality, int continuityEra, double time )
 {
 	AutoLock locker(&lock);
@@ -405,7 +446,7 @@ bool HLSPlayer::InitTracks()
 
 				mVideoTrack_md = meta;
 			}
-			else if (!haveAudio && !strncasecmp(cmime /*mime.string()*/, "audio/", 6))
+			else if (!haveAudio && !strncasecmp(cmime, "audio/", 6))
 			{
 				if(AVSHIM_USE_NEWMEDIASOURCE)
 					mAudioTrack = mExtractor->getTrack(i);
@@ -421,6 +462,44 @@ bool HLSPlayer::InitTracks()
 //			{
 //				//addTextSource_l(i, mExtractor->getTrack(i));
 //			}
+		}
+	}
+
+	// Check for alternate audio case.
+	if(mAlternateAudioDataSource.get())
+	{
+		LOGI("Considering alternate audio source %p...", mAlternateAudioDataSource.get());
+
+		mAlternateAudioExtractor = MediaExtractor::Create(mAlternateAudioDataSource, NULL);
+
+		if(mAlternateAudioExtractor.get())
+		{
+			for (size_t i = 0; i < mAlternateAudioExtractor->countTracks(); ++i)
+			{
+				sp<MetaData> meta = mAlternateAudioExtractor->getTrackMetaData(i);
+				meta->dumpToLog();
+
+				// Filter for audio mime types.
+				const char* cmime;
+				if (!meta->findCString(kKeyMIMEType, &cmime))
+					continue;
+				if (strncasecmp(cmime, "audio/", 6))
+					continue;
+
+				// Awesome, got one!
+				if(AVSHIM_USE_NEWMEDIASOURCE)
+					mAudioTrack = mExtractor->getTrack(i);
+				else
+					mAudioTrack23 = mExtractor->getTrack23(i);
+
+				LOGI("Got alternate audio track %d", i);
+				haveAudio = true;
+
+				mActiveAudioTrackIndex = i; // TODO: This is probably questionable.
+
+				mAudioTrack_md = meta;
+				break;
+			}
 		}
 	}
 
@@ -574,7 +653,7 @@ bool HLSPlayer::InitSources()
 	}
 	else
 	{
-		LOGV("Trying OMXRenderer init path!");
+		LOGV("Trying normal renderer init path!");
 		mUseOMXRenderer = false;
 		NoteHWRendererMode(false, mWidth, mHeight, 4);		
 	}

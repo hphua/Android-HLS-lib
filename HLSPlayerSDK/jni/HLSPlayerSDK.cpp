@@ -143,6 +143,47 @@ extern "C"
 		env->ReleaseStringUTFChars(jurl, url);
 	}
 
+	void Java_com_kaltura_hlsplayersdk_PlayerViewController_ClearAlternateAudio(JNIEnv* env, jobject jcaller )
+	{
+		LOGI("Entered");
+
+		if (gHLSPlayerSDK == NULL)
+		{
+			LOGE("No player SDK!");
+			return;
+		}
+
+		if (gHLSPlayerSDK->GetPlayer() == NULL)
+		{
+			LOGE("No Player instance on the SDK!");
+			return;
+		}
+
+		gHLSPlayerSDK->GetPlayer()->ClearAlternateAudio();
+	}
+
+	void Java_com_kaltura_hlsplayersdk_PlayerViewController_FeedAlternateAudioSegment(JNIEnv* env, jobject jcaller, jstring jurl )
+	{
+		LOGI("Entered");
+
+		if (gHLSPlayerSDK == NULL)
+		{
+			LOGE("No player SDK!");
+			return;
+		}
+
+		if (gHLSPlayerSDK->GetPlayer() == NULL)
+		{
+			LOGE("No Player instance on the SDK!");
+			return;
+		}
+
+		const char* url = env->GetStringUTFChars(jurl, 0);
+		gHLSPlayerSDK->GetPlayer()->FeedAlternateAudioSegment(url);
+		env->ReleaseStringUTFChars(jurl, url);
+	}
+
+
 	void Java_com_kaltura_hlsplayersdk_PlayerViewController_SeekTo(JNIEnv* env, jobject jcaller, jdouble time )
 	{
 		LOGI("Entered");

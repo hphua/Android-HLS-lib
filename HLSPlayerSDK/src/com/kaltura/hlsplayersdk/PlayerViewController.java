@@ -57,6 +57,8 @@ public class PlayerViewController extends RelativeLayout implements
 	private native void FeedSegment(String url, int quality, int continuityEra, double startTime);
 	private native void SeekTo(double timeInSeconds);
 	private native void ApplyFormatChange();
+	private native void ClearAlternateAudio();
+	private native void FeedAlternateAudioSegment(String url);
 
 	// Static interface.
 	// TODO Allow multiple active PlayerViewController instances.

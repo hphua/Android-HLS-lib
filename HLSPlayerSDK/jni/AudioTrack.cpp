@@ -23,7 +23,8 @@ AudioTrack::AudioTrack(JavaVM* jvm) : mJvm(jvm), mAudioTrack(NULL), mGetMinBuffe
 		LOGE("Java VM is NULL");
 	}
 
-	int err = pthread_mutex_init(&updateMutex, NULL);
+	//int err = pthread_mutex_init(&updateMutex, NULL);
+	status_t err = initRecursivePthreadMutex(&updateMutex);
 	LOGI(" AudioTrack mutex err = %d", err);
 }
 
@@ -97,6 +98,8 @@ bool AudioTrack::Init()
 
 bool AudioTrack::Set(sp<MediaSource> audioSource, bool alreadyStarted)
 {
+	AutoLock locker(&updateMutex);
+
 	if (mAudioSource.get())
 	{
 		mAudioSource->stop();
@@ -113,6 +116,8 @@ bool AudioTrack::Set(sp<MediaSource> audioSource, bool alreadyStarted)
 
 bool AudioTrack::Set23(sp<MediaSource23> audioSource, bool alreadyStarted)
 {
+	AutoLock locker(&updateMutex);
+
 	if (mAudioSource23.get())
 		mAudioSource23->stop();
 
@@ -186,6 +191,8 @@ bool AudioTrack::UpdateFormatInfo()
 
 bool AudioTrack::Start()
 {
+	AutoLock locker(&updateMutex);
+
 	buffer = NULL;
 
 //	audio_format_t audioFormat = AUDIO_FORMAT_PCM_16_BIT;
@@ -253,6 +260,8 @@ bool AudioTrack::Start()
 
 void AudioTrack::Play()
 {
+	AutoLock locker(&updateMutex);
+
 	LOGI("Trying to play: state = %d", mPlayState);
 	if (mPlayState == PLAYING) return;
 	int lastPlayState = mPlayState;
@@ -276,6 +285,8 @@ void AudioTrack::Play()
 
 bool AudioTrack::Stop(bool seeking)
 {
+	AutoLock locker(&updateMutex);
+
 	if (mPlayState == STOPPED) return true;
 
 	int lastPlayState = mPlayState;
@@ -296,11 +307,8 @@ bool AudioTrack::Stop(bool seeking)
 		sem_post(&semPause);
 	}
 
-	pthread_mutex_lock(&updateMutex);
-
 	if(seeking)
 	{
-
 		if (mAudioSource.get())
 		{
 			mAudioSource->stop();
@@ -312,20 +320,19 @@ bool AudioTrack::Stop(bool seeking)
 			mAudioSource23->stop();
 			mAudioSource23.clear();
 		}
-
 	}
 
 	JNIEnv* env;
 	mJvm->AttachCurrentThread(&env, NULL);
 	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mStop);
 
-	pthread_mutex_unlock(&updateMutex);
-
 	return true;
 }
 
 void AudioTrack::Pause()
 {
+	AutoLock locker(&updateMutex);
+
 	if (mPlayState == PAUSED) return;
 	mPlayState = PAUSED;
 	JNIEnv* env;
@@ -335,25 +342,26 @@ void AudioTrack::Pause()
 
 void AudioTrack::Flush()
 {
+	AutoLock locker(&updateMutex);
+
 	if (mPlayState == PLAYING) return;
 	JNIEnv* env;
 	mJvm->AttachCurrentThread(&env, NULL);
 	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mFlush);
 	
-	pthread_mutex_lock(&updateMutex);
 	samplesWritten = 0;
-	pthread_mutex_unlock(&updateMutex);
-
 }
 
 void AudioTrack::SetTimeStampOffset(double offsetSecs)
 {
+	AutoLock locker(&updateMutex);
 	mTimeStampOffset = offsetSecs;
 }
 
 
 int64_t AudioTrack::GetTimeStamp()
 {
+	AutoLock locker(&updateMutex);
 	JNIEnv* env;
 	mJvm->AttachCurrentThread(&env, NULL);
 	double frames = env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mGetPlaybackHeadPosition);
@@ -365,6 +373,7 @@ int64_t AudioTrack::GetTimeStamp()
 
 int AudioTrack::Update()
 {
+	AutoLock locker(&updateMutex);
 	LOGV("Audio Update Thread Running");
 	if (mPlayState != PLAYING)
 	{
@@ -389,8 +398,6 @@ int AudioTrack::Update()
 							// if we're not actively playing
 		}
 	}
-
-	pthread_mutex_lock(&updateMutex);
 
 	JNIEnv* env;
 	mJvm->AttachCurrentThread(&env, NULL);
@@ -457,14 +464,12 @@ int AudioTrack::Update()
 		// Create new one.
 		Start();
 
-		pthread_mutex_unlock(&updateMutex);
 		Update();
 	}
 	else if (res == ERROR_END_OF_STREAM)
 	{
 		LOGE("End of Audio Stream");
 		mJvm->DetachCurrentThread();
-		pthread_mutex_unlock(&updateMutex);
 		return AUDIOTHREAD_WAIT;
 	}
 
@@ -473,12 +478,12 @@ int AudioTrack::Update()
 	if (mediaBuffer != NULL)
 		mediaBuffer->release();
 
-	pthread_mutex_unlock(&updateMutex);
 	return AUDIOTHREAD_CONTINUE;
 }
 
 void AudioTrack::shutdown()
 {
+	AutoLock locker(&updateMutex);
 	JNIEnv* env;
 	mJvm->AttachCurrentThread(&env, NULL);
 	env->DeleteGlobalRef(buffer);
@@ -487,6 +492,7 @@ void AudioTrack::shutdown()
 
 int AudioTrack::getBufferSize()
 {
+	AutoLock locker(&updateMutex);
 	JNIEnv* env;
 	mJvm->AttachCurrentThread(&env, NULL);
 	long long frames = env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mGetPlaybackHeadPosition);
