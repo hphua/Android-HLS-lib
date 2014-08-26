@@ -15,21 +15,8 @@ public class SubTitleParser implements URLLoader.DownloadEventListener {
 		PARSE_HEADERS,
 		PARSE_CUE_SETTINGS,
 		PARSE_CUE_TEXT
-//		COLLECT_MINUTES,
-//		COLLECT_HOURS,
-//		COLLECT_SECONDS,
-//		COLLECT_MILLISECONDS		
 	}
-//	private static final String STATE_IDLE = "Idle";
-//	private static final String STATE_PARSE_HEADERS = "ParseHeaders";
-//	private static final String STATE_PARSE_CUE_SETTINGS = "ParseCueSettings";
-//	private static final String STATE_PARSE_CUE_TEXT = "ParseCueText";
-//	
-//	private static final String STATE_COLLECT_MINUTES = "CollectMinutes";
-//	private static final String STATE_COLLECT_HOURS = "CollectHours";
-//	private static final String STATE_COLLECT_SECONDS = "CollectSeconds";
-//	private static final String STATE_COLLECT_MILLISECONDS = "CollectMilliseconds";
-//	
+
 	public Vector<TextTrackCue> textTrackCues = new Vector<TextTrackCue>();
 	public double startTime = -1;
 	public double endTime = -1;

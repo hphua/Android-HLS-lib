@@ -104,10 +104,12 @@ public class TextTrackCue {
 			else if (name.equals("line"))
 			{
 				// Not yet implemented
+				Log.i("TextTrackCue.parseTokens", " 'line' NOT SUPPORTED");
 			}
 			else if (name.equals("size"))
 			{
 				// not yet implemented
+				Log.i("TextTrackCue.parseTokens", " 'size' NOT SUPPORTED");
 			}
 			else
 			{

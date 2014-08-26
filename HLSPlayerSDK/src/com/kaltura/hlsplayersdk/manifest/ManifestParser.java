@@ -223,7 +223,6 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 			{
 				if ( type.equals(SUBTITLES ))
 				{
-					//TODO: SUBTITLES!!!
 					SubTitleParser subTitle = new SubTitleParser();
 					subTitle.setOnParseCompleteListener(this);
 					_subtitlesLoading++;

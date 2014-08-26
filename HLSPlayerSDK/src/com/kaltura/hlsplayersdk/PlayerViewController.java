@@ -430,7 +430,8 @@ public class PlayerViewController extends RelativeLayout implements
 	    }
 	    catch (Exception e)
 	    {
-	    	
+	    	Log.i("PlayerViewController.isOnline()", e.toString());
+	    	Log.i("PlayerViewController.isOnline()", "This is possibly because the permission 'android.permission.ACCESS_NETWORK_STATE' is missing from the manifest.");
 	    }
 	    return (networkInfo != null && networkInfo.isConnected());
 	}  
