@@ -13,29 +13,32 @@ import android.view.View;
 import android.widget.EditText;
 
 import com.kaltura.hlsplayersdk.PlayerViewController;
+import com.kaltura.hlsplayersdk.subtitles.*;
 
-public class VideoPlayerActivity extends ActionBarActivity {
+public class VideoPlayerActivity extends ActionBarActivity implements OnSubtitlesAvailableListener, OnSubtitleTextListener  {
 
 	PlayerViewController playerView = null;
 	final Context context = this;
 	String lastUrl = "";
-	
+
     @SuppressWarnings("unused")
 	@Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_video_player);
-        
+
         try
         {
         	playerView = (PlayerViewController)findViewById(R.id.custom_player);
         	playerView.addComponents("", this);
+        	playerView.registerSubtitlesAvailable(this);
+        	playerView.registerSubtitleTextListener(this);
         }
         catch (Exception e)
         {
         	Log.e("KalturaTestApp", e.getMessage());
         }
-        
+
         if(false)
         {
 /*            // Test the HLS Segment Cache.
@@ -53,7 +56,7 @@ public class VideoPlayerActivity extends ActionBarActivity {
             } */
         }
     }
-    
+
     @Override
     public void onStop()
     {
@@ -64,7 +67,7 @@ public class VideoPlayerActivity extends ActionBarActivity {
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        
+
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.video_player, menu);
         return true;
@@ -76,7 +79,7 @@ public class VideoPlayerActivity extends ActionBarActivity {
         // automatically handle clicks on the Home/Up button, so long
         // as you specify a parent activity in AndroidManifest.xml.
         int id = item.getItemId();
-        if (id == R.id.action_settings) {
+        if (id == R.id.kaltura_vod) {
         	lastUrl = "http://www.kaltura.com/p/0/playManifest/entryId/1_0i2t7w0i/format/applehttp";
         	playerView.setVideoUrl(lastUrl);
         	//playerView.setVideoUrl("http://kalturavod-vh.akamaihd.net/i/p/1281471/sp/128147100/serveFlavor/entryId/1_0i2t7w0i/v/1/flavorId/1_rncam6d3/index_0_av.m3u8");
@@ -88,6 +91,12 @@ public class VideoPlayerActivity extends ActionBarActivity {
         	lastUrl = "http://abclive.abcnews.com/i/abc_live4@136330/index_500_av-p.m3u8?sd=10&rebase=on";
         	playerView.setVideoUrl(lastUrl);
         	//playerView.setVideoUrl("http://abclive.abcnews.com/i/abc_live4@136330/master.m3u8");
+        	return true;
+        }
+        else if (id == R.id.folgers)
+        {
+        	lastUrl = "http://cdnbakmi.kaltura.com/p/243342/sp/24334200/playManifest/entryId/0_uka1msg4/flavorIds/1_vqhfu6uy,1_80sohj7p/format/applehttp/protocol/http/a.m3u8";
+        	playerView.setVideoUrl(lastUrl);
         	return true;
         }
         else if (id == R.id.seekFwd)
@@ -123,16 +132,16 @@ public class VideoPlayerActivity extends ActionBarActivity {
         {
         	// start another popup to enter the URL, somehow
         	LayoutInflater layoutInflater = LayoutInflater.from(context);
-        	
+
         	View urlInputView = layoutInflater.inflate(R.layout.url_input , null);
-        	
+
         	AlertDialog.Builder alertDialogBuilder = new AlertDialog.Builder(context);
-        	
+
         	// set url_input.xml to be the layout file of the alertDialog builder
         	alertDialogBuilder.setView(urlInputView );
-        	
+
         	final EditText input = (EditText)urlInputView.findViewById(R.id.userInput);
-        	
+
         	// set up a dialog window
         	alertDialogBuilder
         		.setCancelable(false)
@@ -149,14 +158,31 @@ public class VideoPlayerActivity extends ActionBarActivity {
 								dialog.cancel();
 							}
 						});
-        	
+
 			// create an alert dialog
 			AlertDialog alertD = alertDialogBuilder.create();
 
-			alertD.show();   	
-				
-        	
+			alertD.show();
+
+
         }
         return super.onOptionsItemSelected(item);
     }
+
+	@Override
+	public void onSubtitlesAvailable(String[] languages, int defaultLanguage) {
+		Log.i("VideoPlayer.onSubtitlesAvailable", "Count = " + languages.length);
+		Log.i("VideoPlayer.onSubtitlesAvailable", "Default = " + defaultLanguage);
+		for (int i = 0; i < languages.length; ++i)
+			Log.i("VideoPlayer.onSubtitlesAvailable", "Language[" + i + "] = " + languages[i]);
+
+		playerView.setActiveSubtitleLanguage(defaultLanguage);
+
+	}
+
+	@Override
+	public void onSubtitleText(double startTime, double length, String buffer) {
+		Log.i("VideoPlayer.onSubtitleText", "Start: " + startTime + " | Length: " + length + " | " + buffer);
+
+	}
 }

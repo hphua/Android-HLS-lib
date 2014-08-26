@@ -47,8 +47,11 @@ public class ManifestPlaylist extends BaseManifestItem {
 		
 		setProperty( key, value );
 		
-		String newInput = input.substring( endIndex + 1 );
-		if ( newInput.length() > 0 ) parseKeyPairs( newInput );
+		if (endIndex + 1 < input.length())
+		{
+			String newInput = input.substring( endIndex + 1 );
+			if ( newInput.length() > 0 ) parseKeyPairs( newInput );
+		}
 	}
 	
 	private void setProperty(String propertyName, String value)

@@ -1,5 +1,7 @@
 package com.kaltura.hlsplayersdk;
 
+import java.util.Vector;
+
 import android.app.Activity;
 import android.content.Context;
 import android.media.MediaPlayer.OnErrorListener;
@@ -20,6 +22,10 @@ import com.kaltura.hlsplayersdk.events.OnToggleFullScreenListener;
 import com.kaltura.hlsplayersdk.manifest.ManifestParser;
 import com.kaltura.hlsplayersdk.manifest.ManifestSegment;
 import com.kaltura.hlsplayersdk.manifest.events.OnParseCompleteListener;
+import com.kaltura.hlsplayersdk.subtitles.OnSubtitleTextListener;
+import com.kaltura.hlsplayersdk.subtitles.OnSubtitlesAvailableListener;
+import com.kaltura.hlsplayersdk.subtitles.SubtitleHandler;
+import com.kaltura.hlsplayersdk.subtitles.TextTrackCue;
 
 /**
  * Main class for HLS video playback on the Java side.
@@ -56,6 +62,7 @@ public class PlayerViewController extends RelativeLayout implements
 	// TODO Allow multiple active PlayerViewController instances.
 	private static PlayerViewController currentController = null;
 	private static int mQualityLevel = 0;
+	private static int mSubtitleLanguage = 0;
 
 
 	/**
@@ -154,6 +161,7 @@ public class PlayerViewController extends RelativeLayout implements
 	private ManifestParser mManifest = null;
 	private URLLoader manifestLoader;
 	private StreamHandler mStreamHandler = null;
+	private SubtitleHandler mSubtitleHandler = null;
 
 
 	public OnPlayheadUpdateListener mPlayheadUpdateListener;
@@ -180,6 +188,23 @@ public class PlayerViewController extends RelativeLayout implements
 					}
 					else if (mPlayheadUpdateListener != null)
 						mPlayheadUpdateListener.onPlayheadUpdated(mTimeMS);
+
+					// SUBTITLES!
+					
+					if (mSubtitleHandler != null)
+					{
+						double time = ( (double)mTimeMS / 1000.0);
+						Vector<TextTrackCue> cues = mSubtitleHandler.update(time, mSubtitleLanguage);
+						if (cues != null && mSubtitleTextListener != null)
+						{
+							for (int i = 0; i < cues.size(); ++i)
+							{
+								TextTrackCue cue = cues.get(i);
+								mSubtitleTextListener.onSubtitleText(cue.startTime, cue.endTime - cue.startTime, cue.buffer);
+							}
+						}
+					}
+					
 					try {
 						Thread.yield();
 					} catch (Exception e) {
@@ -257,8 +282,21 @@ public class PlayerViewController extends RelativeLayout implements
 	 * actually start.
 	 */
 	public void onParserComplete(ManifestParser parser) {
-		Log.i("PlayerView.onParserComplete", "Entered");
+		Log.i(this.getClass().getName() + ".onParserComplete", "Entered");
 		mStreamHandler = new StreamHandler(parser);
+		mSubtitleHandler = new SubtitleHandler(parser);
+		if (mSubtitleHandler.hasSubtitles())
+		{
+			if (mSubtitlesAvailableListener != null)
+			{
+				String[] languages = mSubtitleHandler.getLanguages();
+				mSubtitlesAvailableListener.onSubtitlesAvailable(languages, mSubtitleHandler.getDefaultLanguageIndex());
+			}
+		}
+		else
+		{
+			mSubtitleHandler = null;
+		}
 		
 		ManifestSegment seg = getStreamHandler().getFileForTime(0, 0);
 		FeedSegment(seg.uri, 0, seg.continuityEra, seg.startTime);
@@ -385,7 +423,16 @@ public class PlayerViewController extends RelativeLayout implements
 	public boolean isOnline() {
 	    ConnectivityManager connMgr = (ConnectivityManager) 
 	            getContext().getSystemService(Context.CONNECTIVITY_SERVICE);
-	    NetworkInfo networkInfo = connMgr.getActiveNetworkInfo();
+	    NetworkInfo networkInfo = null;
+	    try
+	    {
+	    	networkInfo = connMgr.getActiveNetworkInfo();
+	    }
+	    catch (Exception e)
+	    {
+	    	Log.i("PlayerViewController.isOnline()", e.toString());
+	    	Log.i("PlayerViewController.isOnline()", "This is possibly because the permission 'android.permission.ACCESS_NETWORK_STATE' is missing from the manifest.");
+	    }
 	    return (networkInfo != null && networkInfo.isConnected());
 	}  
 	
@@ -432,5 +479,28 @@ public class PlayerViewController extends RelativeLayout implements
 	public void registerProgressUpdate(OnProgressListener listener) {
 		// TODO Auto-generated method stub
 
+	}
+	
+	//////////////////////////////////////////////////////////
+	// Subtitle interface
+	//////////////////////////////////////////////////////////
+	private OnSubtitlesAvailableListener mSubtitlesAvailableListener = null;
+	public void registerSubtitlesAvailable(OnSubtitlesAvailableListener listener)
+	{
+		mSubtitlesAvailableListener = listener;
+	}
+	
+	private OnSubtitleTextListener mSubtitleTextListener = null;
+	public void registerSubtitleTextListener(OnSubtitleTextListener listener)
+	{
+		mSubtitleTextListener = listener;
+	}
+	
+	public void setActiveSubtitleLanguage(int index)
+	{
+		if (mSubtitleHandler != null && index < mSubtitleHandler.getLanguageCount())
+		{
+			mSubtitleLanguage = index;
+		}
 	}
 }
