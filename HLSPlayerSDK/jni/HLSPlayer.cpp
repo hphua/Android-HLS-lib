@@ -274,8 +274,10 @@ void HLSPlayer::ClearAlternateAudio()
 	}
 }
 
-android_video_shim::status_t HLSPlayer::FeedAlternateAudioSegment(const char* path)
+status_t HLSPlayer::FeedAlternateAudioSegment(const char* path, double time)
 {
+	AutoLock locker(&lock);
+
 	// Create the alternate audio source path if needed.
 	if(mAlternateAudioDataSource.get() == NULL)
 	{
@@ -288,7 +290,7 @@ android_video_shim::status_t HLSPlayer::FeedAlternateAudioSegment(const char* pa
 
 		// Seek to the curent time to force a decoder flush.
 		LOGI("Triggering decoder flush with seek...");
-		Seek(double(GetCurrentTimeMS()) / 1000.0);
+		//Seek(double(GetCurrentTimeMS()) / 1000.0);
 	}
 	else
 	{
@@ -488,9 +490,9 @@ bool HLSPlayer::InitTracks()
 
 				// Awesome, got one!
 				if(AVSHIM_USE_NEWMEDIASOURCE)
-					mAudioTrack = mExtractor->getTrack(i);
+					mAudioTrack = mAlternateAudioExtractor->getTrack(i);
 				else
-					mAudioTrack23 = mExtractor->getTrack23(i);
+					mAudioTrack23 = mAlternateAudioExtractor->getTrack23(i);
 
 				LOGI("Got alternate audio track %d", i);
 				haveAudio = true;

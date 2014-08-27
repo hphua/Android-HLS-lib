@@ -21,6 +21,7 @@ import com.kaltura.hlsplayersdk.events.OnProgressListener;
 import com.kaltura.hlsplayersdk.events.OnToggleFullScreenListener;
 import com.kaltura.hlsplayersdk.manifest.ManifestParser;
 import com.kaltura.hlsplayersdk.manifest.ManifestSegment;
+import com.kaltura.hlsplayersdk.manifest.events.OnAlternateAudioAvailableListener;
 import com.kaltura.hlsplayersdk.manifest.events.OnParseCompleteListener;
 import com.kaltura.hlsplayersdk.subtitles.OnSubtitleTextListener;
 import com.kaltura.hlsplayersdk.subtitles.OnSubtitlesAvailableListener;
@@ -58,13 +59,14 @@ public class PlayerViewController extends RelativeLayout implements
 	private native void SeekTo(double timeInSeconds);
 	private native void ApplyFormatChange();
 	private native void ClearAlternateAudio();
-	private native void FeedAlternateAudioSegment(String url);
+	private native void FeedAlternateAudioSegment(String url, double startTime);
 
 	// Static interface.
 	// TODO Allow multiple active PlayerViewController instances.
 	private static PlayerViewController currentController = null;
 	private static int mQualityLevel = 0;
 	private static int mSubtitleLanguage = 0;
+	private static int mAltAudioLanguage = 0;
 
 
 	/**
@@ -79,6 +81,10 @@ public class PlayerViewController extends RelativeLayout implements
 			return;
 
 		currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.startTime);
+		if (seg.altAudioSegment != null)
+		{
+			currentController.FeedAlternateAudioSegment(seg.altAudioSegment.uri, seg.startTime);
+		}
 	}
 
 	/**
@@ -95,6 +101,11 @@ public class PlayerViewController extends RelativeLayout implements
 			return 0;
 		
 		currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.startTime);
+		if (seg.altAudioSegment != null)
+		{
+			currentController.FeedAlternateAudioSegment(seg.altAudioSegment.uri, seg.startTime);
+		}
+
 		return seg.startTime;
 	}
 
@@ -276,6 +287,7 @@ public class PlayerViewController extends RelativeLayout implements
 	public void close() {
 		Log.i("PlayerViewController", "Closing resources.");
 		mRenderThread.interrupt();
+		ClearAlternateAudio();
 		CloseNativeDecoder();
 	}
 
@@ -300,11 +312,28 @@ public class PlayerViewController extends RelativeLayout implements
 			mSubtitleHandler = null;
 		}
 		
+		if (mStreamHandler.hasAltAudio())
+		{
+			if (mAlternateAudioAvailableListener != null)
+			{
+				String[] languages = mStreamHandler.getAltAudioLanguages();
+				mAlternateAudioAvailableListener.onAlternateAudioAvailable(languages, mStreamHandler.getAltAudioDefaultIndex());
+			}
+		}
+		
 		ManifestSegment seg = getStreamHandler().getFileForTime(0, 0);
 		FeedSegment(seg.uri, 0, seg.continuityEra, seg.startTime);
+		if (seg.altAudioSegment != null)
+		{
+			FeedAlternateAudioSegment(seg.altAudioSegment.uri, seg.startTime);
+		}
 
 		seg = getStreamHandler().getNextFile(0);
 		FeedSegment(seg.uri, 0, seg.continuityEra, seg.startTime);
+		if (seg.altAudioSegment != null)
+		{
+			FeedAlternateAudioSegment(seg.altAudioSegment.uri, seg.startTime);
+		}
 		
 		play();
 		
@@ -505,4 +534,19 @@ public class PlayerViewController extends RelativeLayout implements
 			mSubtitleLanguage = index;
 		}
 	}
+	
+	//////////////////////////////////////////////////////////
+	// Subtitle interface
+	//////////////////////////////////////////////////////////
+	private OnAlternateAudioAvailableListener mAlternateAudioAvailableListener = null;
+	public void registerAlternateAudioAvailable(OnAlternateAudioAvailableListener listener)
+	{
+		mAlternateAudioAvailableListener = listener;
+	}
+	
+	public void setActiveAlternateAudioLanguage(int index)
+	{
+		currentController.getStreamHandler().setAltAudioTrack(index);
+	}
+	
 }

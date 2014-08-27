@@ -162,7 +162,7 @@ extern "C"
 		gHLSPlayerSDK->GetPlayer()->ClearAlternateAudio();
 	}
 
-	void Java_com_kaltura_hlsplayersdk_PlayerViewController_FeedAlternateAudioSegment(JNIEnv* env, jobject jcaller, jstring jurl )
+	void Java_com_kaltura_hlsplayersdk_PlayerViewController_FeedAlternateAudioSegment(JNIEnv* env, jobject jcaller, jstring jurl, jdouble startTime )
 	{
 		LOGI("Entered");
 
@@ -179,7 +179,7 @@ extern "C"
 		}
 
 		const char* url = env->GetStringUTFChars(jurl, 0);
-		gHLSPlayerSDK->GetPlayer()->FeedAlternateAudioSegment(url);
+		gHLSPlayerSDK->GetPlayer()->FeedAlternateAudioSegment(url, startTime);
 		env->ReleaseStringUTFChars(jurl, url);
 	}
 

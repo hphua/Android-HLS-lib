@@ -36,7 +36,7 @@ public:
 	android_video_shim::status_t FeedSegment(const char* path, int32_t quality, int continuityEra, double time );
 
 	void ClearAlternateAudio();
-	android_video_shim::status_t FeedAlternateAudioSegment(const char* path );
+	android_video_shim::status_t FeedAlternateAudioSegment(const char* path, double time );
 
 	bool Play();
 	void Stop();

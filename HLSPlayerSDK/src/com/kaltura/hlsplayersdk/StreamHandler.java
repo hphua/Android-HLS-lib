@@ -7,6 +7,7 @@ import java.util.Vector;
 import android.util.Log;
 
 import com.kaltura.hlsplayersdk.manifest.ManifestParser;
+import com.kaltura.hlsplayersdk.manifest.ManifestPlaylist;
 import com.kaltura.hlsplayersdk.manifest.ManifestSegment;
 
 
@@ -17,6 +18,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 	public double lastKnownPlaylistStartTime = 0.0;
 	public int lastQuality = 0;
 	public int targetQuality = 0;
+	public ManifestParser altAudioManifest = null;
 	public ManifestParser manifest = null;
 	public ManifestParser reloadingManifest = null;
 	public int reloadingQuality = 0;
@@ -33,8 +35,54 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 	public StreamHandler(ManifestParser parser)
 	{
 		manifest = parser;
+		for (int i = 0; i < manifest.playLists.size(); ++i)
+		{
+			ManifestPlaylist mp = manifest.playLists.get(i);
+			if (mp.isDefault)
+			{
+				altAudioManifest = mp.manifest;
+				break;
+			}
+		}
 	}
 	
+	public void setAltAudioTrack(int index)
+	{
+		if (index < manifest.playLists.size())
+		{
+			if (index < 0) altAudioManifest = null;
+			else altAudioManifest = manifest.playLists.get(index).manifest;
+		}
+	}
+	
+	public int getAltAudioDefaultIndex()
+	{
+		for (int i = 0; i < manifest.playLists.size(); ++i)
+		{
+			ManifestPlaylist mp = manifest.playLists.get(i);
+			if (mp.isDefault)
+			{
+				return i; 
+			}
+		}
+		return -1;
+	}
+	
+	public String[] getAltAudioLanguages()
+	{
+		if (manifest.playLists.size() == 0) return null;
+		String[] languages = new String[manifest.playLists.size()];
+		for (int i = 0; i < manifest.playLists.size(); ++i)
+		{
+			languages[i] = manifest.playLists.get(i).language;
+		}
+		return languages;
+	}
+	
+	public boolean hasAltAudio()
+	{
+		return manifest.playLists.size() > 0;
+	}
 	private TimerTask reloadTimerComplete = new TimerTask()
 	{
 		public void run()
@@ -408,6 +456,13 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 				lastSegmentIndex = i;
 				ManifestSegment seg = segments.get(lastSegmentIndex);
 				seg.quality = quality;
+				if (altAudioManifest != null)
+				{
+					if (altAudioManifest.segments.size() > lastSegmentIndex)
+					{
+						seg.altAudioSegment = altAudioManifest.segments.get(lastSegmentIndex);
+					}
+				}
 				return seg;
 			}
 			
@@ -419,19 +474,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 		return null;
 	}
 	
-	// Called by C++.
-	@SuppressWarnings("unused")
-	private ManifestSegment getSegmentforSegmentId(int quality, int segmentId)
-	{
-		Vector<ManifestSegment> segments = getSegmentsForQuality(quality);
-		for (int i = 0; i < segments.size(); ++i)
-		{
-			if (segments.get(i).id == segmentId)
-				return segments.get(i);
-		}
-		return null;
-	}
-	
+
 	public ManifestSegment getNextFile(int quality)
 	{
 		if (stalled)
@@ -447,6 +490,13 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 		if ( lastSegmentIndex < segments.size())
 		{
 			ManifestSegment lastSegment = segments.get(lastSegmentIndex);
+			if (altAudioManifest != null)
+			{
+				if (altAudioManifest.segments.size() > lastSegmentIndex)
+				{
+					lastSegment.altAudioSegment = altAudioManifest.segments.get(lastSegmentIndex);
+				}
+			}
 			if (lastSegment.startTime + lastSegment.duration < lastKnownPlaylistStartTime)
 			{
 				Log.i("StreamHandler.getNextFile", "SequenceSkip - startTime: " + lastSegment.startTime + " + duration: " + lastSegment.duration  + " playlistStartTime: " + lastKnownPlaylistStartTime);
@@ -456,6 +506,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 			Log.i("StreamHandler.getNextFile", "Getting Next Segment[" + lastSegmentIndex + "]\n" + lastSegment.toString());
 
 			lastSegment.quality = quality;
+
 			return lastSegment;
 			
 		}
