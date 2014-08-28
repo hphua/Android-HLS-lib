@@ -20,6 +20,7 @@
 		        app:showAsAction="never">
 		    </item>
             <item android:id="@+id/folgers" android:title="Folgers"/>
+            <item android:id="@+id/vod_alt_audio" android:title="VOD Alt Audio"/>
     		<item android:id="@+id/abc_dvr_item" android:title="@string/abc_dvr" android:orderInCategory="5"></item>
         </menu>
     </item>

@@ -14,8 +14,9 @@ import android.widget.EditText;
 
 import com.kaltura.hlsplayersdk.PlayerViewController;
 import com.kaltura.hlsplayersdk.subtitles.*;
+import com.kaltura.hlsplayersdk.manifest.events.*;
 
-public class VideoPlayerActivity extends ActionBarActivity implements OnSubtitlesAvailableListener, OnSubtitleTextListener  {
+public class VideoPlayerActivity extends ActionBarActivity implements OnSubtitlesAvailableListener, OnSubtitleTextListener, OnAlternateAudioAvailableListener  {
 
 	PlayerViewController playerView = null;
 	final Context context = this;
@@ -33,6 +34,7 @@ public class VideoPlayerActivity extends ActionBarActivity implements OnSubtitle
         	playerView.addComponents("", this);
         	playerView.registerSubtitlesAvailable(this);
         	playerView.registerSubtitleTextListener(this);
+        	playerView.registerAlternateAudioAvailable(this);
         }
         catch (Exception e)
         {
@@ -96,6 +98,12 @@ public class VideoPlayerActivity extends ActionBarActivity implements OnSubtitle
         else if (id == R.id.folgers)
         {
         	lastUrl = "http://cdnbakmi.kaltura.com/p/243342/sp/24334200/playManifest/entryId/0_uka1msg4/flavorIds/1_vqhfu6uy,1_80sohj7p/format/applehttp/protocol/http/a.m3u8";
+        	playerView.setVideoUrl(lastUrl);
+        	return true;
+        }
+        else if (id == R.id.vod_alt_audio)
+        {
+        	lastUrl = "http://pa-www.kaltura.com/content/shared/erank/multi_audio.m3u8";
         	playerView.setVideoUrl(lastUrl);
         	return true;
         }
@@ -184,5 +192,16 @@ public class VideoPlayerActivity extends ActionBarActivity implements OnSubtitle
 	public void onSubtitleText(double startTime, double length, String buffer) {
 		Log.i("VideoPlayer.onSubtitleText", "Start: " + startTime + " | Length: " + length + " | " + buffer);
 
+	}
+
+	@Override
+	public void onAlternateAudioAvailable(String[] languages,
+			int defaultLanguage) {
+		Log.i("VideoPlayer.onAlternateAudioAvailable", "Count = " + languages.length);
+		Log.i("VideoPlayer.onAlternateAudioAvailable", "Default = " + defaultLanguage);
+		for (int i = 0; i < languages.length; ++i)
+			Log.i("VideoPlayer.onAlternateAudioAvailable", "Language[" + i + "] = " + languages[i]);
+
+		playerView.setActiveAlternateAudioLanguage(defaultLanguage);
 	}
 }

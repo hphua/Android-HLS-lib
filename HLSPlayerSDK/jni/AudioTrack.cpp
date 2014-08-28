@@ -207,8 +207,8 @@ bool AudioTrack::Start()
 	switch (mNumChannels)
 	{
 	case 1:
-//		channelConfig = CHANNEL_CONFIGURATION_MONO;
-//		break;
+		channelConfig = CHANNEL_CONFIGURATION_MONO;
+		break;
 	case 2:
 		channelConfig = CHANNEL_CONFIGURATION_STEREO;
 		break;

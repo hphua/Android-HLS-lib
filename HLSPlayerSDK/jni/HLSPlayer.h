@@ -35,6 +35,9 @@ public:
 	void SetSurface(JNIEnv* env, jobject surface);
 	android_video_shim::status_t FeedSegment(const char* path, int32_t quality, int continuityEra, double time );
 
+	void ClearAlternateAudio();
+	android_video_shim::status_t FeedAlternateAudioSegment(const char* path, double time );
+
 	bool Play();
 	void Stop();
 	int Update();
@@ -117,9 +120,11 @@ private:
 
 	// Our datasource that handles loading segments.
 	android_video_shim::sp<android_video_shim::HLSDataSource> mDataSource;
+	android_video_shim::sp<android_video_shim::HLSDataSource> mAlternateAudioDataSource;
 
 	// The object that pulls the initial data stream apart into separate audio and video sources
 	android_video_shim::sp<android_video_shim::MediaExtractor> mExtractor;
+	android_video_shim::sp<android_video_shim::MediaExtractor> mAlternateAudioExtractor;
 
 	AudioTrack *mJAudioTrack;
 

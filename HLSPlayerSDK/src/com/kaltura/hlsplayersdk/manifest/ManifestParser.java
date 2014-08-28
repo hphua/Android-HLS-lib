@@ -265,15 +265,9 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 			{
 				Log.w("ManifestParser.parse", "Unknown tag '" + tagType + "', ignoring...");
 			}
-//			if (lastHint == null)
-//				Log.i("Parse.lastHint", "null");
-//			else
-//				Log.i("Parse.lastHint", lastHint.toString());
-			
 		}
 		
 		// Process any other manifests referenced
-		//boolean pendingManifests = false;
 		Vector<BaseManifestItem> manifestItems = new Vector<BaseManifestItem>();
 		manifestItems.addAll(streams);
 		manifestItems.addAll(playLists);
@@ -412,7 +406,6 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 		if (!subtitlesLoading() && manifestParsers.size() == 0 && manifestLoaders.size() == 0)
 		{
 			verifyManifestItemIntegrity();
-			//PostEvent (COMPLETE);
 			if (mOnParseCompleteListener != null) mOnParseCompleteListener.onParserComplete(this);
 		}
 	}
