@@ -67,6 +67,13 @@ bool AudioTrack::Init()
 	JNIEnv* env = NULL;
 	mJvm->GetEnv((void**)&env, JNI_VERSION_1_2);
 
+	int err = sem_init(&semPause, 0, 0);
+	if (err != 0)
+	{
+		LOGE("Failed to init audio pause semaphore : %d", err);
+		return false;
+	}
+
     if (!mCAudioTrack)
     {
         /* Cache AudioTrack class and it's method id's
@@ -191,16 +198,14 @@ bool AudioTrack::UpdateFormatInfo()
 
 bool AudioTrack::Start()
 {
+	LOGI("Setting buffer = NULL");
 	buffer = NULL;
 
-//	audio_format_t audioFormat = AUDIO_FORMAT_PCM_16_BIT;
-//
-//	int avgBitRate = -1;
-//	format->findInt32(kKeyBitRate, &avgBitRate);
-
+	LOGI("Attaching to current java thread");
 	JNIEnv* env;
 	mJvm->AttachCurrentThread(&env, NULL);
 
+	LOGI("Updating Format Info");
 	// Refresh our format information.
 	if(!UpdateFormatInfo())
 	{
@@ -208,6 +213,7 @@ bool AudioTrack::Start()
 		return false;
 	}
 
+	LOGI("Setting Channel Config");
 	int channelConfig = CHANNEL_CONFIGURATION_STEREO;
 	switch (mNumChannels)
 	{
@@ -233,24 +239,32 @@ bool AudioTrack::Start()
 
 	LOGI("mBufferSizeInBytes=%d", mBufferSizeInBytes);
 
-	int err = sem_init(&semPause, 0, 0);
-	if (err != 0)
-	{
-		LOGE("Failed to init audio pause semaphore : %d", err);
-		return false;
-	}
+
+
 
 	// Release our old track.
 	if(mTrack)
 	{
+		LOGI("Releasing old java AudioTrack");
 		env->DeleteGlobalRef(mTrack);
 		mTrack = NULL;
 	}
 
+	LOGI("Generating java AudioTrack reference");
 	mTrack = env->NewGlobalRef(env->NewObject(mCAudioTrack, mAudioTrack, STREAM_MUSIC, mSampleRate, channelConfig, ENCODING_PCM_16BIT, mBufferSizeInBytes * 2, MODE_STREAM ));
-	//env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mSetPositionNotificationPeriod, 250);
+
+	LOGI("Calling java AudioTrack Play");
 	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mPlay);
+	int lastPlayState = mPlayState;
+
 	mPlayState = PLAYING;
+
+	if (lastPlayState == PAUSED || lastPlayState == SEEKING)
+	{
+		LOGI("Playing Audio Thread: state = %s | semPause.count = %d", lastPlayState==PAUSED?"PAUSED":(lastPlayState==SEEKING?"SEEKING":"Not Possible!"), semPause.count );
+		sem_post(&semPause);
+	}
+	mWaiting = false;
 	samplesWritten = 0;
 	return true;
 

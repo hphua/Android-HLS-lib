@@ -1437,7 +1437,7 @@ void HLSPlayer::ApplyFormatChange()
 	SetState(PLAYING);
 	if (mJAudioTrack)
 	{
-		mJAudioTrack->Play();
+		mJAudioTrack->Start();
 	}
 }
 
