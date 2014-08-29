@@ -304,7 +304,7 @@ status_t HLSPlayer::FeedSegment(const char* path, int32_t quality, int continuit
 			LOGE("Could not append to data source! This shouldn't happen as we already checked the validity of the append.");
 		}
 
-		if (mAlternateAudioDataSource.get())
+		if (mAlternateAudioDataSource.get() && altAudioPath)
 		{
 			err = mAlternateAudioDataSource->append(altAudioPath, audioIndex, 0, time);
 			if (err == INFO_DISCONTINUITY)
@@ -327,7 +327,7 @@ status_t HLSPlayer::FeedSegment(const char* path, int32_t quality, int continuit
 				LOGE("Could not append to data source! This shouldn't happen as we already checked the validity of the append.");
 			}
 
-			if (mDataSourceCache.back().altAudioDataSource.get())
+			if (mDataSourceCache.back().altAudioDataSource.get() && altAudioPath)
 			{
 				err = mDataSourceCache.back().altAudioDataSource->append(altAudioPath, audioIndex, 0, time);
 				if (err == INFO_DISCONTINUITY)

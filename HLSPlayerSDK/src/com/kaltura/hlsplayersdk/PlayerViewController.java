@@ -85,7 +85,7 @@ public class PlayerViewController extends RelativeLayout implements
 		}
 		else
 		{
-			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, null, 0, seg.startTime);
+			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, null, -1, seg.startTime);
 		}
 	}
 
@@ -108,7 +108,7 @@ public class PlayerViewController extends RelativeLayout implements
 		}
 		else
 		{
-			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, null, 0, seg.startTime);
+			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, null, -1, seg.startTime);
 		}
 
 
@@ -338,7 +338,7 @@ public class PlayerViewController extends RelativeLayout implements
 		}
 		else
 		{
-			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, null, 0, seg.startTime);
+			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, null, -1, seg.startTime);
 		}
 
 
