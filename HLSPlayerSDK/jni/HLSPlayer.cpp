@@ -31,9 +31,14 @@ void* audio_thread_func(void* arg)
 {
 	AudioTrack* audioTrack = (AudioTrack*)arg;
 
-	while (audioTrack->Update() != AUDIOTHREAD_FINISH)
+	int rval;
+	while ( (rval = audioTrack->Update()) != AUDIOTHREAD_FINISH)
 	{
-		if(audioTrack->getBufferSize() > (44100/10))
+		if (rval == AUDIOTHREAD_WAIT)
+		{
+			sched_yield();
+		}
+		else if(audioTrack->getBufferSize() > (44100/10))
 		{
 			//LOGI("Buffer full enough yielding");
 			sched_yield();
@@ -104,6 +109,7 @@ void HLSPlayer::Reset()
 	mVideoTrack.clear();
 	mVideoTrack23.clear();
 	mExtractor.clear();
+	mAlternateAudioExtractor.clear();
 	mAudioSource.clear();
 	mAudioSource23.clear();
 
@@ -123,6 +129,8 @@ void HLSPlayer::Reset()
 	if (mVideoSource23.get()) mVideoSource23->stop();
 	mVideoSource.clear();
 	mVideoSource23.clear();
+
+	mDataSourceCache.empty();
 
 	//LOGI("Killing the segments");
 	//stlwipe(mSegments);
@@ -256,111 +264,104 @@ sp<HLSDataSource> MakeHLSDataSource()
 	return ds;
 }
 
-void HLSPlayer::ClearAlternateAudio()
-{
-	if(mAlternateAudioDataSource.get() != NULL)
-	{
-		LOGI("Clearing alternate audio sources...");
-		mAlternateAudioExtractor.clear();
-		mAlternateAudioDataSource.clear();
-
-		// Seek to the curent time to force a decoder flush.
-		LOGI("Triggering decoder flush with seek...");
-		Seek(double(GetCurrentTimeMS()) / 1000.0);
-	}
-	else
-	{
-		// NOP.
-	}
-}
-
-status_t HLSPlayer::FeedAlternateAudioSegment(const char* path, double time)
+status_t HLSPlayer::FeedSegment(const char* path, int32_t quality, int continuityEra, const char* altAudioPath, int audioIndex, double time )
 {
 	AutoLock locker(&lock);
+	LOGI("Quality = %d | Continuity = %d | audioIndex = %d | path = %s | altAudioPath = %s", quality, continuityEra, audioIndex, path, altAudioPath == NULL ? "NULL" : altAudioPath);
 
-	// Create the alternate audio source path if needed.
-	if(mAlternateAudioDataSource.get() == NULL)
-	{
-		// Set up the audio source.
-		LOGI("Creating alternate audio data sources.");
-		mAlternateAudioDataSource = MakeHLSDataSource();
+	bool sameEra = false;
 
-		// Add the segment.
-		mAlternateAudioDataSource->append(path, 0, 0, 0.0f);
-
-		// Seek to the curent time to force a decoder flush.
-		LOGI("Triggering decoder flush with seek...");
-		//Seek(double(GetCurrentTimeMS()) / 1000.0);
-	}
-	else
-	{
-		// Otherwise, just add to the alt. source's queue.
-		mAlternateAudioDataSource->append(path, 0, 0, 0.0f);
-	}
-}
-
-status_t HLSPlayer::FeedSegment(const char* path, int quality, int continuityEra, double time )
-{
-	AutoLock locker(&lock);
-
-	// Make a data source from the file
-	LOGI("path = '%s'", path);
 	if (mDataSource == NULL)
 	{
 		mDataSource = MakeHLSDataSource();
 		if (!mDataSource.get())
-		{
 			return NO_MEMORY;
-		}
 	}
 
-	LOGI("mDataSource = %p", mDataSource.get());
-
-	status_t err = mDataSource->append(path, quality, continuityEra, time);
-	if (err == INFO_DISCONTINUITY)
+	if (altAudioPath != NULL && mAlternateAudioDataSource == NULL)
 	{
-		// First, try to append it to the last source in the cache
+		mAlternateAudioDataSource = MakeHLSDataSource();
+		if (!mAlternateAudioDataSource.get())
+			return NO_MEMORY;
+	}
 
-		if (mDataSourceCache.size() > 0)
-		{
-			err = mDataSourceCache.back()->append(path, quality, continuityEra, time);
-		}
+	sameEra = mDataSource->isSameEra(quality, continuityEra);
 
-		// If we still get INFO_DISCONTINUITY, it didn't apply to that one, either,
-		// so we need to create a new one.
+	if (sameEra && mAlternateAudioDataSource.get())
+	{
+		sameEra = mAlternateAudioDataSource->isSameEra(audioIndex, 0);
+	}
+
+	status_t err;
+
+	if (sameEra)
+	{
+		LOGI("Same Era!");
+		// Yay! We can just append!
+		err = mDataSource->append(path, quality, continuityEra, time);
 		if (err == INFO_DISCONTINUITY)
 		{
-			sp<HLSDataSource> dataSource = MakeHLSDataSource();
-			if (!dataSource.get())
-			{
-				return NO_MEMORY;
-			}
-			err = dataSource->append(path, quality, continuityEra, time);
-			if (err == OK)
-			{
-				mDataSourceCache.push_back(dataSource);
-			}
+			LOGE("Could not append to data source! This shouldn't happen as we already checked the validity of the append.");
 		}
 
+		if (mAlternateAudioDataSource.get())
+		{
+			err = mAlternateAudioDataSource->append(altAudioPath, audioIndex, 0, time);
+			if (err == INFO_DISCONTINUITY)
+			{
+				LOGE("Could not append to alternate audio data source! This shouldn't happen as we already checked the validity of the append.");
+			}
+		}
 	}
-
-
-
-	if (err != OK)
+	else
 	{
-		LOGE("append Failed: %s", strerror(-err));
-		LOGE("Provisionally continuing...");
-		//return err;
-	}
+		// Now we need to check the last item in the data source cache
 
-	// I don't know if we still need this - might need to pass in the URL instead of the datasource
-//	HLSSegment* s = new HLSSegment(quality, time);
-//	if (s)
-//	{
-//		mSegments.push_back(s);
-//		return OK;
-//	}
-	return NO_MEMORY;
+		// First, try to append it to the last source in the cache
+		if (mDataSourceCache.size() > 0 && mDataSourceCache.back().isSameEra(quality, continuityEra, audioIndex))
+		{
+			LOGI("Adding to end of existing era");
+			err = mDataSourceCache.back().dataSource->append(path, quality, continuityEra, time);
+			if (err == INFO_DISCONTINUITY)
+			{
+				LOGE("Could not append to data source! This shouldn't happen as we already checked the validity of the append.");
+			}
+
+			if (mDataSourceCache.back().altAudioDataSource.get())
+			{
+				err = mDataSourceCache.back().altAudioDataSource->append(altAudioPath, audioIndex, 0, time);
+				if (err == INFO_DISCONTINUITY)
+				{
+					LOGE("Could not append to alternate audio data source! This shouldn't happen as we already checked the validity of the append.");
+				}
+			}
+		}
+		else
+		{
+			LOGI("Making New Datasource!");
+			DataSourceCacheObject dsc;
+			dsc.dataSource = MakeHLSDataSource();
+			dsc.dataSource->append(path, quality, continuityEra, time);
+			if (altAudioPath != NULL)
+			{
+				dsc.altAudioDataSource = MakeHLSDataSource();
+				dsc.altAudioDataSource->append(altAudioPath, audioIndex, 0, time);
+			}
+			mDataSourceCache.push_back(dsc);
+		}
+	}
+	return OK;
+
+}
+
+bool HLSPlayer::DataSourceCacheObject::isSameEra(int32_t quality, int continuityEra, int audioIndex)
+{
+	bool sameEra = dataSource->isSameEra(quality, continuityEra);
+	if (sameEra && altAudioDataSource.get())
+	{
+		sameEra = altAudioDataSource->isSameEra(audioIndex, 0);
+	}
+	return sameEra;
 }
 
 bool HLSPlayer::InitTracks()
@@ -766,6 +767,20 @@ int HLSPlayer::Update()
 
 	RUNDEBUG(LogState());
 
+	if (GetState() == FOUND_DISCONTINUITY)
+	{
+		if (mDataSourceCache.size() > 0)
+		{
+			SetState(FORMAT_CHANGING);
+			LOGI("Found Discontinuity: Switching Sources");
+			return INFO_DISCONTINUITY;
+		}
+		else
+		{
+			LOGI("Found Discontinuity: Out Of Sources!");
+		}
+	}
+
 	if (GetState() == FORMAT_CHANGING)
 	{
 		LOGI("Video changing format!");
@@ -804,7 +819,7 @@ int HLSPlayer::Update()
 				DATASRC_CACHE::iterator end = mDataSourceCache.end();
 				while (cur != end)
 				{
-					segCount += (*cur)->getPreloadedSegmentCount();
+					segCount += (*cur).dataSource->getPreloadedSegmentCount();
 					++cur;
 				}
 			}
@@ -1132,6 +1147,9 @@ void HLSPlayer::LogState()
 	case FORMAT_CHANGING:
 		LOGI("State = FORMAT_CHANGING");
 		break;
+	case FOUND_DISCONTINUITY:
+		LOGI("State = FOUND_DISCONTINUITY");
+		break;
 	}
 }
 
@@ -1351,6 +1369,7 @@ void HLSPlayer::StopEverything()
 	mVideoTrack.clear();
 	mVideoTrack23.clear();
 	mExtractor.clear();
+	mAlternateAudioExtractor.clear();
 	mAudioSource.clear();
 	mAudioSource23.clear();
 
@@ -1380,7 +1399,9 @@ void HLSPlayer::ApplyFormatChange()
 	if (mDataSourceCache.size() > 0)
 	{
 		mDataSource.clear();
-		mDataSource = *mDataSourceCache.begin();
+		mAlternateAudioDataSource.clear();
+		mDataSource = (*mDataSourceCache.begin()).dataSource;
+		mAlternateAudioDataSource = (*mDataSourceCache.begin()).altAudioDataSource;
 		mDataSourceCache.pop_front();
 	}
 

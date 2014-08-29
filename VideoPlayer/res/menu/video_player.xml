@@ -11,6 +11,8 @@
     <item android:id="@+id/play_pause" android:title="@string/play_pause" android:orderInCategory="2"></item>
     <item android:id="@+id/quality_up" android:title="Quality Up" android:orderInCategory="7"></item>
     <item android:id="@+id/quality_down" android:title="Quality Down" android:orderInCategory="8"></item>
+    <item android:id="@+id/audio_up" android:title="AltAudio Up" android:orderInCategory="9"></item>
+    <item android:id="@+id/audio_down" android:title="AltAudio Down" android:orderInCategory="10"></item>
     <item android:id="@+id/streams" android:orderInCategory="0" android:title="Streams">
         <menu>
 		    <item

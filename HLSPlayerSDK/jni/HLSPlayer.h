@@ -33,10 +33,7 @@ public:
 	void Reset();
 
 	void SetSurface(JNIEnv* env, jobject surface);
-	android_video_shim::status_t FeedSegment(const char* path, int32_t quality, int continuityEra, double time );
-
-	void ClearAlternateAudio();
-	android_video_shim::status_t FeedAlternateAudioSegment(const char* path, double time );
+	android_video_shim::status_t FeedSegment(const char* path, int32_t quality, int continuityEra, const char* altAudioPath, int audioIndex, double time );
 
 	bool Play();
 	void Stop();
@@ -54,9 +51,9 @@ public:
 	void SetScreenSize(int w, int h);
 
 	void ApplyFormatChange();
+	void SetState(int status);
 
 private:
-	void SetState(int status);
 	void SetNativeWindow(ANativeWindow* window);
 	bool InitAudio();
 	bool InitSources();
@@ -79,11 +76,15 @@ private:
 	void StopEverything();
 	///
 
-	typedef std::list<android_video_shim::sp<android_video_shim::HLSDataSource> > DATASRC_CACHE;
+	struct DataSourceCacheObject
+	{
+		android_video_shim::sp<android_video_shim::HLSDataSource> dataSource;
+		android_video_shim::sp<android_video_shim::HLSDataSource> altAudioDataSource;
+		bool isSameEra(int32_t quality, int continuityEra, int audioIndex);
+	};
+
+	typedef std::list<DataSourceCacheObject> DATASRC_CACHE;
 	DATASRC_CACHE mDataSourceCache;
-
-	//std::list<HLSSegment* > mSegments;
-
 
 	pthread_t audioThread;
 

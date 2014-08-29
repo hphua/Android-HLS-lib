@@ -21,6 +21,8 @@ public class VideoPlayerActivity extends ActionBarActivity implements OnSubtitle
 	PlayerViewController playerView = null;
 	final Context context = this;
 	String lastUrl = "";
+	
+	int numAltAudioTracks = 0;
 
     @SuppressWarnings("unused")
 	@Override
@@ -136,6 +138,14 @@ public class VideoPlayerActivity extends ActionBarActivity implements OnSubtitle
         {
         	playerView.decrementQuality();
         }
+        else if (id == R.id.audio_up)
+        {
+        	playerView.setActiveAlternateAudioLanguage(playerView.getActiveAlternateAudioIndex() + 1);
+        }
+        else if (id == R.id.audio_down)
+        {
+        	playerView.setActiveAlternateAudioLanguage(playerView.getActiveAlternateAudioIndex() - 1);
+        }
         else if (id == R.id.openUrl)
         {
         	// start another popup to enter the URL, somehow
@@ -202,6 +212,7 @@ public class VideoPlayerActivity extends ActionBarActivity implements OnSubtitle
 		for (int i = 0; i < languages.length; ++i)
 			Log.i("VideoPlayer.onAlternateAudioAvailable", "Language[" + i + "] = " + languages[i]);
 
+		numAltAudioTracks = languages.length;
 		playerView.setActiveAlternateAudioLanguage(defaultLanguage);
 	}
 }

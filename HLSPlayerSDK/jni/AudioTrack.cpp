@@ -8,6 +8,10 @@
 #include <jni.h>
 #include "constants.h"
 #include <AudioTrack.h>
+#include "HLSPlayerSDK.h"
+#include "HLSPlayer.h"
+
+extern HLSPlayerSDK* gHLSPlayerSDK;
 
 
 using namespace android_video_shim;
@@ -15,7 +19,7 @@ using namespace android_video_shim;
 AudioTrack::AudioTrack(JavaVM* jvm) : mJvm(jvm), mAudioTrack(NULL), mGetMinBufferSize(NULL), mPlay(NULL), mPause(NULL), mStop(NULL), mFlush(NULL), buffer(NULL),
 										mRelease(NULL), mGetTimestamp(NULL), mCAudioTrack(NULL), mWrite(NULL), mGetPlaybackHeadPosition(NULL), mSetPositionNotificationPeriod(NULL),
 										mSampleRate(0), mNumChannels(0), mBufferSizeInBytes(0), mChannelMask(0), mTrack(NULL), mPlayState(STOPPED),
-										mTimeStampOffset(0), samplesWritten(0)
+										mTimeStampOffset(0), samplesWritten(0), mWaiting(true)
 {
 	// TODO Auto-generated constructor stub
 	if (!mJvm)
@@ -107,6 +111,7 @@ bool AudioTrack::Set(sp<MediaSource> audioSource, bool alreadyStarted)
 	mAudioSource = audioSource;
 	if (!alreadyStarted) mAudioSource->start(NULL);
 
+	mWaiting = false;
 	return UpdateFormatInfo();
 }
 
@@ -119,7 +124,7 @@ bool AudioTrack::Set23(sp<MediaSource23> audioSource, bool alreadyStarted)
 	LOGI("Set23 with %p", audioSource.get());
 	mAudioSource23 = audioSource;
 	if (!alreadyStarted) mAudioSource23->start(NULL);
-
+	mWaiting = false;
 	return UpdateFormatInfo();
 }
 
@@ -254,6 +259,7 @@ bool AudioTrack::Start()
 void AudioTrack::Play()
 {
 	LOGI("Trying to play: state = %d", mPlayState);
+	mWaiting = false;
 	if (mPlayState == PLAYING) return;
 	int lastPlayState = mPlayState;
 
@@ -366,6 +372,7 @@ int64_t AudioTrack::GetTimeStamp()
 int AudioTrack::Update()
 {
 	LOGV("Audio Update Thread Running");
+	if (mWaiting) return AUDIOTHREAD_WAIT;
 	if (mPlayState != PLAYING)
 	{
 		while (mPlayState == PAUSED)
@@ -449,7 +456,7 @@ int AudioTrack::Update()
 	}
 	else if (res == INFO_FORMAT_CHANGED)
 	{
-		LOGE("Format Changed");
+		LOGI("Format Changed");
 
 		// Flush our existing track.
 		Flush();
@@ -463,6 +470,14 @@ int AudioTrack::Update()
 	else if (res == ERROR_END_OF_STREAM)
 	{
 		LOGE("End of Audio Stream");
+		mWaiting = true;
+		if (gHLSPlayerSDK)
+		{
+			if (gHLSPlayerSDK->GetPlayer())
+			{
+				gHLSPlayerSDK->GetPlayer()->SetState(FOUND_DISCONTINUITY);
+			}
+		}
 		mJvm->DetachCurrentThread();
 		pthread_mutex_unlock(&updateMutex);
 		return AUDIOTHREAD_WAIT;

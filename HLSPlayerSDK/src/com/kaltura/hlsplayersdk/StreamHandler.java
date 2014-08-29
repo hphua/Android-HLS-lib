@@ -15,6 +15,7 @@ import com.kaltura.hlsplayersdk.manifest.ManifestSegment;
 // I'll change it, if anyone really hates the new name. It just makes more sense to me.
 public class StreamHandler implements ManifestParser.ReloadEventListener {
 	public int lastSegmentIndex = 0;
+	public int altAudioIndex = -1;
 	public double lastKnownPlaylistStartTime = 0.0;
 	public int lastQuality = 0;
 	public int targetQuality = 0;
@@ -41,6 +42,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 			if (mp.isDefault)
 			{
 				altAudioManifest = mp.manifest;
+				altAudioIndex = i;
 				break;
 			}
 		}
@@ -50,8 +52,17 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 	{
 		if (index < manifest.playLists.size())
 		{
-			if (index < 0) altAudioManifest = null;
-			else altAudioManifest = manifest.playLists.get(index).manifest;
+			if (index < 0)
+			{
+				altAudioManifest = null;
+				altAudioIndex = -1;
+			}
+			else 
+			{
+				altAudioIndex = index;
+				altAudioManifest = manifest.playLists.get(altAudioIndex).manifest;
+				
+			}
 		}
 	}
 	
@@ -66,6 +77,11 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 			}
 		}
 		return -1;
+	}
+	
+	public int getAltAudioCurrentIndex()
+	{
+		return altAudioIndex;
 	}
 	
 	public String[] getAltAudioLanguages()
@@ -461,6 +477,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 					if (altAudioManifest.segments.size() > lastSegmentIndex)
 					{
 						seg.altAudioSegment = altAudioManifest.segments.get(lastSegmentIndex);
+						seg.altAudioSegment.altAudioIndex = altAudioIndex;
 					}
 				}
 				return seg;
@@ -495,6 +512,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 				if (altAudioManifest.segments.size() > lastSegmentIndex)
 				{
 					lastSegment.altAudioSegment = altAudioManifest.segments.get(lastSegmentIndex);
+					lastSegment.altAudioSegment.altAudioIndex = altAudioIndex;
 				}
 			}
 			if (lastSegment.startTime + lastSegment.duration < lastKnownPlaylistStartTime)
@@ -581,22 +599,22 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 		return 0;
 	}
 	
-	// Called by C++.
-	@SuppressWarnings("unused")
-	private ManifestSegment getSegmentForTime(double time)
-	{
-		Log.i("StreamHandler.getSegmentForTime(" + time + ")", "Time == " + time);
-		if (manifest == null)
-			return null;
-		
-		Vector<ManifestSegment> segments = getSegmentsForQuality( lastQuality );
-		int idx = getSegmentIndexForTime(time);
-		
-		if (idx >= 0)
-			return segments.get(idx);
-		
-		return null;
-	}
+//	// Called by C++.
+//	@SuppressWarnings("unused")
+//	private ManifestSegment getSegmentForTime(double time)
+//	{
+//		Log.i("StreamHandler.getSegmentForTime(" + time + ")", "Time == " + time);
+//		if (manifest == null)
+//			return null;
+//		
+//		Vector<ManifestSegment> segments = getSegmentsForQuality( lastQuality );
+//		int idx = getSegmentIndexForTime(time);
+//		
+//		if (idx >= 0)
+//			return segments.get(idx);
+//		
+//		return null;
+//	}
 	
 	public int getQualityLevels()
 	{

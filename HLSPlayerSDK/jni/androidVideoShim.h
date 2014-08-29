@@ -1840,6 +1840,11 @@ namespace android_video_shim
         	mOffsetAdjustment = 0;
         }
 
+        bool isSameEra(int quality, int continuityEra)
+        {
+        	return mSources.size() == 0 || (mSources.size() > 0 && quality == mQuality && continuityEra == mContinuityEra);
+        }
+
         status_t append(const char* uri, int quality, int continuityEra, double startTime)
         {
             AutoLock locker(&lock);
