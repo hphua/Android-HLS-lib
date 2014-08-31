@@ -472,7 +472,7 @@ bool HLSPlayer::InitTracks()
 	{
 		LOGI("Considering alternate audio source %p...", mAlternateAudioDataSource.get());
 
-		mAlternateAudioExtractor = MediaExtractor::Create(mAlternateAudioDataSource, NULL);
+		mAlternateAudioExtractor = MediaExtractor::Create(mAlternateAudioDataSource,  "video/mp2ts");
 
 		if(mAlternateAudioExtractor.get())
 		{
