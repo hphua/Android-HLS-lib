@@ -231,10 +231,6 @@ public class PlayerViewController extends RelativeLayout implements
 					}
 
 				} 
-//				else if (state == STATE_FOUND_DISCONTINUITY) {
-//					Log.i("videoThread", "Ran into a discontinuity (STATE_FOUND_DISCONTINUITY)");
-//					HandleFormatChange();
-//				}
 				else {
 					try {
 						Thread.sleep(30);
@@ -341,18 +337,6 @@ public class PlayerViewController extends RelativeLayout implements
 			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, null, -1, seg.startTime);
 		}
 
-
-//		seg = getStreamHandler().getNextFile(0);
-//		if (seg.altAudioSegment != null)
-//		{
-//			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.altAudioSegment.uri, seg.altAudioSegment.altAudioIndex, seg.startTime);
-//		}
-//		else
-//		{
-//			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, null, 0, seg.startTime);
-//		}
-
-		
 		play();
 		
 		// Fire prepared event.

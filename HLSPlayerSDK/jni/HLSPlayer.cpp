@@ -104,6 +104,7 @@ void HLSPlayer::Reset()
 	LogState();
 
 	mDataSource.clear();
+	mAlternateAudioDataSource.clear();
 	mAudioTrack.clear();
 	mAudioTrack23.clear();
 	mVideoTrack.clear();
