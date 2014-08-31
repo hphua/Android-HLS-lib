@@ -474,10 +474,12 @@ bool HLSPlayer::InitTracks()
 	{
 		LOGI("Considering alternate audio source %p...", mAlternateAudioDataSource.get());
 
-		mAlternateAudioExtractor = MediaExtractor::Create(mAlternateAudioDataSource,  "video/mp2ts");
+		mAlternateAudioExtractor = MediaExtractor::Create(mAlternateAudioDataSource, "video/mp2ts");
 
 		if(mAlternateAudioExtractor.get())
 		{
+			LOGI("Saw %d tracks.", mAlternateAudioExtractor->countTracks());
+
 			for (size_t i = 0; i < mAlternateAudioExtractor->countTracks(); ++i)
 			{
 				sp<MetaData> meta = mAlternateAudioExtractor->getTrackMetaData(i);
@@ -487,6 +489,9 @@ bool HLSPlayer::InitTracks()
 				const char* cmime;
 				if (!meta->findCString(kKeyMIMEType, &cmime))
 					continue;
+
+				LOGI("Considering potential audio track of mime type %s", cmime);
+
 				if (strncasecmp(cmime, "audio/", 6))
 					continue;
 
@@ -504,6 +509,10 @@ bool HLSPlayer::InitTracks()
 				mAudioTrack_md = meta;
 				break;
 			}
+		}
+		else
+		{
+			LOGE("Failed to create alternate audio track extractor.");
 		}
 	}
 

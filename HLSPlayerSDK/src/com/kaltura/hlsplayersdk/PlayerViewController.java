@@ -62,7 +62,7 @@ public class PlayerViewController extends RelativeLayout implements
 
 	// Static interface.
 	// TODO Allow multiple active PlayerViewController instances.
-	private static PlayerViewController currentController = null;
+	public static PlayerViewController currentController = null;
 	private static int mQualityLevel = 0;
 	private static int mSubtitleLanguage = 0;
 	private static int mAltAudioLanguage = 0;

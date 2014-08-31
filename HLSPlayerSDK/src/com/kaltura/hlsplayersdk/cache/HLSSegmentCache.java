@@ -8,7 +8,8 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import android.util.Log;
 
-import com.loopj.android.http.AsyncHttpClient;
+import com.squareup.okhttp.OkHttpClient;
+import com.squareup.okhttp.Request;
 
 public class HLSSegmentCache 
 {	
@@ -16,7 +17,8 @@ public class HLSSegmentCache
 	protected static long minimumExpireAge = 5000; // Keep everything touched in last 5 seconds.
 	
 	protected static Map<String, SegmentCacheEntry> segmentCache = null;
-	public static AsyncHttpClient client = null;
+	//public static AsyncHttpClient client = null;
+	public static OkHttpClient httpClient = new OkHttpClient();
 	
 	static public SegmentCacheEntry populateCache(final String segmentUri)
 	{
@@ -36,14 +38,13 @@ public class HLSSegmentCache
 			sce.uri = segmentUri;
 			sce.running = true;
 			sce.lastTouchedMillis = System.currentTimeMillis();
-			Thread t = new Thread()
-			{
-				public void run() {
-					sce.request = client.get(sce.uri, new SegmentBinaryResponseHandler(segmentUri));				
-				}
-			};
-			t.start();
 			
+			// Issue HTTP request.
+			Request request = new Request.Builder()
+		      .url(segmentUri)
+		      .build();
+			httpClient.newCall(request).enqueue(sce);
+
 			segmentCache.put(segmentUri, sce);		
 			return sce;
 		}
@@ -67,7 +68,7 @@ public class HLSSegmentCache
 			sce.data = data;
 			
 			// Drop the request
-			sce.request = null;
+			//sce.request = null;
 			
 			// All done!
 			sce.lastTouchedMillis = System.currentTimeMillis();
@@ -79,12 +80,6 @@ public class HLSSegmentCache
 	
 	static protected void initialize()
 	{
-		if(client == null)
-		{		
-			Log.i("HLS Cache", "Initializing loopj http client.");
-			client = new AsyncHttpClient();
-		}
-
 		if(segmentCache == null)
 		{
 			Log.i("HLS Cache", "Initializing concurrent hash map.");
@@ -104,6 +99,9 @@ public class HLSSegmentCache
 		populateCache(segmentUri);
 	}
 	
+	/**
+	 * Return the size of a downloaded segment. Blocking.
+	 */
 	static public long getSize(String segmentUri)
 	{
 		Log.i("HLS Cache", "Querying size of " + segmentUri);
