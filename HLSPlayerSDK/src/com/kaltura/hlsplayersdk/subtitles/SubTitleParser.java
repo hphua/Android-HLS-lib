@@ -181,7 +181,7 @@ public class SubTitleParser implements URLLoader.DownloadEventListener {
 
 	@Override
 	public void onDownloadFailed(URLLoader loader, String response) {
-		Log.i("SubTitleParser", "Download Failed : " + loader.getRequestURI().toASCIIString());
+		Log.i("SubTitleParser", "Download Failed : " + loader.getRequestURI().toString());
 		if (this.mOnParseCompleteListener != null)
 			mOnParseCompleteListener.onSubtitleParserComplete(this);
 	}
