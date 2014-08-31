@@ -20,6 +20,7 @@ public class ManifestSegment extends BaseManifestItem
 	public int byteRangeEnd = -1;
 	
 	public ManifestSegment altAudioSegment = null;
+	public int altAudioIndex = -1;
 	
 	@Override
 	public String toString()

@@ -44,6 +44,7 @@ public class PlayerViewController extends RelativeLayout implements
 	private final int STATE_PAUSED = 2;
 	private final int STATE_PLAYING = 3;
 	private final int STATE_SEEKING = 4;
+	private final int STATE_FOUND_DISCONTINUITY = 6;
 
 	// Native methods
 	private native int GetState();
@@ -55,11 +56,9 @@ public class PlayerViewController extends RelativeLayout implements
 	private native void TogglePause();
 	public native void SetSurface(Surface surface);
 	private native int NextFrame();
-	private native void FeedSegment(String url, int quality, int continuityEra, double startTime);
+	private native void FeedSegment(String url, int quality, int continuityEra, String altAudioURL, int altAudioIndex, double startTime);
 	private native void SeekTo(double timeInSeconds);
 	private native void ApplyFormatChange();
-	private native void ClearAlternateAudio();
-	private native void FeedAlternateAudioSegment(String url, double startTime);
 
 	// Static interface.
 	// TODO Allow multiple active PlayerViewController instances.
@@ -80,10 +79,13 @@ public class PlayerViewController extends RelativeLayout implements
 		if(seg == null)
 			return;
 
-		currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.startTime);
 		if (seg.altAudioSegment != null)
 		{
-			currentController.FeedAlternateAudioSegment(seg.altAudioSegment.uri, seg.startTime);
+			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.altAudioSegment.uri, seg.altAudioSegment.altAudioIndex, seg.startTime);
+		}
+		else
+		{
+			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, null, -1, seg.startTime);
 		}
 	}
 
@@ -100,11 +102,15 @@ public class PlayerViewController extends RelativeLayout implements
 		if(seg == null)
 			return 0;
 		
-		currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.startTime);
 		if (seg.altAudioSegment != null)
 		{
-			currentController.FeedAlternateAudioSegment(seg.altAudioSegment.uri, seg.startTime);
+			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.altAudioSegment.uri, seg.altAudioSegment.altAudioIndex, seg.startTime);
 		}
+		else
+		{
+			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, null, -1, seg.startTime);
+		}
+
 
 		return seg.startTime;
 	}
@@ -190,13 +196,13 @@ public class PlayerViewController extends RelativeLayout implements
 		public void run() {
 			while (true) {
 				int state = GetState();
-				if (state == STATE_PLAYING) {
+				if (state == STATE_PLAYING || state == STATE_FOUND_DISCONTINUITY) {
 					int rval = NextFrame();
 					if (rval >= 0) mTimeMS = rval;
 					if (rval < 0) Log.i("videoThread", "NextFrame() returned " + rval);
 					if (rval == -1013) // INFO_DISCONTINUITY
 					{
-						Log.i("videoThread", "Ran into a discontinuity");
+						Log.i("videoThread", "Ran into a discontinuity (INFO_DISCONTINUITY)");
 						HandleFormatChange();
 					}
 					else if (mPlayheadUpdateListener != null)
@@ -224,7 +230,8 @@ public class PlayerViewController extends RelativeLayout implements
 						Log.i("video run", "Video thread sleep interrupted!");
 					}
 
-				} else {
+				} 
+				else {
 					try {
 						Thread.sleep(30);
 					} catch (InterruptedException ie) {
@@ -287,7 +294,6 @@ public class PlayerViewController extends RelativeLayout implements
 	public void close() {
 		Log.i("PlayerViewController", "Closing resources.");
 		mRenderThread.interrupt();
-		ClearAlternateAudio();
 		CloseNativeDecoder();
 	}
 
@@ -322,19 +328,15 @@ public class PlayerViewController extends RelativeLayout implements
 		}
 		
 		ManifestSegment seg = getStreamHandler().getFileForTime(0, 0);
-		FeedSegment(seg.uri, 0, seg.continuityEra, seg.startTime);
 		if (seg.altAudioSegment != null)
 		{
-			FeedAlternateAudioSegment(seg.altAudioSegment.uri, seg.startTime);
+			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.altAudioSegment.uri, seg.altAudioSegment.altAudioIndex, seg.startTime);
+		}
+		else
+		{
+			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, null, -1, seg.startTime);
 		}
 
-		seg = getStreamHandler().getNextFile(0);
-		FeedSegment(seg.uri, 0, seg.continuityEra, seg.startTime);
-		if (seg.altAudioSegment != null)
-		{
-			FeedAlternateAudioSegment(seg.altAudioSegment.uri, seg.startTime);
-		}
-		
 		play();
 		
 		// Fire prepared event.
@@ -547,6 +549,11 @@ public class PlayerViewController extends RelativeLayout implements
 	public void setActiveAlternateAudioLanguage(int index)
 	{
 		currentController.getStreamHandler().setAltAudioTrack(index);
+	}
+	
+	public int getActiveAlternateAudioIndex()
+	{
+		return currentController.getStreamHandler().getAltAudioCurrentIndex();
 	}
 	
 }

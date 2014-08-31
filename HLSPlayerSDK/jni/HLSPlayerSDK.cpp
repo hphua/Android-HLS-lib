@@ -122,7 +122,7 @@ extern "C"
 		return rval;
 	}
 
-	void Java_com_kaltura_hlsplayersdk_PlayerViewController_FeedSegment(JNIEnv* env, jobject jcaller, jstring jurl, jint quality, jint continuityEra, jdouble startTime )
+	void Java_com_kaltura_hlsplayersdk_PlayerViewController_FeedSegment(JNIEnv* env, jobject jcaller, jstring jurl, jint quality, jint continuityEra, jstring jaltAudioUrl, jint altAudioIndex, jdouble startTime )
 	{
 		LOGI("Entered");
 		
@@ -139,50 +139,18 @@ extern "C"
 		}
 
 		const char* url = env->GetStringUTFChars(jurl, 0);
-		gHLSPlayerSDK->GetPlayer()->FeedSegment(url, quality, continuityEra, startTime);
+		if (jaltAudioUrl) // this is because GetStringUTFChars returns const char*, but dies if you pass it a NULL pointer. Why can't it just return NULL if you pass it NULL, huh?
+		{
+			const char* altAudioUrl = env->GetStringUTFChars(jaltAudioUrl, 0);
+			gHLSPlayerSDK->GetPlayer()->FeedSegment(url, quality, continuityEra, altAudioUrl, altAudioIndex, startTime);
+			env->ReleaseStringUTFChars(jaltAudioUrl, altAudioUrl);
+		}
+		else
+		{
+			gHLSPlayerSDK->GetPlayer()->FeedSegment(url, quality, continuityEra, NULL, altAudioIndex, startTime);
+		}
 		env->ReleaseStringUTFChars(jurl, url);
 	}
-
-	void Java_com_kaltura_hlsplayersdk_PlayerViewController_ClearAlternateAudio(JNIEnv* env, jobject jcaller )
-	{
-		LOGI("Entered");
-
-		if (gHLSPlayerSDK == NULL)
-		{
-			LOGE("No player SDK!");
-			return;
-		}
-
-		if (gHLSPlayerSDK->GetPlayer() == NULL)
-		{
-			LOGE("No Player instance on the SDK!");
-			return;
-		}
-
-		gHLSPlayerSDK->GetPlayer()->ClearAlternateAudio();
-	}
-
-	void Java_com_kaltura_hlsplayersdk_PlayerViewController_FeedAlternateAudioSegment(JNIEnv* env, jobject jcaller, jstring jurl, jdouble startTime )
-	{
-		LOGI("Entered");
-
-		if (gHLSPlayerSDK == NULL)
-		{
-			LOGE("No player SDK!");
-			return;
-		}
-
-		if (gHLSPlayerSDK->GetPlayer() == NULL)
-		{
-			LOGE("No Player instance on the SDK!");
-			return;
-		}
-
-		const char* url = env->GetStringUTFChars(jurl, 0);
-		gHLSPlayerSDK->GetPlayer()->FeedAlternateAudioSegment(url, startTime);
-		env->ReleaseStringUTFChars(jurl, url);
-	}
-
 
 	void Java_com_kaltura_hlsplayersdk_PlayerViewController_SeekTo(JNIEnv* env, jobject jcaller, jdouble time )
 	{

@@ -75,6 +75,7 @@ private:
 	int mBufferSizeInBytes;
 
 	int mPlayState;
+	bool mWaiting;
 
 	double mTimeStampOffset;
 
