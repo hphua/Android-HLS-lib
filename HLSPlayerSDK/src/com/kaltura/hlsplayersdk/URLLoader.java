@@ -82,6 +82,9 @@ public class URLLoader implements Callback
 		final URLLoader thisLoader = this;
 		final Response response = arg0;
 		
+		// Load the response body - this can do HTTP activity.
+		final String r = response.body().string();
+		
 		if (mDownloadEventListener != null)
 		{
 			// Post back to main thread to avoid re-entrancy that breaks OkHTTP.
@@ -89,13 +92,7 @@ public class URLLoader implements Callback
 			{
 				@Override
 				public void run() {
-					String r;
-					try {
-						r = response.body().string();
-						mDownloadEventListener.onDownloadComplete(thisLoader, r==null?"null" : r);
-					} catch (IOException e) {
-						e.printStackTrace();
-					}
+					mDownloadEventListener.onDownloadComplete(thisLoader, r==null?"null" : r);
 				}
 			});
 		}		
