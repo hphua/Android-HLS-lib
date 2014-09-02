@@ -42,7 +42,7 @@ public class VideoPlayerActivity extends ActionBarActivity implements OnSubtitle
 	            .build());
             StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder()
 	            .detectLeakedSqlLiteObjects()
-	            .detectLeakedClosableObjects()
+//	            .detectLeakedClosableObjects()
 	            .penaltyLog()
 	            .penaltyDeath()
 	            .build());

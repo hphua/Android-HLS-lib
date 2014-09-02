@@ -27,6 +27,7 @@ extern "C"
 		
 		JavaVM* jvm = NULL;
 		env->GetJavaVM(&jvm);
+		int jniVersion = env->GetVersion();
 
 		HLSSegmentCache::initialize(jvm);
 
@@ -41,7 +42,7 @@ extern "C"
 		if (gHLSPlayerSDK == NULL)
 		{
 			LOGI("Initializing player SDK.");
-			gHLSPlayerSDK = new HLSPlayerSDK(jvm);
+			gHLSPlayerSDK = new HLSPlayerSDK(jvm, jniVersion);
 		}
 		if (gHLSPlayerSDK && gHLSPlayerSDK->GetPlayer() == NULL) 
 		{
@@ -183,7 +184,7 @@ extern "C"
 
 }
 
-HLSPlayerSDK::HLSPlayerSDK(JavaVM* jvm) : mPlayer(NULL), mJvm(jvm)
+HLSPlayerSDK::HLSPlayerSDK(JavaVM* jvm, int jniVersion) : mPlayer(NULL), mJvm(jvm), mJniVersion(jniVersion)
 {
 
 }
@@ -213,6 +214,16 @@ bool HLSPlayerSDK::CreateDecoder()
 	return mPlayer != NULL;
 }
 
+JavaVM* HLSPlayerSDK::getJVM()
+{
+	return mJvm;
+}
+
+int HLSPlayerSDK::getJVMVersion()
+{
+	return mJniVersion;
+}
+
 //#define METHOD CLASS_NAME"::GetDecoder()"
 //HLSDecoder* HLSPlayerSDK::GetDecoder()
 //{
@@ -240,6 +251,21 @@ void HLSPlayerSDK::PlayFile()
 			LOGI("Decoded a frame!");
 		}
 	}
+}
+
+bool HLSPlayerSDK::GetEnv(JNIEnv** env)
+{
+	int  rval = mJvm->GetEnv((void**)env, mJniVersion);
+	if (rval == JNI_EDETACHED)
+	{
+		rval = mJvm->AttachCurrentThread(env, NULL);
+		if (rval != 0)
+		{
+			(*env) = NULL;
+			return false;
+		}
+	}
+	return true;
 }
 
 

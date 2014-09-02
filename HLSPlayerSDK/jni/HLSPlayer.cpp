@@ -15,7 +15,9 @@
 #include "HLSSegment.h"
 
 #include "androidVideoShim_ColorConverter.h"
+#include "HLSPlayerSDK.h"
 
+extern HLSPlayerSDK* gHLSPlayerSDK;
 
 using namespace android_video_shim;
 
@@ -30,6 +32,8 @@ const int SEGMENTS_TO_BUFFER = 2;
 void* audio_thread_func(void* arg)
 {
 	AudioTrack* audioTrack = (AudioTrack*)arg;
+	int refCount = audioTrack->addRef();
+	LOGI("mJAudioTrack refCount = %d", refCount);
 
 	int rval;
 	while ( (rval = audioTrack->Update()) != AUDIOTHREAD_FINISH)
@@ -45,7 +49,9 @@ void* audio_thread_func(void* arg)
 		}
 	}
 
-	audioTrack->shutdown();
+	refCount = audioTrack->release();
+	gHLSPlayerSDK->getJVM()->DetachCurrentThread();
+	LOGI("mJAudioTrack refCount = %d", refCount);
 	LOGI("audio_thread_func ending");
 	return NULL;
 }
@@ -116,8 +122,8 @@ void HLSPlayer::Reset()
 
 	if (mJAudioTrack)
 	{
-		mJAudioTrack->Close(); // Stops the track internally, in case you were wondering.
-		delete mJAudioTrack;
+		int refCount = mJAudioTrack->release();
+		LOGI("mJAudioTrack refCount = %d", refCount);
 		mJAudioTrack = NULL;
 	}
 	LOGI("Killing the video buffer");
@@ -535,7 +541,8 @@ bool HLSPlayer::CreateAudioPlayer()
 	if (!mJAudioTrack->Init())
 	{
 		LOGE("JAudioTrack::Init() failed - quitting CreateAudioPlayer");
-		mAudioTrack = NULL;
+		mJAudioTrack->release();
+		mJAudioTrack = NULL;
 		return false;
 	}
 
