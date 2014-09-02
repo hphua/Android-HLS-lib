@@ -4,6 +4,7 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.os.Bundle;
+import android.os.StrictMode;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -30,6 +31,23 @@ public class VideoPlayerActivity extends ActionBarActivity implements OnSubtitle
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_video_player);
 
+        if(true)
+        {
+            Log.i("VideoPlayerController", "*** Strict mode enabled.");
+            StrictMode.setThreadPolicy(new StrictMode.ThreadPolicy.Builder()
+	            .detectDiskReads()
+	            .detectDiskWrites()
+	            .detectAll()   // or .detectAll() for all detectable problems
+	            .penaltyLog()
+	            .build());
+            StrictMode.setVmPolicy(new StrictMode.VmPolicy.Builder()
+	            .detectLeakedSqlLiteObjects()
+	            .detectLeakedClosableObjects()
+	            .penaltyLog()
+	            .penaltyDeath()
+	            .build());
+        }
+        
         try
         {
         	playerView = (PlayerViewController)findViewById(R.id.custom_player);
