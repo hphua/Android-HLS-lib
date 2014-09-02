@@ -11,6 +11,7 @@
 #include <jni.h>
 #include <androidVideoShim.h>
 #include <semaphore.h>
+#include <RefCounted.h>
 
 enum
 {
@@ -19,13 +20,15 @@ enum
 	AUDIOTHREAD_FINISH
 };
 
-class AudioTrack {
+class AudioTrack : public RefCounted {
 public:
 	AudioTrack(JavaVM* jvm);
 	~AudioTrack();
 
 	bool Init();
 	void Close();
+
+	virtual void unload(); // from RefCounted
 
 	bool Start();
 	void Play();
