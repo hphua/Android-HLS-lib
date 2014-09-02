@@ -8,6 +8,8 @@
 #ifndef REFCOUNTED_H_
 #define REFCOUNTED_H_
 
+#include <pthread.h>
+
 class RefCounted {
 public:
 	RefCounted();
@@ -21,6 +23,8 @@ public:
 
 private:
 	int mRefCount;
+
+	pthread_mutex_t lock;
 };
 
 #endif /* REFCOUNTED_H_ */

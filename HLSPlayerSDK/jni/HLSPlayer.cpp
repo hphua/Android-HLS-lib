@@ -122,9 +122,6 @@ void HLSPlayer::Reset()
 
 	if (mJAudioTrack)
 	{
-//		mJAudioTrack->Close(); // Stops the track internally, in case you were wondering.
-//		delete mJAudioTrack;
-		//mJAudioTrack->detach(); // need to detach from the thread
 		int refCount = mJAudioTrack->release();
 		LOGI("mJAudioTrack refCount = %d", refCount);
 		mJAudioTrack = NULL;
