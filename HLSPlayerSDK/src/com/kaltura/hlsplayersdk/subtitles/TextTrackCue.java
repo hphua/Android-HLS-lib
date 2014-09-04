@@ -57,7 +57,7 @@ public class TextTrackCue {
 					accum += c;
 				if (c == ' ' || position == input.length() - 1)
 				{
-					double timeStamp = SubTitleParser.parseTimeStamp(accum);
+					double timeStamp = SubTitleSegment.parseTimeStamp(accum);
 					if (startTime == -1) startTime = timeStamp;
 					else endTime = timeStamp;
 					accum = "";
