@@ -3,7 +3,6 @@ package com.kaltura.hlsplayersdk.subtitles;
 
 import java.util.Vector;
 
-import com.kaltura.hlsplayersdk.URLLoader;
 import com.kaltura.hlsplayersdk.cache.HLSSegmentCache;
 
 import android.util.Log;
@@ -22,7 +21,8 @@ public class SubTitleSegment {
 	public Vector<TextTrackCue> textTrackCues = new Vector<TextTrackCue>();
 	public double startTime = -1;
 	public double endTime = -1;
-	public double duration = -1;
+	public double segmentTimeWindowStart = -1;
+	public double segmentTimeWindowDuration = -1;
 	public int id = 0;
 	
 	private String _url;
@@ -43,6 +43,15 @@ public class SubTitleSegment {
 	public void setUrl(String url)
 	{
 		_url = url;
+	}
+	
+	public boolean inPrecacheWindow(double time, double windowSize)
+	{
+		if ( time > ((segmentTimeWindowStart + segmentTimeWindowDuration) - windowSize))
+		{
+			return true;
+		}
+		return false;
 	}
 	
 	public Vector<TextTrackCue> getCuesForTimeRange( double startTime, double endTime)
@@ -67,6 +76,11 @@ public class SubTitleSegment {
 	{
 		String file = HLSSegmentCache.readFileAsString(_url);
 		parse(file);
+	}
+	
+	public void precache()
+	{
+		HLSSegmentCache.precache(_url);
 	}
 	
 	

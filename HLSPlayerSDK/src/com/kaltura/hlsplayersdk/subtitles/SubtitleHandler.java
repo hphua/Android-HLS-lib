@@ -59,20 +59,28 @@ public class SubtitleHandler implements OnSubtitleParseCompleteListener {
 	{
 		SubTitleSegment stp = getSegmentForTime(time, language);
 		
-		if (stp == null)
-		{
-			// WTF
-			
-		}
-		
 		if (stp != null)
 		{
+			if (!stp.isLoaded())
+				stp.load();
+			
 			Vector<TextTrackCue> cues = stp.getCuesForTimeRange(mLastTime, time);
 			mLastTime = time;
+			
+			if (stp.inPrecacheWindow(time, 10))
+			{
+				precacheSegmentAtTime(time + 10, language);
+			}
 			
 			return cues;
 		}
 		return null;
+	}
+	
+	public void precacheSegmentAtTime(double time, int language)
+	{
+		SubTitleSegment ntsp = getSegmentForTime(time, language);
+		if (ntsp != null) ntsp.precache();
 	}
 	
 	private SubTitleSegment getSegmentForTime(double time, int language)
@@ -95,10 +103,8 @@ public class SubtitleHandler implements OnSubtitleParseCompleteListener {
 			SubTitleSegment stp = mp.subtitles.get(i);
 			if (stp != null)
 			{
-				if (time >= stp.startTime && time <= stp.startTime + stp.duration)
+				if (time >= stp.segmentTimeWindowStart && time <= stp.segmentTimeWindowStart + stp.segmentTimeWindowDuration)
 				{
-					if (!stp.isLoaded())
-						stp.load();
 					return stp;
 				}
 			}

@@ -228,7 +228,7 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 					//subTitle.setOnParseCompleteListener(this);
 					//_subtitlesLoading++;
 					String[] valueSplit = tagParams.split(",");
-					subTitle.duration = Double.parseDouble(valueSplit[0]);
+					subTitle.segmentTimeWindowDuration = Double.parseDouble(valueSplit[0]);
 					subtitles.add( subTitle );
 					lastHint = subTitle;
 					
@@ -300,8 +300,8 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 		for (int m = 0; m < subtitles.size(); ++m)
 		{
 			subtitles.get(m).id = mediaSequence + m;
-			subtitles.get(m).startTime = timeAccum;
-			timeAccum += subtitles.get(m).duration;
+			subtitles.get(m).segmentTimeWindowStart = timeAccum;
+			timeAccum += subtitles.get(m).segmentTimeWindowDuration;
 		}
 		
 		if (manifestLoaders.size() == 0 && this.mOnParseCompleteListener != null)

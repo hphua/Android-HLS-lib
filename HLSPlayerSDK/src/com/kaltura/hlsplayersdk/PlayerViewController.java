@@ -312,6 +312,9 @@ public class PlayerViewController extends RelativeLayout implements
 				String[] languages = mSubtitleHandler.getLanguages();
 				mSubtitlesAvailableListener.onSubtitlesAvailable(languages, mSubtitleHandler.getDefaultLanguageIndex());
 			}
+			
+			mSubtitleHandler.precacheSegmentAtTime(0, mSubtitleHandler.getDefaultLanguageIndex());
+					
 		}
 		else
 		{
