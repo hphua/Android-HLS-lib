@@ -140,6 +140,8 @@ public class HLSSegmentCache
 	
 	static public String readFileAsString(String segmentUri)
 	{
+		initialize();
+		
 		long size = getSize(segmentUri);
 		ByteBuffer buffer = ByteBuffer.allocate((int)size);
 		read(segmentUri, 0, size, buffer);
