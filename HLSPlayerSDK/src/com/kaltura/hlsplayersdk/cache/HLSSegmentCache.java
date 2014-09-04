@@ -2,7 +2,7 @@ package com.kaltura.hlsplayersdk.cache;
 
 import java.util.Collection;
 import java.nio.ByteBuffer;
-
+import java.nio.charset.Charset;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -106,6 +106,11 @@ public class HLSSegmentCache
 	{
 		Log.i("HLS Cache", "Querying size of " + segmentUri);
 		SegmentCacheEntry sce = segmentCache.get(segmentUri);
+		if (sce == null)
+		{
+			// Do we have a cache entry for the segment? Populate if it doesn't exist.
+			sce = populateCache(segmentUri);
+		}
 		waitForLoad(sce);
 		return sce.data.length;
 	}
@@ -131,6 +136,14 @@ public class HLSSegmentCache
 		
 		long timerElapsed = System.currentTimeMillis() - timerStart;
 		Log.i("HLS Cache", "Request finished, " + (sce.data.length/1024) + "kb in " + timerElapsed + "ms");			
+	}
+	
+	static public String readFileAsString(String segmentUri)
+	{
+		long size = getSize(segmentUri);
+		ByteBuffer buffer = ByteBuffer.allocate((int)size);
+		read(segmentUri, 0, size, buffer);
+		return new String(buffer.array(), Charset.forName("UTF-8"));
 	}
 	
 	/**

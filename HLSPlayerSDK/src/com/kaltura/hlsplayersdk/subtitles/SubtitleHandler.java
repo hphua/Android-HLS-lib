@@ -7,7 +7,7 @@ import com.kaltura.hlsplayersdk.manifest.ManifestPlaylist;
 
 import android.util.Log;
 
-public class SubtitleHandler {
+public class SubtitleHandler implements OnSubtitleParseCompleteListener {
 
 	private ManifestParser mManifest;
 	private double mLastTime = 0;
@@ -57,7 +57,13 @@ public class SubtitleHandler {
 	
 	public Vector<TextTrackCue> update(double time, int language)
 	{
-		SubTitleParser stp = getParserForTime(time, language);
+		SubTitleSegment stp = getSegmentForTime(time, language);
+		
+		if (stp == null)
+		{
+			// WTF
+			
+		}
 		
 		if (stp != null)
 		{
@@ -69,7 +75,7 @@ public class SubtitleHandler {
 		return null;
 	}
 	
-	private SubTitleParser getParserForTime(double time, int language)
+	private SubTitleSegment getSegmentForTime(double time, int language)
 	{
 		ManifestParser mp = null;
 		if (mManifest.subtitlePlayLists.size() > language)
@@ -86,16 +92,24 @@ public class SubtitleHandler {
 		
 		for (int i = 0; i < mp.subtitles.size(); ++i)
 		{
-			SubTitleParser stp = mp.subtitles.get(i);
+			SubTitleSegment stp = mp.subtitles.get(i);
 			if (stp != null)
 			{
-				if (time >= stp.startTime && time <= stp.endTime)
+				if (time >= stp.startTime && time <= stp.startTime + stp.duration)
 				{
+					if (!stp.isLoaded())
+						stp.load();
 					return stp;
 				}
 			}
 		}
 		return null;
 
+	}
+
+	@Override
+	public void onSubtitleParserComplete(SubTitleSegment parser) {
+		// TODO Auto-generated method stub
+		
 	}
 }

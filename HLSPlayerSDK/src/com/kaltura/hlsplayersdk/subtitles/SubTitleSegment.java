@@ -4,9 +4,11 @@ package com.kaltura.hlsplayersdk.subtitles;
 import java.util.Vector;
 
 import com.kaltura.hlsplayersdk.URLLoader;
+import com.kaltura.hlsplayersdk.cache.HLSSegmentCache;
+
 import android.util.Log;
 
-public class SubTitleParser implements URLLoader.DownloadEventListener {
+public class SubTitleSegment {
 	public Vector<WebVTTRegion> regions = new Vector<WebVTTRegion>();
 	
 	enum ParseState
@@ -20,18 +22,27 @@ public class SubTitleParser implements URLLoader.DownloadEventListener {
 	public Vector<TextTrackCue> textTrackCues = new Vector<TextTrackCue>();
 	public double startTime = -1;
 	public double endTime = -1;
+	public double duration = -1;
+	public int id = 0;
 	
 	private String _url;
-	private URLLoader _loader = null;
+	private boolean _isLoaded = false;;
 	
-	public SubTitleParser()
+	
+	
+	public SubTitleSegment()
 	{
 		
 	}
 	
-	public SubTitleParser(String url)
+	public SubTitleSegment(String url)
 	{
-		if (url != null) load(url);
+		_url = url;
+	}
+	
+	public void setUrl(String url)
+	{
+		_url = url;
 	}
 	
 	public Vector<TextTrackCue> getCuesForTimeRange( double startTime, double endTime)
@@ -47,12 +58,17 @@ public class SubTitleParser implements URLLoader.DownloadEventListener {
 		return result;
 	}
 	
-	public void load(String url)
+	public boolean isLoaded()
 	{
-		_url = url;
-		_loader = new URLLoader(this, null);
-		_loader.get(_url);
+		return _isLoaded;
 	}
+	
+	public void load()
+	{
+		String file = HLSSegmentCache.readFileAsString(_url);
+		parse(file);
+	}
+	
 	
 	public void parse(String input)
 	{
@@ -120,6 +136,9 @@ public class SubTitleParser implements URLLoader.DownloadEventListener {
 			
 		}
 		
+		// And one last cue, just in case there wasn't an empty line
+		if (textTrackCue != null) textTrackCues.add(textTrackCue);
+		
 		TextTrackCue firstElement = textTrackCues.size() > 0 ? textTrackCues.get(0) : null;
 		TextTrackCue lastElement = textTrackCues.size() > 1 ?textTrackCues.get(textTrackCues.size() - 1) : firstElement;
 		
@@ -129,6 +148,8 @@ public class SubTitleParser implements URLLoader.DownloadEventListener {
 			startTime = firstElement.startTime;
 			endTime = lastElement.endTime;
 		}
+		
+		_isLoaded = true;
 		
 		if (this.mOnParseCompleteListener != null)
 			mOnParseCompleteListener.onSubtitleParserComplete(this);
@@ -173,17 +194,5 @@ public class SubTitleParser implements URLLoader.DownloadEventListener {
 		mOnParseCompleteListener = listener;
 	}
 	private OnSubtitleParseCompleteListener mOnParseCompleteListener;
-
-	@Override
-	public void onDownloadComplete(URLLoader loader, String response) {
-		parse (response);
-	}
-
-	@Override
-	public void onDownloadFailed(URLLoader loader, String response) {
-		Log.i("SubTitleParser", "Download Failed : " + loader.getRequestURI().toString());
-		if (this.mOnParseCompleteListener != null)
-			mOnParseCompleteListener.onSubtitleParserComplete(this);
-	}
 
 }
