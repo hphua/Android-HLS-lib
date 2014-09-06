@@ -960,7 +960,7 @@ int HLSPlayer::Update()
 				{
 					++mRenderedFrameCount;
 					rval = mRenderedFrameCount;
-					LOGI("mRenderedFrameCount = %d", mRenderedFrameCount);
+					LOGV("mRenderedFrameCount = %d", mRenderedFrameCount);
 				}
 				else
 				{

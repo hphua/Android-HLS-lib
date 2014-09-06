@@ -1,5 +1,7 @@
 package com.kaltura.hlsplayersdk;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.Vector;
@@ -94,6 +96,18 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 		}
 		return languages;
 	}
+	
+	public List<String> getAltAudioLanguageList()
+	{
+		if (manifest.playLists.size() == 0) return null;
+		List<String> languages = new ArrayList<String>();
+		for (int i = 0; i < manifest.playLists.size(); ++i)
+		{
+			languages.add(manifest.playLists.get(i).language);
+		}
+		return languages;
+	}
+	
 	
 	public boolean hasAltAudio()
 	{

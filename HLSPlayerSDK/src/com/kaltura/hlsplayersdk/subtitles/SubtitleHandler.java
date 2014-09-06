@@ -1,5 +1,7 @@
 package com.kaltura.hlsplayersdk.subtitles;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Vector;
 
 import com.kaltura.hlsplayersdk.manifest.ManifestParser;
@@ -22,6 +24,20 @@ public class SubtitleHandler implements OnSubtitleParseCompleteListener {
 		boolean rval = mManifest.subtitles.size() > 0;
 		if (!rval) rval = mManifest.subtitlePlayLists.size() > 0;			
 		return rval;
+	}
+	
+	public List<String> getLanguageList()
+	{
+		if (mManifest.subtitlePlayLists.size() > 0)
+		{
+			List<String> languages = new ArrayList<String>();
+			for (int i = 0; i < mManifest.subtitlePlayLists.size(); ++i)
+			{
+				languages.add(mManifest.subtitlePlayLists.get(i).language);
+			}
+			return languages;
+		}
+		return null;
 	}
 	
 	public String[] getLanguages()

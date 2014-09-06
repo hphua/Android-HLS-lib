@@ -1,5 +1,7 @@
 package com.example.videoplayer;
 
+import java.util.List;
+
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -16,14 +18,17 @@ import android.widget.EditText;
 import com.kaltura.hlsplayersdk.PlayerViewController;
 import com.kaltura.hlsplayersdk.subtitles.*;
 import com.kaltura.hlsplayersdk.manifest.events.*;
+import com.kaltura.playersdk.events.*;
 
-public class VideoPlayerActivity extends ActionBarActivity implements OnSubtitlesAvailableListener, OnSubtitleTextListener, OnAlternateAudioAvailableListener  {
+public class VideoPlayerActivity extends ActionBarActivity implements OnTextTracksListListener, OnTextTrackChangeListener, 
+OnSubtitleTextListener, OnAudioTracksListListener, OnAudioTrackSwitchingListener  {
 
 	PlayerViewController playerView = null;
 	final Context context = this;
 	String lastUrl = "";
 	
 	int numAltAudioTracks = 0;
+	int curAltAudioTrack = -1;
 
     @SuppressWarnings("unused")
 	@Override
@@ -52,9 +57,11 @@ public class VideoPlayerActivity extends ActionBarActivity implements OnSubtitle
         {
         	playerView = (PlayerViewController)findViewById(R.id.custom_player);
         	playerView.addComponents("", this);
-        	playerView.registerSubtitlesAvailable(this);
+        	playerView.registerTextTracksList(this);
+        	playerView.registerTextTrackChanged(this);
         	playerView.registerSubtitleTextListener(this);
-        	playerView.registerAlternateAudioAvailable(this);
+        	playerView.registerAudioTracksList(this);
+        	playerView.registerAudioSwitchingChange(this);
         }
         catch (Exception e)
         {
@@ -93,6 +100,12 @@ public class VideoPlayerActivity extends ActionBarActivity implements OnSubtitle
         // Inflate the menu; this adds items to the action bar if it is present.
         getMenuInflater().inflate(R.menu.video_player, menu);
         return true;
+    }
+    
+    @Override
+    public boolean onMenuOpened(int featureId, Menu menu)
+    {
+		return super.onMenuOpened(featureId, menu);
     }
 
     @Override
@@ -158,11 +171,11 @@ public class VideoPlayerActivity extends ActionBarActivity implements OnSubtitle
         }
         else if (id == R.id.audio_up)
         {
-        	playerView.setActiveAlternateAudioLanguage(playerView.getActiveAlternateAudioIndex() + 1);
+        	playerView.softSwitchAudioTrack(curAltAudioTrack + 1);
         }
         else if (id == R.id.audio_down)
         {
-        	playerView.setActiveAlternateAudioLanguage(playerView.getActiveAlternateAudioIndex() - 1);
+        	playerView.softSwitchAudioTrack(curAltAudioTrack - 1);
         }
         else if (id == R.id.openUrl)
         {
@@ -206,31 +219,47 @@ public class VideoPlayerActivity extends ActionBarActivity implements OnSubtitle
     }
 
 	@Override
-	public void onSubtitlesAvailable(String[] languages, int defaultLanguage) {
-		Log.i("VideoPlayer.onSubtitlesAvailable", "Count = " + languages.length);
-		Log.i("VideoPlayer.onSubtitlesAvailable", "Default = " + defaultLanguage);
-		for (int i = 0; i < languages.length; ++i)
-			Log.i("VideoPlayer.onSubtitlesAvailable", "Language[" + i + "] = " + languages[i]);
-
-		playerView.setActiveSubtitleLanguage(defaultLanguage);
-
-	}
-
-	@Override
 	public void onSubtitleText(double startTime, double length, String buffer) {
 		Log.i("VideoPlayer.onSubtitleText", "Start: " + startTime + " | Length: " + length + " | " + buffer);
 
 	}
 
 	@Override
-	public void onAlternateAudioAvailable(String[] languages,
-			int defaultLanguage) {
-		Log.i("VideoPlayer.onAlternateAudioAvailable", "Count = " + languages.length);
-		Log.i("VideoPlayer.onAlternateAudioAvailable", "Default = " + defaultLanguage);
-		for (int i = 0; i < languages.length; ++i)
-			Log.i("VideoPlayer.onAlternateAudioAvailable", "Language[" + i + "] = " + languages[i]);
+	public void OnTextTracksList(List<String> list) {
+		Log.i("VideoPlayer.onSubtitlesAvailable", "Count = " + list.size());
+		//Log.i("VideoPlayer.onSubtitlesAvailable", "Default = " + defaultLanguage);
+		for (int i = 0; i < list.size(); ++i)
+			Log.i("VideoPlayer.onSubtitlesAvailable", "Language[" + i + "] = " + list.get(i));
 
-		numAltAudioTracks = languages.length;
-		playerView.setActiveAlternateAudioLanguage(defaultLanguage);
+		//playerView.setActiveSubtitleLanguage(defaultLanguage);
+
+		
+	}
+
+	@Override
+	public void onOnTextTrackChanged(int newTrackIndex) {
+		Log.i("VideoPlayer.onOnTextTrackChanged","newTrackIndex = " + newTrackIndex);
+		
+	}
+
+	@Override
+	public void onAudioSwitchingStart(int oldTrackIndex, int newTrackIndex) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void onAudioSwitchingEnd(int newTrackIndex) {
+		curAltAudioTrack = newTrackIndex;
+		
+	}
+
+	@Override
+	public void OnAudioTracksList(List<String> list) {
+		Log.i("VideoPlayer.onAlternateAudioAvailable", "Count = " + list.size());
+		for (int i = 0; i < list.size(); ++i)
+			Log.i("VideoPlayer.onAlternateAudioAvailable", "Language[" + i + "] = " + list.get(i));
+
+		numAltAudioTracks = list.size();
 	}
 }
