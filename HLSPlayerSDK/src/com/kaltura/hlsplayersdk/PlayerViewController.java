@@ -450,12 +450,12 @@ public class PlayerViewController extends RelativeLayout implements
 
 	public void incrementQuality()
 	{
-		this.switchQualityTrack(mQualityLevel + 1); 
+		switchQualityTrack(mQualityLevel + 1); 
 	}
 	
 	public void decrementQuality()
 	{
-		this.switchQualityTrack(mQualityLevel - 1); 
+		switchQualityTrack(mQualityLevel - 1); 
 	}
 
 	// /////////////////////////////////////////////////////////////////////////////////////////////

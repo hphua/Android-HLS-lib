@@ -1415,7 +1415,7 @@ void HLSPlayer::ApplyFormatChange()
 	SetState(FORMAT_CHANGING); // may need to add a different state, but for now...
 	StopEverything();
 
-	// Keep track of the current quality markers
+	// Retrieve the current quality markers
 	int curQuality = mDataSource->getQualityLevel();
 	int curAudioTrack = -1;
 	if (mAlternateAudioDataSource.get()) curAudioTrack = mAlternateAudioDataSource->getQualityLevel();
@@ -1431,7 +1431,7 @@ void HLSPlayer::ApplyFormatChange()
 
 	mDataSource->logContinuityInfo();
 
-	// Keep track of the current quality markers
+	// Retrieve the new quality markers
 	int newQuality = mDataSource->getQualityLevel();
 	int newAudioTrack = -1;
 	if (mAlternateAudioDataSource.get()) newAudioTrack = mAlternateAudioDataSource->getQualityLevel();
