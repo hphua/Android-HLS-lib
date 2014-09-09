@@ -11,6 +11,9 @@ import android.util.Log;
 import com.kaltura.hlsplayersdk.manifest.ManifestParser;
 import com.kaltura.hlsplayersdk.manifest.ManifestPlaylist;
 import com.kaltura.hlsplayersdk.manifest.ManifestSegment;
+import com.kaltura.hlsplayersdk.manifest.ManifestStream;
+import com.kaltura.playersdk.QualityTrack;
+import com.kaltura.playersdk.types.TrackType;
 
 
 // This is the confusingly named "HLSIndexHandler" from the flash HLSPlugin
@@ -50,7 +53,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 		}
 	}
 	
-	public void setAltAudioTrack(int index)
+	public boolean setAltAudioTrack(int index)
 	{
 		if (index < manifest.playLists.size())
 		{
@@ -63,8 +66,12 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 			{
 				altAudioIndex = index;
 				altAudioManifest = manifest.playLists.get(altAudioIndex).manifest;
-				
 			}
+			return true;
+		}
+		else
+		{
+			return false;
 		}
 	}
 	
@@ -126,6 +133,35 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 		}
 		
 	};
+	
+	public List<QualityTrack> getQualityTrackList()
+	{
+		List<QualityTrack> tracks = new ArrayList<QualityTrack>();
+		if (manifest.streams.size() > 0)
+		{
+			for (int i = 0; i < manifest.streams.size(); ++i)
+			{
+				ManifestStream s = manifest.streams.get(i);
+
+				QualityTrack t = new QualityTrack();
+				t.bitrate = s.bandwidth;
+				t.width = s.width;
+				t.height = s.height;
+				t.trackId = i +  "|" + s.programId + "|" + s.uri;
+				t.type = TrackType.VIDEO;
+				tracks.add(t);			
+				
+			}
+		}
+		else
+		{
+			QualityTrack t = new QualityTrack();
+			t.trackId = "0|0|" + manifest.fullUrl;
+			t.type = TrackType.VIDEO;
+			tracks.add(t);	
+		}
+		return tracks;
+	}
 	
 //	private Runnable reloadTimerComplete = new Runnable()
 //	{

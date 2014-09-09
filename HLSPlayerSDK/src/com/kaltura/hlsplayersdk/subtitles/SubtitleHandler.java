@@ -28,16 +28,15 @@ public class SubtitleHandler implements OnSubtitleParseCompleteListener {
 	
 	public List<String> getLanguageList()
 	{
+		List<String> languages = new ArrayList<String>();
 		if (mManifest.subtitlePlayLists.size() > 0)
 		{
-			List<String> languages = new ArrayList<String>();
 			for (int i = 0; i < mManifest.subtitlePlayLists.size(); ++i)
 			{
 				languages.add(mManifest.subtitlePlayLists.get(i).language);
 			}
-			return languages;
 		}
-		return null;
+		return languages;
 	}
 	
 	public String[] getLanguages()

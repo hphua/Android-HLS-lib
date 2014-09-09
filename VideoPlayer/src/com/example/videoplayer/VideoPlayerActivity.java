@@ -16,12 +16,12 @@ import android.view.View;
 import android.widget.EditText;
 
 import com.kaltura.hlsplayersdk.PlayerViewController;
-import com.kaltura.hlsplayersdk.subtitles.*;
-import com.kaltura.hlsplayersdk.manifest.events.*;
+import com.kaltura.playersdk.QualityTrack;
 import com.kaltura.playersdk.events.*;
 
 public class VideoPlayerActivity extends ActionBarActivity implements OnTextTracksListListener, OnTextTrackChangeListener, 
-OnSubtitleTextListener, OnAudioTracksListListener, OnAudioTrackSwitchingListener  {
+OnTextTrackTextListener, OnAudioTracksListListener, OnAudioTrackSwitchingListener, 
+OnQualitySwitchingListener, OnQualityTracksListListener  {
 
 	PlayerViewController playerView = null;
 	final Context context = this;
@@ -29,6 +29,9 @@ OnSubtitleTextListener, OnAudioTracksListListener, OnAudioTrackSwitchingListener
 	
 	int numAltAudioTracks = 0;
 	int curAltAudioTrack = -1;
+	
+	int numQualityLevels = 0;
+	int curQualityLevel = 0;
 
     @SuppressWarnings("unused")
 	@Override
@@ -59,9 +62,11 @@ OnSubtitleTextListener, OnAudioTracksListListener, OnAudioTrackSwitchingListener
         	playerView.addComponents("", this);
         	playerView.registerTextTracksList(this);
         	playerView.registerTextTrackChanged(this);
-        	playerView.registerSubtitleTextListener(this);
+        	playerView.registerTextTrackText(this);
         	playerView.registerAudioTracksList(this);
         	playerView.registerAudioSwitchingChange(this);
+        	playerView.registerQualityTracksList(this);
+        	playerView.registerQualitySwitchingChange(this);
         }
         catch (Exception e)
         {
@@ -225,13 +230,11 @@ OnSubtitleTextListener, OnAudioTracksListListener, OnAudioTrackSwitchingListener
 	}
 
 	@Override
-	public void OnTextTracksList(List<String> list) {
-		Log.i("VideoPlayer.onSubtitlesAvailable", "Count = " + list.size());
-		//Log.i("VideoPlayer.onSubtitlesAvailable", "Default = " + defaultLanguage);
+	public void OnTextTracksList(List<String> list, int defaultTrackIndex) {
+		Log.i("VideoPlayer.OnTextTracksList", "Count = " + list.size());
+		Log.i("VideoPlayer.OnTextTracksList", "Default = " + defaultTrackIndex);
 		for (int i = 0; i < list.size(); ++i)
-			Log.i("VideoPlayer.onSubtitlesAvailable", "Language[" + i + "] = " + list.get(i));
-
-		//playerView.setActiveSubtitleLanguage(defaultLanguage);
+			Log.i("VideoPlayer.OnTextTracksList", "Language[" + i + "] = " + list.get(i));
 
 		
 	}
@@ -244,22 +247,49 @@ OnSubtitleTextListener, OnAudioTracksListListener, OnAudioTrackSwitchingListener
 
 	@Override
 	public void onAudioSwitchingStart(int oldTrackIndex, int newTrackIndex) {
-		// TODO Auto-generated method stub
-		
+		Log.i("VideoPlayer.onAudioSwitchingStart", "Quaity Changing from  " + oldTrackIndex + " to " + newTrackIndex);
 	}
 
 	@Override
 	public void onAudioSwitchingEnd(int newTrackIndex) {
 		curAltAudioTrack = newTrackIndex;
+		Log.i("VideoPlayer.onAudioSwitchingEnd", "Quaity Changed to " + newTrackIndex);
 		
 	}
 
 	@Override
-	public void OnAudioTracksList(List<String> list) {
+	public void OnAudioTracksList(List<String> list, int defaultTrackIndex) {
 		Log.i("VideoPlayer.onAlternateAudioAvailable", "Count = " + list.size());
+		Log.i("VideoPlayer.onAlternateAudioAvailable", "Default = " + defaultTrackIndex);
 		for (int i = 0; i < list.size(); ++i)
 			Log.i("VideoPlayer.onAlternateAudioAvailable", "Language[" + i + "] = " + list.get(i));
 
 		numAltAudioTracks = list.size();
+	}
+	
+	private void LogQualityTrack(QualityTrack track)
+	{
+		Log.i("QualityTrack", track.trackId + "|" + track.bitrate + "|" + track.height + "|" + track.width + "|" + track.type.toString() );
+	}
+
+	@Override
+	public void OnQualityTracksList(List<QualityTrack> list, int defaultTrackIndex) {
+		Log.i("VideoPlayer.onAlternateAudioAvailable", "Count = " + list.size());
+		Log.i("VideoPlayer.onAlternateAudioAvailable", "Default = " + defaultTrackIndex);
+		for (int i = 0; i < list.size(); ++i)
+			LogQualityTrack(list.get(i));
+	}
+
+	@Override
+	public void onQualitySwitchingStart(int oldTrackIndex, int newTrackIndex) {
+		Log.i("VideoPlayer.onQualitySwitchingStart", "Quaity Changing from  " + oldTrackIndex + " to " + newTrackIndex);
+		
+	}
+
+	@Override
+	public void onQualitySwitchingEnd(int newTrackIndex) {
+		curQualityLevel = newTrackIndex;
+		Log.i("VideoPlayer.onQualitySwitchingEnd", "Quaity Changed to " + newTrackIndex);
+		
 	}
 }
