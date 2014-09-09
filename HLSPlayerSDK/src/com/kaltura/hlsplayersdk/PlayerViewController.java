@@ -1,5 +1,6 @@
 package com.kaltura.hlsplayersdk;
 
+import java.util.ArrayList;
 import java.util.Vector;
 
 import android.app.Activity;
@@ -21,12 +22,19 @@ import com.kaltura.hlsplayersdk.events.OnProgressListener;
 import com.kaltura.hlsplayersdk.events.OnToggleFullScreenListener;
 import com.kaltura.hlsplayersdk.manifest.ManifestParser;
 import com.kaltura.hlsplayersdk.manifest.ManifestSegment;
-import com.kaltura.hlsplayersdk.manifest.events.OnAlternateAudioAvailableListener;
 import com.kaltura.hlsplayersdk.manifest.events.OnParseCompleteListener;
-import com.kaltura.hlsplayersdk.subtitles.OnSubtitleTextListener;
-import com.kaltura.hlsplayersdk.subtitles.OnSubtitlesAvailableListener;
 import com.kaltura.hlsplayersdk.subtitles.SubtitleHandler;
 import com.kaltura.hlsplayersdk.subtitles.TextTrackCue;
+import com.kaltura.playersdk.AlternateAudioTracksInterface;
+import com.kaltura.playersdk.QualityTracksInterface;
+import com.kaltura.playersdk.TextTracksInterface;
+import com.kaltura.playersdk.events.OnAudioTrackSwitchingListener;
+import com.kaltura.playersdk.events.OnAudioTracksListListener;
+import com.kaltura.playersdk.events.OnQualitySwitchingListener;
+import com.kaltura.playersdk.events.OnQualityTracksListListener;
+import com.kaltura.playersdk.events.OnTextTrackChangeListener;
+import com.kaltura.playersdk.events.OnTextTrackTextListener;
+import com.kaltura.playersdk.events.OnTextTracksListListener;
 
 /**
  * Main class for HLS video playback on the Java side.
@@ -36,8 +44,8 @@ import com.kaltura.hlsplayersdk.subtitles.TextTrackCue;
  * video playback!
  */
 public class PlayerViewController extends RelativeLayout implements
-		VideoPlayerInterface, URLLoader.DownloadEventListener,
-		OnParseCompleteListener {
+		VideoPlayerInterface, URLLoader.DownloadEventListener, OnParseCompleteListener, 
+		TextTracksInterface, AlternateAudioTracksInterface, QualityTracksInterface {
 
 	// State constants.
 	private final int STATE_STOPPED = 1;
@@ -169,6 +177,36 @@ public class PlayerViewController extends RelativeLayout implements
 			}
 			
 			currentController.requestLayout();
+		}
+	}
+	
+	/**
+	 *  Provides a method for the native code to notify us that a format change event has occurred
+	 */
+	public static void notifyAudioTrackChangeComplete(int audioTrack)
+	{
+		if (currentController != null)
+		{
+			if (currentController.mOnAudioTrackSwitchingListener != null)
+			{
+				currentController.mOnAudioTrackSwitchingListener.onAudioSwitchingEnd(audioTrack);
+			}
+				
+		}
+	}
+	
+	/**
+	 *  Provides a method for the native code to notify us that a format change event has occurred
+	 */
+	public static void notifyFormatChangeComplete(int qualityLevel)
+	{
+		if (currentController != null)
+		{
+			if (currentController.mOnQualitySwitchingListener != null)
+			{
+				currentController.mOnQualitySwitchingListener.onQualitySwitchingEnd(qualityLevel);
+			}
+				
 		}
 	}
 
@@ -307,37 +345,54 @@ public class PlayerViewController extends RelativeLayout implements
 		mSubtitleHandler = new SubtitleHandler(parser);
 		if (mSubtitleHandler.hasSubtitles())
 		{
-			if (mSubtitlesAvailableListener != null)
-			{
-				String[] languages = mSubtitleHandler.getLanguages();
-				mSubtitlesAvailableListener.onSubtitlesAvailable(languages, mSubtitleHandler.getDefaultLanguageIndex());
-			}
+			if (mOnTextTracksListListener != null)
+				mOnTextTracksListListener.OnTextTracksList(mSubtitleHandler.getLanguageList(), mSubtitleHandler.getDefaultLanguageIndex());
 			
-			mSubtitleHandler.precacheSegmentAtTime(0, mSubtitleHandler.getDefaultLanguageIndex());
+			mSubtitleLanguage = mSubtitleHandler.getDefaultLanguageIndex();
+			mSubtitleHandler.precacheSegmentAtTime(0, mSubtitleLanguage );
+			if (mOnTextTrackChangeListener != null)
+				mOnTextTrackChangeListener.onOnTextTrackChanged(mSubtitleLanguage);
+			
 					
 		}
 		else
 		{
 			mSubtitleHandler = null;
+			if (mOnTextTracksListListener != null)
+				mOnTextTracksListListener.OnTextTracksList(new ArrayList<String>(), -1);
+			
 		}
 		
 		if (mStreamHandler.hasAltAudio())
 		{
-			if (mAlternateAudioAvailableListener != null)
-			{
-				String[] languages = mStreamHandler.getAltAudioLanguages();
-				mAlternateAudioAvailableListener.onAlternateAudioAvailable(languages, mStreamHandler.getAltAudioDefaultIndex());
-			}
+			if (mOnAudioTracksListListener != null)
+				mOnAudioTracksListListener.OnAudioTracksList(mStreamHandler.getAltAudioLanguageList(), mStreamHandler.getAltAudioDefaultIndex());
 		}
+		else
+		{
+			if (mOnAudioTracksListListener != null)
+				mOnAudioTracksListListener.OnAudioTracksList(new ArrayList<String>(), -1);
+		}
+		
+		if (mOnQualityTracksListListener != null)
+		{
+			mOnQualityTracksListListener.OnQualityTracksList(mStreamHandler.getQualityTrackList(), 0);
+		}
+		
 		
 		ManifestSegment seg = getStreamHandler().getFileForTime(0, 0);
 		if (seg.altAudioSegment != null)
 		{
-			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.altAudioSegment.uri, seg.altAudioSegment.altAudioIndex, seg.startTime);
+			FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.altAudioSegment.uri, seg.altAudioSegment.altAudioIndex, seg.startTime);
+			if (mOnAudioTrackSwitchingListener != null)
+			{
+				mOnAudioTrackSwitchingListener.onAudioSwitchingStart(-1, seg.altAudioSegment.altAudioIndex);
+				mOnAudioTrackSwitchingListener.onAudioSwitchingEnd(seg.altAudioSegment.altAudioIndex);
+			}
 		}
 		else
 		{
-			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, null, -1, seg.startTime);
+			FeedSegment(seg.uri, seg.quality, seg.continuityEra, null, -1, seg.startTime);
 		}
 
 		play();
@@ -395,20 +450,12 @@ public class PlayerViewController extends RelativeLayout implements
 
 	public void incrementQuality()
 	{
-		if (mStreamHandler != null)
-		{
-			int ql = mStreamHandler.getQualityLevels();
-			if (mQualityLevel < ql -1)
-			{
-				++mQualityLevel;
-			}
-		}
+		switchQualityTrack(mQualityLevel + 1); 
 	}
 	
 	public void decrementQuality()
 	{
-		if (mQualityLevel > 0)
-			--mQualityLevel;
+		switchQualityTrack(mQualityLevel - 1); 
 	}
 
 	// /////////////////////////////////////////////////////////////////////////////////////////////
@@ -520,43 +567,110 @@ public class PlayerViewController extends RelativeLayout implements
 	//////////////////////////////////////////////////////////
 	// Subtitle interface
 	//////////////////////////////////////////////////////////
-	private OnSubtitlesAvailableListener mSubtitlesAvailableListener = null;
-	public void registerSubtitlesAvailable(OnSubtitlesAvailableListener listener)
-	{
-		mSubtitlesAvailableListener = listener;
-	}
+	private OnTextTracksListListener mOnTextTracksListListener = null;
+	private OnTextTrackChangeListener mOnTextTrackChangeListener = null;
 	
-	private OnSubtitleTextListener mSubtitleTextListener = null;
-	public void registerSubtitleTextListener(OnSubtitleTextListener listener)
+	private OnTextTrackTextListener mSubtitleTextListener = null;
+	public void registerTextTrackText(OnTextTrackTextListener listener)
 	{
 		mSubtitleTextListener = listener;
 	}
 	
-	public void setActiveSubtitleLanguage(int index)
-	{
-		if (mSubtitleHandler != null && index < mSubtitleHandler.getLanguageCount())
+	@Override
+	public void switchTextTrack(int newIndex) {
+		if (mSubtitleHandler != null && newIndex < mSubtitleHandler.getLanguageCount())
 		{
-			mSubtitleLanguage = index;
+			mSubtitleLanguage = newIndex;
+			if (mOnTextTrackChangeListener != null)
+				mOnTextTrackChangeListener.onOnTextTrackChanged(mSubtitleLanguage);
+		}
+		
+	}
+	@Override
+	public void registerTextTracksList(OnTextTracksListListener listener) {
+		mOnTextTracksListListener = listener;		
+	}
+	@Override
+	public void registerTextTrackChanged(OnTextTrackChangeListener listener) {
+		mOnTextTrackChangeListener = listener;
+		
+	}
+	
+	//////////////////////////////////////////////////////////
+	// Alternate Audio interface
+	//////////////////////////////////////////////////////////
+
+	@Override
+	public void hardSwitchAudioTrack(int newAudioIndex) {
+		// TODO Auto-generated method stub
+		
+	}
+	
+	@Override
+	public void softSwitchAudioTrack(int newAudioIndex) {
+		
+		if (mOnAudioTrackSwitchingListener != null)
+			mOnAudioTrackSwitchingListener.onAudioSwitchingStart( getStreamHandler().getAltAudioCurrentIndex(), newAudioIndex);
+		
+		boolean success = getStreamHandler().setAltAudioTrack(newAudioIndex); 
+
+		if (!success && mOnAudioTrackSwitchingListener != null)
+			mOnAudioTrackSwitchingListener.onAudioSwitchingEnd( getStreamHandler().getAltAudioCurrentIndex());
+	}
+	
+	private OnAudioTracksListListener mOnAudioTracksListListener = null;
+	@Override
+	public void registerAudioTracksList(OnAudioTracksListListener listener) {
+		mOnAudioTracksListListener = listener;
+	}
+	
+	private OnAudioTrackSwitchingListener mOnAudioTrackSwitchingListener = null;
+	@Override
+	public void registerAudioSwitchingChange( OnAudioTrackSwitchingListener listener) {
+		mOnAudioTrackSwitchingListener = listener;
+		
+	}
+
+	//////////////////////////////////////////////////////////
+	// Quality Change interface
+	//////////////////////////////////////////////////////////
+
+	@Override
+	public void switchQualityTrack(int newIndex) {
+		if (mStreamHandler != null)
+		{
+			int ql = mStreamHandler.getQualityLevels();
+			if (newIndex >= 0 && newIndex < ql -1)
+			{
+				if (mOnQualitySwitchingListener != null)
+					mOnQualitySwitchingListener.onQualitySwitchingStart(mQualityLevel, newIndex);
+				mQualityLevel = newIndex;
+			}
+			else
+			{
+				if (mOnQualitySwitchingListener != null)
+					mOnQualitySwitchingListener.onQualitySwitchingEnd(mQualityLevel);
+			}
 		}
 	}
-	
-	//////////////////////////////////////////////////////////
-	// Subtitle interface
-	//////////////////////////////////////////////////////////
-	private OnAlternateAudioAvailableListener mAlternateAudioAvailableListener = null;
-	public void registerAlternateAudioAvailable(OnAlternateAudioAvailableListener listener)
-	{
-		mAlternateAudioAvailableListener = listener;
+	@Override
+	public void setAutoSwitch(boolean autoSwitch) {
+		// TODO Auto-generated method stub
+		
 	}
 	
-	public void setActiveAlternateAudioLanguage(int index)
-	{
-		currentController.getStreamHandler().setAltAudioTrack(index);
+	private OnQualityTracksListListener mOnQualityTracksListListener = null;
+	@Override
+	public void registerQualityTracksList(OnQualityTracksListListener listener) {
+		mOnQualityTracksListListener = listener;
 	}
 	
-	public int getActiveAlternateAudioIndex()
-	{
-		return currentController.getStreamHandler().getAltAudioCurrentIndex();
+	private OnQualitySwitchingListener mOnQualitySwitchingListener = null;
+	@Override
+	public void registerQualitySwitchingChange( OnQualitySwitchingListener listener) {
+		mOnQualitySwitchingListener = listener;		
 	}
+
+
 	
 }

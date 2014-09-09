@@ -1875,6 +1875,16 @@ namespace android_video_shim
         	LOGI("Quality = %d | Continuity Era = %d | Time = %f | First URI = %s ", mQuality, mContinuityEra, mStartTime, *mSources.begin()  );
         }
 
+        int getQualityLevel()
+        {
+        	return mQuality;
+        }
+
+        int getContinuityEra()
+        {
+        	return mContinuityEra;
+        }
+
         double getStartTime()
         {
         	return mStartTime;

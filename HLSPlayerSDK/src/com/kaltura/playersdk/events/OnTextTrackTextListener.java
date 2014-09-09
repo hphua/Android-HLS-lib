@@ -1,4 +1,4 @@
-package com.kaltura.hlsplayersdk.subtitles;
+package com.kaltura.playersdk.events;
 
 /*
  * This event is fired once when there is a line of text available.
@@ -6,9 +6,8 @@ package com.kaltura.hlsplayersdk.subtitles;
  * The start time and length is in seconds, and the buffer contains
  * the text to be displayed.
  * 
- * Register your handler by calling PlayerViewController.registerSubtitleTextListener()
  */
 
-public interface OnSubtitleTextListener {
+public interface OnTextTrackTextListener {
 	void onSubtitleText(double startTime, double length, String buffer);
 }

@@ -65,7 +65,8 @@ mAudioTrack(NULL), mVideoTrack(NULL), mJvm(jvm), mPlayerViewClass(NULL),
 mNextSegmentMethodID(NULL), mSetVideoResolutionID(NULL), mEnableHWRendererModeID(NULL), 
 mSegmentTimeOffset(0), mVideoFrameDelta(0), mLastVideoTimeUs(0),
 mSegmentForTimeMethodID(NULL), mFrameCount(0), mDataSource(NULL), audioThread(0),
-mScreenHeight(0), mScreenWidth(0), mJAudioTrack(NULL), mStartTimeMS(0), mUseOMXRenderer(true)
+mScreenHeight(0), mScreenWidth(0), mJAudioTrack(NULL), mStartTimeMS(0), mUseOMXRenderer(true),
+mNotifyFormatChangeComplete(NULL), mNotifyAudioTrackChangeComplete(NULL)
 {
 	status_t status = mClient.connect();
 	LOGI("OMXClient::Connect return %d", status);
@@ -960,7 +961,7 @@ int HLSPlayer::Update()
 				{
 					++mRenderedFrameCount;
 					rval = mRenderedFrameCount;
-					LOGI("mRenderedFrameCount = %d", mRenderedFrameCount);
+					LOGV("mRenderedFrameCount = %d", mRenderedFrameCount);
 				}
 				else
 				{
@@ -1413,6 +1414,12 @@ void HLSPlayer::ApplyFormatChange()
 
 	SetState(FORMAT_CHANGING); // may need to add a different state, but for now...
 	StopEverything();
+
+	// Retrieve the current quality markers
+	int curQuality = mDataSource->getQualityLevel();
+	int curAudioTrack = -1;
+	if (mAlternateAudioDataSource.get()) curAudioTrack = mAlternateAudioDataSource->getQualityLevel();
+
 	if (mDataSourceCache.size() > 0)
 	{
 		mDataSource.clear();
@@ -1423,6 +1430,11 @@ void HLSPlayer::ApplyFormatChange()
 	}
 
 	mDataSource->logContinuityInfo();
+
+	// Retrieve the new quality markers
+	int newQuality = mDataSource->getQualityLevel();
+	int newAudioTrack = -1;
+	if (mAlternateAudioDataSource.get()) newAudioTrack = mAlternateAudioDataSource->getQualityLevel();
 
 	mStartTimeMS = (mDataSource->getStartTime() * 1000);
 
@@ -1456,6 +1468,76 @@ void HLSPlayer::ApplyFormatChange()
 	{
 		mJAudioTrack->Start();
 	}
+
+	NotifyFormatChange(curQuality, newQuality, curAudioTrack, newAudioTrack);
+
+
+}
+
+void HLSPlayer::NotifyFormatChange(int curQuality, int newQuality, int curAudio, int newAudio)
+{
+	if (curQuality == newQuality && curAudio == newAudio) return; // Nothing to notify
+
+	AutoLock locker(&lock);
+
+		JNIEnv* env = NULL;
+		if (gHLSPlayerSDK) gHLSPlayerSDK->GetEnv(&env);
+		else return;
+
+		if (mPlayerViewClass == NULL)
+		{
+			jclass c = env->FindClass("com/kaltura/hlsplayersdk/PlayerViewController");
+			if ( env->ExceptionCheck() || c == NULL) {
+				LOGI("Could not find class com/kaltura/hlsplayersdk/PlayerViewController" );
+				mPlayerViewClass = NULL;
+				return;
+			}
+
+			mPlayerViewClass = (jclass)env->NewGlobalRef((jobject)c);
+		}
+
+		if (curQuality != newQuality)
+		{
+			if (mNotifyFormatChangeComplete == NULL)
+			{
+				mNotifyFormatChangeComplete = env->GetStaticMethodID(mPlayerViewClass, "notifyFormatChangeComplete", "(I)V");
+				if (env->ExceptionCheck())
+				{
+					mNotifyFormatChangeComplete = NULL;
+					LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerViewController.notifyFormatChangeComplete()");
+					return;
+				}
+			}
+
+			env->CallStaticVoidMethod(mPlayerViewClass, mNotifyFormatChangeComplete, newQuality);
+			if (env->ExceptionCheck())
+			{
+				env->ExceptionDescribe();
+				LOGI("Call to method com/kaltura/hlsplayersdk/PlayerView.notifyFormatChangeComplete() FAILED" );
+			}
+		}
+
+		if (curAudio != newAudio)
+		{
+			if (mNotifyAudioTrackChangeComplete == NULL)
+			{
+				mNotifyAudioTrackChangeComplete = env->GetStaticMethodID(mPlayerViewClass, "notifyAudioTrackChangeComplete", "(I)V");
+				if (env->ExceptionCheck())
+				{
+					mNotifyAudioTrackChangeComplete = NULL;
+					LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerViewController.notifyAudioTrackChangeComplete()");
+					return;
+				}
+			}
+
+			env->CallStaticVoidMethod(mPlayerViewClass, mNotifyAudioTrackChangeComplete, newAudio);
+			if (env->ExceptionCheck())
+			{
+				env->ExceptionDescribe();
+				LOGI("Call to method com/kaltura/hlsplayersdk/PlayerView.notifyAudioTrackChangeComplete() FAILED" );
+			}
+		}
+
 }
 
 void HLSPlayer::Seek(double time)

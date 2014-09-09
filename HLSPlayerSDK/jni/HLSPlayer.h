@@ -69,6 +69,7 @@ private:
 	double RequestSegmentForTime(double time);
 	void NoteVideoDimensions();
 	void NoteHWRendererMode(bool enabled, int w, int h, int colf);
+	void NotifyFormatChange(int curQuality, int newQuality, int curAudio, int newAudio);
 
 
 
@@ -96,6 +97,8 @@ private:
 	jmethodID mSegmentForTimeMethodID;
 	jmethodID mSetVideoResolutionID;
 	jmethodID mEnableHWRendererModeID;
+	jmethodID mNotifyFormatChangeComplete;
+	jmethodID mNotifyAudioTrackChangeComplete;
 	jclass mPlayerViewClass;
 
 	jobject mSurface;
