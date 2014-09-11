@@ -68,7 +68,8 @@ namespace android_video_shim
                 return r;
         }
 
-        if(strErr) LOGI("   - dlerror %s for %s", strErr, symName);
+        if(strErr) LOGSYMBOLERROR("   - dlerror %s for %s", strErr, symName);
+
         return NULL;
     }
 

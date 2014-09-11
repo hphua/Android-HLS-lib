@@ -10,6 +10,7 @@
 #include "constants.h"
 #include <android/log.h>
 #include <android/native_window_jni.h>
+#include <unistd.h>
 
 #include "stlhelpers.h"
 #include "HLSSegment.h"
@@ -281,6 +282,7 @@ status_t HLSPlayer::FeedSegment(const char* path, int32_t quality, int continuit
 
 	if (mDataSource == NULL)
 	{
+		LOGI("Creating New Datasource");
 		mDataSource = MakeHLSDataSource();
 		if (!mDataSource.get())
 			return NO_MEMORY;
@@ -426,7 +428,7 @@ bool HLSPlayer::InitTracks()
 	for (size_t i = 0; i < mExtractor->countTracks(); ++i)
 	{
 		sp<MetaData> meta = mExtractor->getTrackMetaData(i);
-		meta->dumpToLog();
+		RUNDEBUG(meta->dumpToLog());
 
 		const char* cmime;
 		if (meta->findCString(kKeyMIMEType, &cmime))
@@ -490,7 +492,7 @@ bool HLSPlayer::InitTracks()
 			for (size_t i = 0; i < mAlternateAudioExtractor->countTracks(); ++i)
 			{
 				sp<MetaData> meta = mAlternateAudioExtractor->getTrackMetaData(i);
-				meta->dumpToLog();
+				RUNDEBUG(meta->dumpToLog());
 
 				// Filter for audio mime types.
 				const char* cmime;
@@ -705,7 +707,7 @@ bool HLSPlayer::InitSources()
 		return false;
 	}
 
-	audioFormat->dumpToLog();
+	RUNDEBUG(audioFormat->dumpToLog());
 
 	if(AVSHIM_USE_NEWMEDIASOURCE)
 		mAudioSource = OMXCodec::Create(iomx, audioFormat, false, mAudioTrack, NULL, 0);
@@ -942,13 +944,14 @@ int HLSPlayer::Update(bool seeking)
 			mLastVideoTimeUs = timeUs;
 			if (delta < -10000) // video is running ahead
 			{
-				//LOGI("Video is running ahead - waiting til next time");
-				sched_yield();
+				LOGI("Video is running ahead - waiting til next time : detla = %lld", delta);
+				//sched_yield();
+				usleep(-1 * delta);
 				break; // skip out - don't render it yet
 			}
 			else if (delta > 40000) // video is running behind
 			{
-				//LOGI("Video is running behind - skipping frame");
+				LOGI("Video is running behind - skipping frame : detla = %lld", delta);
 				// Do we need to catch up?
 				mVideoBuffer->release();
 				mVideoBuffer = NULL;
@@ -1552,9 +1555,25 @@ void HLSPlayer::Seek(double time)
 	SetState(SEEKING);
 
 	StopEverything();
-	mDataSource->clearSources();
 
+	// Retrieve the current quality markers
+	int curQuality = mDataSource->getQualityLevel();
+	int curAudioTrack = -1;
+	if (mAlternateAudioDataSource.get()) curAudioTrack = mAlternateAudioDataSource->getQualityLevel();
+
+	mDataSource.clear();
+	mAlternateAudioDataSource.clear();
+	mDataSourceCache.clear();
+
+	// Need to request new segment because we killed all the data sources
 	double segTime = RequestSegmentForTime(time);
+
+	mDataSource->logContinuityInfo();
+
+	// Retrieve the new quality markers
+	int newQuality = mDataSource->getQualityLevel();
+	int newAudioTrack = -1;
+	if (mAlternateAudioDataSource.get()) newAudioTrack = mAlternateAudioDataSource->getQualityLevel();
 
 	mStartTimeMS = (mDataSource->getStartTime() * 1000);
 
@@ -1596,8 +1615,11 @@ void HLSPlayer::Seek(double time)
 	SetState(PLAYING);
 	if (mJAudioTrack)
 	{
-		mJAudioTrack->Play();
+		mJAudioTrack->Start();
 	}
+
+	NotifyFormatChange(curQuality, newQuality, curAudioTrack, newAudioTrack);
+
 }
 
 void HLSPlayer::ReadUntilTime(double timeSecs)

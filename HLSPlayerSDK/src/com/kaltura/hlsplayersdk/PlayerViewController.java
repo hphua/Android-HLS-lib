@@ -103,6 +103,7 @@ public class PlayerViewController extends RelativeLayout implements
 	 * @return Offset into the segment to get to exactly the requested time.
 	 */
 	public static double requestSegmentForTime(double time) {
+		Log.i("PlayerViewController.requestSegmentForTime", "Requested Segment Time: " + time);
 		if(currentController == null)
 			return 0;
 		
