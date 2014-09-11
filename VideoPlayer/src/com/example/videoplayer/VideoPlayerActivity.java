@@ -145,6 +145,12 @@ OnQualitySwitchingListener, OnQualityTracksListListener  {
         	playerView.setVideoUrl(lastUrl);
         	return true;
         }
+        else if (id == R.id.bipbop)
+        {
+        	lastUrl = "http://devimages.apple.com/iphone/samples/bipbop/bipbopall.m3u8";
+        	playerView.setVideoUrl(lastUrl);
+        	return true;
+        }
         else if (id == R.id.seekFwd)
         {
         	playerView.seek(15000);

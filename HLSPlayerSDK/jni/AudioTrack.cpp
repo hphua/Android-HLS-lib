@@ -395,6 +395,55 @@ int64_t AudioTrack::GetTimeStamp()
 	return ((secs + mTimeStampOffset) * 1000000);
 }
 
+void AudioTrack::ReadUntilTime(double timeSecs)
+{
+	status_t res;
+	MediaBuffer* mediaBuffer = NULL;
+
+	int64_t targetTimeUs = (int64_t)(timeSecs * 1000000.0f);
+	int64_t timeUs = 0;
+
+	LOGI("Starting read to %f seconds: targetTimeUs = %lld", timeSecs, targetTimeUs);
+	while (timeUs < targetTimeUs)
+	{
+		if(mAudioSource.get())
+			res = mAudioSource->read(&mediaBuffer, NULL);
+
+		if(mAudioSource23.get())
+			res = mAudioSource23->read(&mediaBuffer, NULL);
+
+
+		if (res == OK)
+		{
+			bool rval = mediaBuffer->meta_data()->findInt64(kKeyTime, &timeUs);
+			if (!rval)
+			{
+				LOGI("Frame did not have time value: STOPPING");
+				timeUs = 0;
+			}
+
+			//LOGI("Finished reading from the media buffer");
+			RUNDEBUG(mediaBuffer->meta_data()->dumpToLog());
+			LOGI("key time = %lld | target time = %lld", timeUs, targetTimeUs);
+		}
+		else if (res == INFO_FORMAT_CHANGED)
+		{
+		}
+		else if (res == ERROR_END_OF_STREAM)
+		{
+			LOGE("End of Audio Stream");
+			return;
+		}
+
+		if (mediaBuffer != NULL)
+		{
+			mediaBuffer->release();
+			mediaBuffer = NULL;
+		}
+	}
+
+	mTimeStampOffset = ((double)timeUs / 1000000.0f);
+}
 
 int AudioTrack::Update()
 {
