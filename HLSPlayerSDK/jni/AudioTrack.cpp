@@ -424,7 +424,7 @@ void AudioTrack::ReadUntilTime(double timeSecs)
 
 			//LOGI("Finished reading from the media buffer");
 			RUNDEBUG(mediaBuffer->meta_data()->dumpToLog());
-			LOGI("key time = %lld | target time = %lld", timeUs, targetTimeUs);
+			LOGTIMING("key time = %lld | target time = %lld", timeUs, targetTimeUs);
 		}
 		else if (res == INFO_FORMAT_CHANGED)
 		{

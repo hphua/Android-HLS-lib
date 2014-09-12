@@ -22,7 +22,7 @@
 //#define _DATA_MINING
 //#define _DEBUG_SCREENINFO
 //#define _SYMBOL_ERRORS
-#define _TIMING
+//#define _TIMING
 
 
 //#define _VERBOSE
