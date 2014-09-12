@@ -37,7 +37,7 @@ public:
 
 	bool Play();
 	void Stop();
-	int Update();
+	int Update(bool seeking = false);
 
 	void Seek(double time);
 
@@ -53,6 +53,7 @@ public:
 	void ApplyFormatChange();
 	void SetState(int status);
 
+	void ReadUntilTime(double timeSecs);
 private:
 	void SetNativeWindow(ANativeWindow* window);
 	bool InitAudio();
@@ -129,6 +130,10 @@ private:
 	// The object that pulls the initial data stream apart into separate audio and video sources
 	android_video_shim::sp<android_video_shim::MediaExtractor> mExtractor;
 	android_video_shim::sp<android_video_shim::MediaExtractor> mAlternateAudioExtractor;
+
+	// Read Options
+	android_video_shim::MediaSource::ReadOptions mOptions;
+	android_video_shim::MediaSource23::ReadOptions mOptions23;
 
 	AudioTrack *mJAudioTrack;
 

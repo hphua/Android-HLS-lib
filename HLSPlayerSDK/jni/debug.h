@@ -21,6 +21,9 @@
 
 //#define _DATA_MINING
 //#define _DEBUG_SCREENINFO
+//#define _SYMBOL_ERRORS
+#define _TIMING
+
 
 //#define _VERBOSE
 #ifdef _DEBUG_E
@@ -65,6 +68,17 @@
 #define LOGDATAMINING(...)
 #endif
 
+#ifdef _SYMBOL_ERRORS
+#define LOGSYMBOLERROR(...) __android_log_print(ANDROID_LOG_VERBOSE, __func__, __VA_ARGS__)
+#else
+#define LOGSYMBOLERROR(...)
+#endif
+
+#ifdef _TIMING
+#define LOGTIMING(...) __android_log_print(ANDROID_LOG_INFO, __func__, __VA_ARGS__)
+#else
+#define LOGTIMING(...)
+#endif
 
 #ifdef _DEBUG_RUN
 #define RUNDEBUG(x)  (x)

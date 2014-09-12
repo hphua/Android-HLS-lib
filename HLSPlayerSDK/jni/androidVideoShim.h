@@ -1110,7 +1110,7 @@ namespace android_video_shim
             void setLateBy(int64_t lateness_us);
             int64_t getLateBy() const;
 
-        private:
+        public:
             enum Options {
                 kSeekTo_Option      = 1,
             };
@@ -1266,7 +1266,7 @@ namespace android_video_shim
             void setLateBy(int64_t lateness_us);
             int64_t getLateBy() const;
 
-        private:
+        public:
             enum Options {
                 kSeekTo_Option      = 1,
             };

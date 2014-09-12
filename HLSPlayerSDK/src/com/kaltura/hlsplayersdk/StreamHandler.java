@@ -517,7 +517,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 		{
 			ManifestSegment curSegment = segments.get(i);
 			
-			if (curSegment.duration >= time - accum)
+			if (curSegment.duration > time - accum)
 			{
 				lastSegmentIndex = i;
 				ManifestSegment seg = segments.get(lastSegmentIndex);

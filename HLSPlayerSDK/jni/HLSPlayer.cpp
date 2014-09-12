@@ -10,6 +10,7 @@
 #include "constants.h"
 #include <android/log.h>
 #include <android/native_window_jni.h>
+#include <unistd.h>
 
 #include "stlhelpers.h"
 #include "HLSSegment.h"
@@ -281,6 +282,7 @@ status_t HLSPlayer::FeedSegment(const char* path, int32_t quality, int continuit
 
 	if (mDataSource == NULL)
 	{
+		LOGI("Creating New Datasource");
 		mDataSource = MakeHLSDataSource();
 		if (!mDataSource.get())
 			return NO_MEMORY;
@@ -426,7 +428,7 @@ bool HLSPlayer::InitTracks()
 	for (size_t i = 0; i < mExtractor->countTracks(); ++i)
 	{
 		sp<MetaData> meta = mExtractor->getTrackMetaData(i);
-		meta->dumpToLog();
+		RUNDEBUG(meta->dumpToLog());
 
 		const char* cmime;
 		if (meta->findCString(kKeyMIMEType, &cmime))
@@ -490,7 +492,7 @@ bool HLSPlayer::InitTracks()
 			for (size_t i = 0; i < mAlternateAudioExtractor->countTracks(); ++i)
 			{
 				sp<MetaData> meta = mAlternateAudioExtractor->getTrackMetaData(i);
-				meta->dumpToLog();
+				RUNDEBUG(meta->dumpToLog());
 
 				// Filter for audio mime types.
 				const char* cmime;
@@ -705,7 +707,7 @@ bool HLSPlayer::InitSources()
 		return false;
 	}
 
-	audioFormat->dumpToLog();
+	RUNDEBUG(audioFormat->dumpToLog());
 
 	if(AVSHIM_USE_NEWMEDIASOURCE)
 		mAudioSource = OMXCodec::Create(iomx, audioFormat, false, mAudioTrack, NULL, 0);
@@ -777,7 +779,7 @@ bool HLSPlayer::Play()
 }
 
 
-int HLSPlayer::Update()
+int HLSPlayer::Update(bool seeking)
 {
 	AutoLock locker(&lock);
 
@@ -796,6 +798,8 @@ int HLSPlayer::Update()
 		else
 		{
 			LOGI("Found Discontinuity: Out Of Sources!");
+			SetState(STOPPED);
+			return -1;
 		}
 	}
 
@@ -813,12 +817,8 @@ int HLSPlayer::Update()
 		{
 			return 0; // keep going!
 		}
-		SetState(PLAYING);
-		if (mJAudioTrack)
-			mJAudioTrack->Play();
 	}
-	
-	if (GetState() != PLAYING)
+	else if (GetState() != PLAYING)
 	{
 		LogState();
 		return -1;
@@ -849,8 +849,7 @@ int HLSPlayer::Update()
 		}
 	}
 
-	MediaSource::ReadOptions options;
-	MediaSource23::ReadOptions options23;
+
 	bool rval = -1;
 	for (;;)
 	{
@@ -861,9 +860,9 @@ int HLSPlayer::Update()
 		{
 			//LOGI("Reading video buffer");
 			if(mVideoSource.get())
-				err = mVideoSource->read(&mVideoBuffer, &options);
+				err = mVideoSource->read(&mVideoBuffer, &mOptions);
 			if(mVideoSource23.get())
-				err = mVideoSource23->read(&mVideoBuffer, &options23);
+				err = mVideoSource23->read(&mVideoBuffer, &mOptions23);
 
 			if (err == OK && mVideoBuffer->range_length() != 0) ++mFrameCount;
 		}
@@ -941,13 +940,14 @@ int HLSPlayer::Update()
 			mLastVideoTimeUs = timeUs;
 			if (delta < -10000) // video is running ahead
 			{
-				//LOGI("Video is running ahead - waiting til next time");
-				sched_yield();
+				LOGTIMING("Video is running ahead - waiting til next time : detla = %lld", delta);
+				//sched_yield();
+				usleep(-10000 - delta);
 				break; // skip out - don't render it yet
 			}
 			else if (delta > 40000) // video is running behind
 			{
-				LOGI("Video is running behind - skipping frame");
+				LOGTIMING("Video is running behind - skipping frame : delta = %lld", delta);
 				// Do we need to catch up?
 				mVideoBuffer->release();
 				mVideoBuffer = NULL;
@@ -955,6 +955,7 @@ int HLSPlayer::Update()
 			}
 			else
 			{
+				LOGTIMING("audioTime = %lld | videoTime = %lld | diff = %lld | mVideoFrameDelta = %lld", audioTime, timeUs, audioTime - timeUs, mVideoFrameDelta);
 
 				// We appear to have a valid buffer?! and we're in time!
 				if (RenderBuffer(mVideoBuffer))
@@ -1480,63 +1481,63 @@ void HLSPlayer::NotifyFormatChange(int curQuality, int newQuality, int curAudio,
 
 	AutoLock locker(&lock);
 
-		JNIEnv* env = NULL;
-		if (gHLSPlayerSDK) gHLSPlayerSDK->GetEnv(&env);
-		else return;
+	JNIEnv* env = NULL;
+	if (!gHLSPlayerSDK) return;
+	gHLSPlayerSDK->GetEnv(&env);
 
-		if (mPlayerViewClass == NULL)
+	if (mPlayerViewClass == NULL)
+	{
+		jclass c = env->FindClass("com/kaltura/hlsplayersdk/PlayerViewController");
+		if ( env->ExceptionCheck() || c == NULL) {
+			LOGI("Could not find class com/kaltura/hlsplayersdk/PlayerViewController" );
+			mPlayerViewClass = NULL;
+			return;
+		}
+
+		mPlayerViewClass = (jclass)env->NewGlobalRef((jobject)c);
+	}
+
+	if (curQuality != newQuality)
+	{
+		if (mNotifyFormatChangeComplete == NULL)
 		{
-			jclass c = env->FindClass("com/kaltura/hlsplayersdk/PlayerViewController");
-			if ( env->ExceptionCheck() || c == NULL) {
-				LOGI("Could not find class com/kaltura/hlsplayersdk/PlayerViewController" );
-				mPlayerViewClass = NULL;
+			mNotifyFormatChangeComplete = env->GetStaticMethodID(mPlayerViewClass, "notifyFormatChangeComplete", "(I)V");
+			if (env->ExceptionCheck())
+			{
+				mNotifyFormatChangeComplete = NULL;
+				LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerViewController.notifyFormatChangeComplete()");
 				return;
 			}
-
-			mPlayerViewClass = (jclass)env->NewGlobalRef((jobject)c);
 		}
 
-		if (curQuality != newQuality)
+		env->CallStaticVoidMethod(mPlayerViewClass, mNotifyFormatChangeComplete, newQuality);
+		if (env->ExceptionCheck())
 		{
-			if (mNotifyFormatChangeComplete == NULL)
-			{
-				mNotifyFormatChangeComplete = env->GetStaticMethodID(mPlayerViewClass, "notifyFormatChangeComplete", "(I)V");
-				if (env->ExceptionCheck())
-				{
-					mNotifyFormatChangeComplete = NULL;
-					LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerViewController.notifyFormatChangeComplete()");
-					return;
-				}
-			}
+			env->ExceptionDescribe();
+			LOGI("Call to method com/kaltura/hlsplayersdk/PlayerView.notifyFormatChangeComplete() FAILED" );
+		}
+	}
 
-			env->CallStaticVoidMethod(mPlayerViewClass, mNotifyFormatChangeComplete, newQuality);
+	if (curAudio != newAudio)
+	{
+		if (mNotifyAudioTrackChangeComplete == NULL)
+		{
+			mNotifyAudioTrackChangeComplete = env->GetStaticMethodID(mPlayerViewClass, "notifyAudioTrackChangeComplete", "(I)V");
 			if (env->ExceptionCheck())
 			{
-				env->ExceptionDescribe();
-				LOGI("Call to method com/kaltura/hlsplayersdk/PlayerView.notifyFormatChangeComplete() FAILED" );
+				mNotifyAudioTrackChangeComplete = NULL;
+				LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerViewController.notifyAudioTrackChangeComplete()");
+				return;
 			}
 		}
 
-		if (curAudio != newAudio)
+		env->CallStaticVoidMethod(mPlayerViewClass, mNotifyAudioTrackChangeComplete, newAudio);
+		if (env->ExceptionCheck())
 		{
-			if (mNotifyAudioTrackChangeComplete == NULL)
-			{
-				mNotifyAudioTrackChangeComplete = env->GetStaticMethodID(mPlayerViewClass, "notifyAudioTrackChangeComplete", "(I)V");
-				if (env->ExceptionCheck())
-				{
-					mNotifyAudioTrackChangeComplete = NULL;
-					LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerViewController.notifyAudioTrackChangeComplete()");
-					return;
-				}
-			}
-
-			env->CallStaticVoidMethod(mPlayerViewClass, mNotifyAudioTrackChangeComplete, newAudio);
-			if (env->ExceptionCheck())
-			{
-				env->ExceptionDescribe();
-				LOGI("Call to method com/kaltura/hlsplayersdk/PlayerView.notifyAudioTrackChangeComplete() FAILED" );
-			}
+			env->ExceptionDescribe();
+			LOGI("Call to method com/kaltura/hlsplayersdk/PlayerView.notifyAudioTrackChangeComplete() FAILED" );
 		}
+	}
 
 }
 
@@ -1544,18 +1545,35 @@ void HLSPlayer::Seek(double time)
 {
 	AutoLock locker(&lock);
 
+	LOGI("Seeking To: %f", time);
 	if (time < 0) time = 0;
 
 	SetState(SEEKING);
 
 	StopEverything();
-	mDataSource->clearSources();
 
+	// Retrieve the current quality markers
+	int curQuality = mDataSource->getQualityLevel();
+	int curAudioTrack = -1;
+	if (mAlternateAudioDataSource.get()) curAudioTrack = mAlternateAudioDataSource->getQualityLevel();
+
+	mDataSource.clear();
+	mAlternateAudioDataSource.clear();
+	mDataSourceCache.clear();
+
+	// Need to request new segment because we killed all the data sources
 	double segTime = RequestSegmentForTime(time);
 
-	mStartTimeMS = (segTime * 1000);
+	mDataSource->logContinuityInfo();
 
-	LOGI("Segment Start Time = %f", segTime);
+	// Retrieve the new quality markers
+	int newQuality = mDataSource->getQualityLevel();
+	int newAudioTrack = -1;
+	if (mAlternateAudioDataSource.get()) newAudioTrack = mAlternateAudioDataSource->getQualityLevel();
+
+	mStartTimeMS = (mDataSource->getStartTime() * 1000);
+
+	LOGI("Seeking To: %f | Segment Start Time = %f", time, segTime);
 
 	int segCount = ((HLSDataSource*) mDataSource.get())->getPreloadedSegmentCount();
 	if (!InitSources())
@@ -1581,10 +1599,72 @@ void HLSPlayer::Seek(double time)
 	{
 		LOGI("Video Track failed to start: %s : %d", strerror(-err), __LINE__);
 	}
+
+	ReadUntilTime(time - segTime);
+
+	if (mJAudioTrack)
+	{
+		mJAudioTrack->ReadUntilTime(time - segTime);
+	}
+
 	LOGI("Segment Count %d", segCount);
 	SetState(PLAYING);
 	if (mJAudioTrack)
 	{
-		mJAudioTrack->Play();
+		// Call Start instead of Play, in order to ensure that the internal time values are correctly starting from zero.
+		mJAudioTrack->Start();
 	}
+
+	NotifyFormatChange(curQuality, newQuality, curAudioTrack, newAudioTrack);
+
+}
+
+void HLSPlayer::ReadUntilTime(double timeSecs)
+{
+	status_t res = ERROR_END_OF_STREAM;
+	MediaBuffer* mediaBuffer = NULL;
+
+	int64_t targetTimeUs = (int64_t)(timeSecs * 1000000.0f);
+	int64_t timeUs = 0;
+
+	LOGI("Starting read to %f seconds: targetTimeUs = %lld", timeSecs, targetTimeUs);
+	while (timeUs < targetTimeUs)
+	{
+		if(mVideoSource.get())
+			res = mVideoSource->read(&mediaBuffer, NULL);
+
+		if(mVideoSource23.get())
+			res = mVideoSource23->read(&mediaBuffer, NULL);
+
+
+		if (res == OK)
+		{
+			bool rval = mediaBuffer->meta_data()->findInt64(kKeyTime, &timeUs);
+			if (!rval)
+			{
+				LOGI("Frame did not have time value: STOPPING");
+				timeUs = 0;
+			}
+
+			//LOGI("Finished reading from the media buffer");
+			RUNDEBUG(mediaBuffer->meta_data()->dumpToLog());
+			LOGI("key time = %lld | target time = %lld", timeUs, targetTimeUs);
+		}
+		else if (res == INFO_FORMAT_CHANGED)
+		{
+		}
+		else if (res == ERROR_END_OF_STREAM)
+		{
+			LOGE("End of Video Stream");
+			return;
+		}
+
+		if (mediaBuffer != NULL)
+		{
+			mediaBuffer->release();
+			mediaBuffer = NULL;
+		}
+	}
+
+	mLastVideoTimeUs = timeUs;
 }
