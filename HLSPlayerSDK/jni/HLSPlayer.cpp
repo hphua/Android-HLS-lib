@@ -817,10 +817,6 @@ int HLSPlayer::Update(bool seeking)
 		{
 			return 0; // keep going!
 		}
-
-//		SetState(PLAYING);
-//		if (mJAudioTrack)
-//			mJAudioTrack->Play();
 	}
 	else if (GetState() != PLAYING)
 	{
@@ -944,14 +940,14 @@ int HLSPlayer::Update(bool seeking)
 			mLastVideoTimeUs = timeUs;
 			if (delta < -10000) // video is running ahead
 			{
-				LOGI("Video is running ahead - waiting til next time : detla = %lld", delta);
+				LOGTIMING("Video is running ahead - waiting til next time : detla = %lld", delta);
 				//sched_yield();
-				usleep(-1 * delta);
+				usleep(-10000 - delta);
 				break; // skip out - don't render it yet
 			}
 			else if (delta > 40000) // video is running behind
 			{
-				LOGI("Video is running behind - skipping frame : detla = %lld", delta);
+				LOGTIMING("Video is running behind - skipping frame : delta = %lld", delta);
 				// Do we need to catch up?
 				mVideoBuffer->release();
 				mVideoBuffer = NULL;
@@ -959,7 +955,7 @@ int HLSPlayer::Update(bool seeking)
 			}
 			else
 			{
-				LOGI("audioTime = %lld | videoTime = %lld | diff = %lld | mVideoFrameDelta = %lld", audioTime, timeUs, audioTime - timeUs, mVideoFrameDelta);
+				LOGTIMING("audioTime = %lld | videoTime = %lld | diff = %lld | mVideoFrameDelta = %lld", audioTime, timeUs, audioTime - timeUs, mVideoFrameDelta);
 
 				// We appear to have a valid buffer?! and we're in time!
 				if (RenderBuffer(mVideoBuffer))
@@ -1486,8 +1482,8 @@ void HLSPlayer::NotifyFormatChange(int curQuality, int newQuality, int curAudio,
 	AutoLock locker(&lock);
 
 	JNIEnv* env = NULL;
-	if (gHLSPlayerSDK) gHLSPlayerSDK->GetEnv(&env);
-	else return;
+	if (!gHLSPlayerSDK) return;
+	gHLSPlayerSDK->GetEnv(&env);
 
 	if (mPlayerViewClass == NULL)
 	{
@@ -1615,6 +1611,7 @@ void HLSPlayer::Seek(double time)
 	SetState(PLAYING);
 	if (mJAudioTrack)
 	{
+		// Call Start instead of Play, in order to ensure that the internal time values are correctly starting from zero.
 		mJAudioTrack->Start();
 	}
 
@@ -1624,7 +1621,7 @@ void HLSPlayer::Seek(double time)
 
 void HLSPlayer::ReadUntilTime(double timeSecs)
 {
-	status_t res;
+	status_t res = ERROR_END_OF_STREAM;
 	MediaBuffer* mediaBuffer = NULL;
 
 	int64_t targetTimeUs = (int64_t)(timeSecs * 1000000.0f);
@@ -1658,7 +1655,7 @@ void HLSPlayer::ReadUntilTime(double timeSecs)
 		}
 		else if (res == ERROR_END_OF_STREAM)
 		{
-			LOGE("End of Audio Stream");
+			LOGE("End of Video Stream");
 			return;
 		}
 

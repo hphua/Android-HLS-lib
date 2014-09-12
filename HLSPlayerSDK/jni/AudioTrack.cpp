@@ -397,7 +397,7 @@ int64_t AudioTrack::GetTimeStamp()
 
 void AudioTrack::ReadUntilTime(double timeSecs)
 {
-	status_t res;
+	status_t res = ERROR_END_OF_STREAM;
 	MediaBuffer* mediaBuffer = NULL;
 
 	int64_t targetTimeUs = (int64_t)(timeSecs * 1000000.0f);
