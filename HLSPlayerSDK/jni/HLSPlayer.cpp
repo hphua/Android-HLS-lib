@@ -250,6 +250,96 @@ void HLSPlayer::SetSurface(JNIEnv* env, jobject surface)
 	}
 }
 
+bool HLSPlayer::EnsureJNI(JNIEnv** env)
+{
+	if (!gHLSPlayerSDK) return false;
+	if (!gHLSPlayerSDK->GetEnv(env)) return false;
+
+	if (mPlayerViewClass == NULL)
+	{
+		jclass c = (*env)->FindClass("com/kaltura/hlsplayersdk/PlayerViewController");
+		if ( (*env)->ExceptionCheck() || c == NULL) {
+			LOGI("Could not find class com/kaltura/hlsplayersdk/PlayerViewController" );
+			mPlayerViewClass = NULL;
+			return false;
+		}
+
+		mPlayerViewClass = (jclass)(*env)->NewGlobalRef((jobject)c);
+
+	}
+
+	if (mNextSegmentMethodID == NULL)
+	{
+		mNextSegmentMethodID = (*env)->GetStaticMethodID(mPlayerViewClass, "requestNextSegment", "()V" );
+		if ((*env)->ExceptionCheck())
+		{
+			mNextSegmentMethodID = NULL;
+			LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerViewController.requestNextSegment()" );
+			return false;
+		}
+	}
+
+	if (mSegmentForTimeMethodID == NULL)
+	{
+		mSegmentForTimeMethodID = (*env)->GetStaticMethodID(mPlayerViewClass, "requestSegmentForTime", "(D)D" );
+		if ((*env)->ExceptionCheck())
+		{
+			mSegmentForTimeMethodID = NULL;
+			LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerViewController.requestSegmentForTime()" );
+			return false;
+		}
+	}
+
+	if (mSetVideoResolutionID == NULL)
+	{
+		mSetVideoResolutionID = (*env)->GetStaticMethodID(mPlayerViewClass, "setVideoResolution", "(II)V" );
+		if ((*env)->ExceptionCheck())
+		{
+			mSetVideoResolutionID = NULL;
+			LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerViewController.setVideoResolution()" );
+			return false;
+		}
+	}
+
+	if (mEnableHWRendererModeID == NULL)
+	{
+		mEnableHWRendererModeID = (*env)->GetStaticMethodID(mPlayerViewClass, "enableHWRendererMode", "(ZIII)V" );
+		if ((*env)->ExceptionCheck())
+		{
+			mEnableHWRendererModeID = NULL;
+			LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerViewController.enableHWRendererMode()" );
+			return false;
+		}
+	}
+
+	if (mNotifyFormatChangeComplete == NULL)
+	{
+		mNotifyFormatChangeComplete = (*env)->GetStaticMethodID(mPlayerViewClass, "notifyFormatChangeComplete", "(I)V");
+		if ((*env)->ExceptionCheck())
+		{
+			mNotifyFormatChangeComplete = NULL;
+			LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerViewController.notifyFormatChangeComplete()");
+			return false;
+		}
+	}
+
+	if (mNotifyAudioTrackChangeComplete == NULL)
+	{
+		mNotifyAudioTrackChangeComplete = (*env)->GetStaticMethodID(mPlayerViewClass, "notifyAudioTrackChangeComplete", "(I)V");
+		if ((*env)->ExceptionCheck())
+		{
+			mNotifyAudioTrackChangeComplete = NULL;
+			LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerViewController.notifyAudioTrackChangeComplete()");
+			return false;
+		}
+	}
+
+
+
+
+	return true;
+}
+
 void HLSPlayer::SetNativeWindow(::ANativeWindow* window)
 {
 	AutoLock locker(&lock);
@@ -1178,31 +1268,8 @@ void HLSPlayer::RequestNextSegment()
 
 	LOGI("Requesting new segment");
 	JNIEnv* env = NULL;
-	mJvm->AttachCurrentThread(&env, NULL);
 
-	if (mPlayerViewClass == NULL)
-	{
-		jclass c = env->FindClass("com/kaltura/hlsplayersdk/PlayerViewController");
-		if ( env->ExceptionCheck() || c == NULL) {
-			LOGI("Could not find class com/kaltura/hlsplayersdk/PlayerViewController" );
-			mPlayerViewClass = NULL;
-			return;
-		}
-
-		mPlayerViewClass = (jclass)env->NewGlobalRef((jobject)c);
-
-	}
-
-	if (mNextSegmentMethodID == NULL)
-	{
-		mNextSegmentMethodID = env->GetStaticMethodID(mPlayerViewClass, "requestNextSegment", "()V" );
-		if (env->ExceptionCheck())
-		{
-			mNextSegmentMethodID = NULL;
-			LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerViewController.requestNextSegment()" );
-			return;
-		}
-	}
+	if (!EnsureJNI(&env)) return;
 
 	env->CallStaticVoidMethod(mPlayerViewClass, mNextSegmentMethodID);
 	if (env->ExceptionCheck())
@@ -1217,31 +1284,7 @@ double HLSPlayer::RequestSegmentForTime(double time)
 
 	LOGI("Requesting segment for time %lf", time);
 	JNIEnv* env = NULL;
-	mJvm->AttachCurrentThread(&env, NULL);
-
-	if (mPlayerViewClass == NULL)
-	{
-		jclass c = env->FindClass("com/kaltura/hlsplayersdk/PlayerViewController");
-		if ( env->ExceptionCheck() || c == NULL) {
-			LOGI("Could not find class com/kaltura/hlsplayersdk/PlayerViewController" );
-			mPlayerViewClass = NULL;
-			return 0;
-		}
-
-		mPlayerViewClass = (jclass)env->NewGlobalRef((jobject)c);
-
-	}
-
-	if (mSegmentForTimeMethodID == NULL)
-	{
-		mSegmentForTimeMethodID = env->GetStaticMethodID(mPlayerViewClass, "requestSegmentForTime", "(D)D" );
-		if (env->ExceptionCheck())
-		{
-			mSegmentForTimeMethodID = NULL;
-			LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerViewController.requestSegmentForTime()" );
-			return 0;
-		}
-	}
+	if (!EnsureJNI(&env)) return 0;
 
 	jdouble segTime = env->CallStaticDoubleMethod(mPlayerViewClass, mSegmentForTimeMethodID, time);
 	if (env->ExceptionCheck())
@@ -1257,30 +1300,8 @@ void HLSPlayer::NoteVideoDimensions()
 
 	LOGI("Noting video dimensions.");
 	JNIEnv* env = NULL;
-	mJvm->AttachCurrentThread(&env, NULL);
 
-	if (mPlayerViewClass == NULL)
-	{
-		jclass c = env->FindClass("com/kaltura/hlsplayersdk/PlayerViewController");
-		if ( env->ExceptionCheck() || c == NULL) {
-			LOGI("Could not find class com/kaltura/hlsplayersdk/PlayerViewController" );
-			mPlayerViewClass = NULL;
-			return;
-		}
-
-		mPlayerViewClass = (jclass)env->NewGlobalRef((jobject)c);
-	}
-
-	if (mSetVideoResolutionID == NULL)
-	{
-		mSetVideoResolutionID = env->GetStaticMethodID(mPlayerViewClass, "setVideoResolution", "(II)V" );
-		if (env->ExceptionCheck())
-		{
-			mSetVideoResolutionID = NULL;
-			LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerViewController.setVideoResolution()" );
-			return;
-		}
-	}
+	if (!EnsureJNI(&env)) return;
 
 	env->CallStaticVoidMethod(mPlayerViewClass, mSetVideoResolutionID, mWidth, mHeight);
 	if (env->ExceptionCheck())
@@ -1296,30 +1317,7 @@ void HLSPlayer::NoteHWRendererMode(bool enabled, int w, int h, int colf)
 
 	LOGI("Noting video dimensions.");
 	JNIEnv* env = NULL;
-	mJvm->AttachCurrentThread(&env, NULL);
-
-	if (mPlayerViewClass == NULL)
-	{
-		jclass c = env->FindClass("com/kaltura/hlsplayersdk/PlayerViewController");
-		if ( env->ExceptionCheck() || c == NULL) {
-			LOGI("Could not find class com/kaltura/hlsplayersdk/PlayerViewController" );
-			mPlayerViewClass = NULL;
-			return;
-		}
-
-		mPlayerViewClass = (jclass)env->NewGlobalRef((jobject)c);
-	}
-
-	if (mEnableHWRendererModeID == NULL)
-	{
-		mEnableHWRendererModeID = env->GetStaticMethodID(mPlayerViewClass, "enableHWRendererMode", "(ZIII)V" );
-		if (env->ExceptionCheck())
-		{
-			mEnableHWRendererModeID = NULL;
-			LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerViewController.enableHWRendererMode()" );
-			return;
-		}
-	}
+	if (!EnsureJNI(&env)) return;
 
 	env->CallStaticVoidMethod(mPlayerViewClass, mEnableHWRendererModeID, enabled, w, h, colf);
 	if (env->ExceptionCheck())
@@ -1482,34 +1480,10 @@ void HLSPlayer::NotifyFormatChange(int curQuality, int newQuality, int curAudio,
 	AutoLock locker(&lock);
 
 	JNIEnv* env = NULL;
-	if (!gHLSPlayerSDK) return;
-	gHLSPlayerSDK->GetEnv(&env);
-
-	if (mPlayerViewClass == NULL)
-	{
-		jclass c = env->FindClass("com/kaltura/hlsplayersdk/PlayerViewController");
-		if ( env->ExceptionCheck() || c == NULL) {
-			LOGI("Could not find class com/kaltura/hlsplayersdk/PlayerViewController" );
-			mPlayerViewClass = NULL;
-			return;
-		}
-
-		mPlayerViewClass = (jclass)env->NewGlobalRef((jobject)c);
-	}
+	if (!EnsureJNI(&env)) return;
 
 	if (curQuality != newQuality)
 	{
-		if (mNotifyFormatChangeComplete == NULL)
-		{
-			mNotifyFormatChangeComplete = env->GetStaticMethodID(mPlayerViewClass, "notifyFormatChangeComplete", "(I)V");
-			if (env->ExceptionCheck())
-			{
-				mNotifyFormatChangeComplete = NULL;
-				LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerViewController.notifyFormatChangeComplete()");
-				return;
-			}
-		}
-
 		env->CallStaticVoidMethod(mPlayerViewClass, mNotifyFormatChangeComplete, newQuality);
 		if (env->ExceptionCheck())
 		{
@@ -1520,17 +1494,6 @@ void HLSPlayer::NotifyFormatChange(int curQuality, int newQuality, int curAudio,
 
 	if (curAudio != newAudio)
 	{
-		if (mNotifyAudioTrackChangeComplete == NULL)
-		{
-			mNotifyAudioTrackChangeComplete = env->GetStaticMethodID(mPlayerViewClass, "notifyAudioTrackChangeComplete", "(I)V");
-			if (env->ExceptionCheck())
-			{
-				mNotifyAudioTrackChangeComplete = NULL;
-				LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerViewController.notifyAudioTrackChangeComplete()");
-				return;
-			}
-		}
-
 		env->CallStaticVoidMethod(mPlayerViewClass, mNotifyAudioTrackChangeComplete, newAudio);
 		if (env->ExceptionCheck())
 		{
@@ -1648,7 +1611,7 @@ void HLSPlayer::ReadUntilTime(double timeSecs)
 
 			//LOGI("Finished reading from the media buffer");
 			RUNDEBUG(mediaBuffer->meta_data()->dumpToLog());
-			LOGI("key time = %lld | target time = %lld", timeUs, targetTimeUs);
+			LOGTIMING("key time = %lld | target time = %lld", timeUs, targetTimeUs);
 		}
 		else if (res == INFO_FORMAT_CHANGED)
 		{

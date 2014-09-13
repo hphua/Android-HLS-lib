@@ -55,6 +55,7 @@ public:
 
 	void ReadUntilTime(double timeSecs);
 private:
+	bool EnsureJNI(JNIEnv** env);
 	void SetNativeWindow(ANativeWindow* window);
 	bool InitAudio();
 	bool InitSources();
