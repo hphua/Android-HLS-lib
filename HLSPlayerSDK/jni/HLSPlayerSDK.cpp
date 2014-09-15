@@ -196,6 +196,7 @@ HLSPlayerSDK::~HLSPlayerSDK()
 
 void HLSPlayerSDK::Close(JNIEnv* env)
 {
+	mJvm = NULL;
 	if (mPlayer != NULL)
 	{
 		mPlayer->Close(env);
@@ -255,6 +256,7 @@ void HLSPlayerSDK::PlayFile()
 
 bool HLSPlayerSDK::GetEnv(JNIEnv** env)
 {
+	if (!mJvm) return false;
 	int  rval = mJvm->GetEnv((void**)env, mJniVersion);
 	if (rval == JNI_EDETACHED)
 	{
