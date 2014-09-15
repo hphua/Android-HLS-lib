@@ -37,7 +37,7 @@ public:
 
 	bool Play();
 	void Stop();
-	int Update(bool seeking = false);
+	int Update();
 
 	void Seek(double time);
 
@@ -53,7 +53,7 @@ public:
 	void ApplyFormatChange();
 	void SetState(int status);
 
-	void ReadUntilTime(double timeSecs);
+	bool ReadUntilTime(double timeSecs);
 private:
 	bool EnsureJNI(JNIEnv** env);
 	void SetNativeWindow(ANativeWindow* window);

@@ -391,11 +391,11 @@ int64_t AudioTrack::GetTimeStamp()
 	gHLSPlayerSDK->GetEnv(&env);
 	double frames = env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mGetPlaybackHeadPosition);
 	double secs = frames / (double)mSampleRate;
-	LOGV2("secs = %f | mTimeStampOffset = %f", secs, mTimeStampOffset);
+	LOGTIMING("TIMESTAMP: secs = %f | mTimeStampOffset = %f", secs, mTimeStampOffset);
 	return ((secs + mTimeStampOffset) * 1000000);
 }
 
-void AudioTrack::ReadUntilTime(double timeSecs)
+bool AudioTrack::ReadUntilTime(double timeSecs)
 {
 	status_t res = ERROR_END_OF_STREAM;
 	MediaBuffer* mediaBuffer = NULL;
@@ -432,7 +432,7 @@ void AudioTrack::ReadUntilTime(double timeSecs)
 		else if (res == ERROR_END_OF_STREAM)
 		{
 			LOGE("End of Audio Stream");
-			return;
+			return false;
 		}
 
 		if (mediaBuffer != NULL)
@@ -443,6 +443,7 @@ void AudioTrack::ReadUntilTime(double timeSecs)
 	}
 
 	mTimeStampOffset = ((double)timeUs / 1000000.0f);
+	return true;
 }
 
 int AudioTrack::Update()

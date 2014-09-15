@@ -149,6 +149,7 @@ void HLSPlayer::Reset()
 	mSegmentTimeOffset = 0;
 	mVideoFrameDelta = 0;
 	mFrameCount = 0;
+	mStartTimeMS = 0;
 }
 
 ///
@@ -865,11 +866,12 @@ bool HLSPlayer::Play()
 
 	LOGI("   OK! err=%d", err);
 	SetState(PLAYING);
+
 	return true;
 }
 
 
-int HLSPlayer::Update(bool seeking)
+int HLSPlayer::Update()
 {
 	AutoLock locker(&lock);
 
@@ -1527,12 +1529,19 @@ void HLSPlayer::Seek(double time)
 	// Need to request new segment because we killed all the data sources
 	double segTime = RequestSegmentForTime(time);
 
+	if (!mDataSource.get())
+	{
+		Stop();
+		return;
+	}
 	mDataSource->logContinuityInfo();
 
 	// Retrieve the new quality markers
 	int newQuality = mDataSource->getQualityLevel();
 	int newAudioTrack = -1;
 	if (mAlternateAudioDataSource.get()) newAudioTrack = mAlternateAudioDataSource->getQualityLevel();
+
+	RequestNextSegment();
 
 	mStartTimeMS = (mDataSource->getStartTime() * 1000);
 
@@ -1563,26 +1572,32 @@ void HLSPlayer::Seek(double time)
 		LOGI("Video Track failed to start: %s : %d", strerror(-err), __LINE__);
 	}
 
-	ReadUntilTime(time - segTime);
-
-	if (mJAudioTrack)
+	bool doFormatChange = false;
+	doFormatChange = !ReadUntilTime(time - segTime);
+	if (!doFormatChange && mJAudioTrack)
 	{
-		mJAudioTrack->ReadUntilTime(time - segTime);
+		doFormatChange = (!mJAudioTrack->ReadUntilTime(time - segTime));
 	}
 
-	LOGI("Segment Count %d", segCount);
-	SetState(PLAYING);
-	if (mJAudioTrack)
+	if (doFormatChange)
 	{
-		// Call Start instead of Play, in order to ensure that the internal time values are correctly starting from zero.
-		mJAudioTrack->Start();
+		ApplyFormatChange();
 	}
+	else
+	{
+		LOGI("Segment Count %d", segCount);
+		SetState(PLAYING);
+		if (mJAudioTrack)
+		{
+			// Call Start instead of Play, in order to ensure that the internal time values are correctly starting from zero.
+			mJAudioTrack->Start();
+		}
 
-	NotifyFormatChange(curQuality, newQuality, curAudioTrack, newAudioTrack);
-
+		NotifyFormatChange(curQuality, newQuality, curAudioTrack, newAudioTrack);
+	}
 }
 
-void HLSPlayer::ReadUntilTime(double timeSecs)
+bool HLSPlayer::ReadUntilTime(double timeSecs)
 {
 	status_t res = ERROR_END_OF_STREAM;
 	MediaBuffer* mediaBuffer = NULL;
@@ -1619,7 +1634,7 @@ void HLSPlayer::ReadUntilTime(double timeSecs)
 		else if (res == ERROR_END_OF_STREAM)
 		{
 			LOGE("End of Video Stream");
-			return;
+			return false;
 		}
 
 		if (mediaBuffer != NULL)
@@ -1630,4 +1645,5 @@ void HLSPlayer::ReadUntilTime(double timeSecs)
 	}
 
 	mLastVideoTimeUs = timeUs;
+	return true;
 }
