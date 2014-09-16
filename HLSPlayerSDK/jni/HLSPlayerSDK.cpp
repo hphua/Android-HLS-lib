@@ -196,13 +196,14 @@ HLSPlayerSDK::~HLSPlayerSDK()
 
 void HLSPlayerSDK::Close(JNIEnv* env)
 {
-	mJvm = NULL;
 	if (mPlayer != NULL)
 	{
 		mPlayer->Close(env);
 		delete mPlayer;
 		mPlayer = NULL;
 	}
+	mJvm = NULL;
+
 }
 
 bool HLSPlayerSDK::CreateDecoder()

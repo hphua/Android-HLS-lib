@@ -56,22 +56,7 @@ OnQualitySwitchingListener, OnQualityTracksListListener  {
 	            .build());
         }
         
-        try
-        {
-        	playerView = (PlayerViewController)findViewById(R.id.custom_player);
-        	playerView.addComponents("", this);
-        	playerView.registerTextTracksList(this);
-        	playerView.registerTextTrackChanged(this);
-        	playerView.registerTextTrackText(this);
-        	playerView.registerAudioTracksList(this);
-        	playerView.registerAudioSwitchingChange(this);
-        	playerView.registerQualityTracksList(this);
-        	playerView.registerQualitySwitchingChange(this);
-        }
-        catch (Exception e)
-        {
-        	Log.e("KalturaTestApp", e.getMessage());
-        }
+        initPlayerView();
 
         if(false)
         {
@@ -90,13 +75,44 @@ OnQualitySwitchingListener, OnQualityTracksListListener  {
             } */
         }
     }
+    
+    private void initPlayerView()
+    {
+        try
+        {
+        	playerView = (PlayerViewController)findViewById(R.id.custom_player);
+        	playerView.addComponents("", this);
+        	playerView.registerTextTracksList(this);
+        	playerView.registerTextTrackChanged(this);
+        	playerView.registerTextTrackText(this);
+        	playerView.registerAudioTracksList(this);
+        	playerView.registerAudioSwitchingChange(this);
+        	playerView.registerQualityTracksList(this);
+        	playerView.registerQualitySwitchingChange(this);
+        }
+        catch (Exception e)
+        {
+        	Log.e("KalturaTestApp", e.getMessage());
+        }
+    }
 
     @Override
     public void onStop()
     {
     	if (playerView != null)
+    	{
             playerView.close();
+            playerView = null;
+    	}
     	super.onStop();
+    }
+    
+    @Override
+    public void onRestart()
+    {
+    	if (playerView == null)
+    		initPlayerView();
+    	super.onRestart();
     }
 
     @Override

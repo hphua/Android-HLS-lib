@@ -37,7 +37,7 @@ void* audio_thread_func(void* arg)
 	LOGI("mJAudioTrack refCount = %d", refCount);
 
 	int rval;
-	while ( (rval = audioTrack->Update()) != AUDIOTHREAD_FINISH)
+	while ( audioTrack->refCount() > 1 &&  (rval = audioTrack->Update()) != AUDIOTHREAD_FINISH)
 	{
 		if (rval == AUDIOTHREAD_WAIT)
 		{
@@ -51,7 +51,8 @@ void* audio_thread_func(void* arg)
 	}
 
 	refCount = audioTrack->release();
-	gHLSPlayerSDK->getJVM()->DetachCurrentThread();
+	JavaVM* jvm = gHLSPlayerSDK->getJVM();
+	if (jvm) jvm->DetachCurrentThread();
 	LOGI("mJAudioTrack refCount = %d", refCount);
 	LOGI("audio_thread_func ending");
 	return NULL;
@@ -127,6 +128,7 @@ void HLSPlayer::Reset()
 		int refCount = mJAudioTrack->release();
 		LOGI("mJAudioTrack refCount = %d", refCount);
 		mJAudioTrack = NULL;
+		pthread_join(audioThread, NULL);
 	}
 	LOGI("Killing the video buffer");
 	if (mVideoBuffer)
@@ -183,6 +185,11 @@ void HLSPlayer::SetSurface(JNIEnv* env, jobject surface)
 	// Note the surface.
 	mSurface = (jobject)env->NewGlobalRef(surface);
 
+	if (!mVideoSource.get() && !mVideoSource23.get())
+	{
+		LOGE("We don't have a valid video source");
+		return;
+	}
 	// Look up metadata.
 	sp<MetaData> meta;
 	if(AVSHIM_USE_NEWMEDIASOURCE)

@@ -52,12 +52,15 @@ void AudioTrack::Close()
 	{
 		JNIEnv* env = NULL;
 		gHLSPlayerSDK->GetEnv(&env);
-		env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mStop);
-		env->DeleteGlobalRef(buffer);
+		if (env)
+		{
+			env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mStop);
+			env->DeleteGlobalRef(buffer);
+			env->DeleteGlobalRef(mTrack);
+			env->DeleteGlobalRef(mCAudioTrack);
+		}
 		buffer = NULL;
-		env->DeleteGlobalRef(mTrack);
 		mTrack = NULL;
-		env->DeleteGlobalRef(mCAudioTrack);
 		mCAudioTrack = NULL;
 
 		if(mAudioSource.get())
@@ -77,7 +80,7 @@ bool AudioTrack::Init()
 		return false;
 	}
 	JNIEnv* env = NULL;
-	gHLSPlayerSDK->GetEnv(&env);
+	if (!gHLSPlayerSDK->GetEnv(&env)) return false;
 
 
 	int err = sem_init(&semPause, 0, 0);
@@ -216,7 +219,7 @@ bool AudioTrack::Start()
 
 	LOGI("Attaching to current java thread");
 	JNIEnv* env;
-	gHLSPlayerSDK->GetEnv(&env);
+	if (!gHLSPlayerSDK->GetEnv(&env)) return false;
 
 	LOGI("Updating Format Info");
 	// Refresh our format information.
@@ -301,8 +304,9 @@ void AudioTrack::Play()
 	LOGI("Audio State = PLAYING: semPause.count = %d", semPause.count);
 
 	JNIEnv* env;
-	gHLSPlayerSDK->GetEnv(&env);
-	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mPlay);
+	if (gHLSPlayerSDK->GetEnv(&env))
+		env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mPlay);
+
 	samplesWritten = 0;
 
 }
@@ -349,8 +353,8 @@ bool AudioTrack::Stop(bool seeking)
 	}
 
 	JNIEnv* env;
-	gHLSPlayerSDK->GetEnv(&env);
-	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mStop);
+	if (gHLSPlayerSDK->GetEnv(&env))
+		env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mStop);
 
 	pthread_mutex_unlock(&updateMutex);
 
@@ -362,16 +366,16 @@ void AudioTrack::Pause()
 	if (mPlayState == PAUSED) return;
 	mPlayState = PAUSED;
 	JNIEnv* env;
-	gHLSPlayerSDK->GetEnv(&env);
-	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mPause);
+	if (gHLSPlayerSDK->GetEnv(&env))
+		env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mPause);
 }
 
 void AudioTrack::Flush()
 {
 	if (mPlayState == PLAYING) return;
 	JNIEnv* env;
-	gHLSPlayerSDK->GetEnv(&env);
-	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mFlush);
+	if (gHLSPlayerSDK->GetEnv(&env))
+		env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mFlush);
 	
 	pthread_mutex_lock(&updateMutex);
 	samplesWritten = 0;
@@ -388,7 +392,7 @@ void AudioTrack::SetTimeStampOffset(double offsetSecs)
 int64_t AudioTrack::GetTimeStamp()
 {
 	JNIEnv* env;
-	gHLSPlayerSDK->GetEnv(&env);
+	if (!gHLSPlayerSDK->GetEnv(&env)) return 0;
 	double frames = env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mGetPlaybackHeadPosition);
 	double secs = frames / (double)mSampleRate;
 	LOGTIMING("TIMESTAMP: secs = %f | mTimeStampOffset = %f", secs, mTimeStampOffset);
@@ -477,7 +481,9 @@ int AudioTrack::Update()
 	pthread_mutex_lock(&updateMutex);
 
 	JNIEnv* env;
-	gHLSPlayerSDK->GetEnv(&env);
+	if (!gHLSPlayerSDK->GetEnv(&env))
+		return AUDIOTHREAD_FINISH; // If we don't have a java environment at this point, something has killed it,
+								   // so we better kill the thread.
 
 
 	MediaBuffer* mediaBuffer = NULL;
@@ -570,14 +576,15 @@ int AudioTrack::Update()
 void AudioTrack::shutdown()
 {
 	JNIEnv* env;
-	gHLSPlayerSDK->GetEnv(&env);
-	env->DeleteGlobalRef(buffer);
+	if (gHLSPlayerSDK->GetEnv(&env))
+		env->DeleteGlobalRef(buffer);
 }
 
 int AudioTrack::getBufferSize()
 {
 	JNIEnv* env;
-	gHLSPlayerSDK->GetEnv(&env);
+	if (!gHLSPlayerSDK->GetEnv(&env)) return 0;
+
 	long long frames = env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mGetPlaybackHeadPosition);
 
 	return (samplesWritten / 2) - frames;
