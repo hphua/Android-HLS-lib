@@ -202,6 +202,8 @@ void HLSPlayerSDK::Close(JNIEnv* env)
 		delete mPlayer;
 		mPlayer = NULL;
 	}
+	mJvm = NULL;
+
 }
 
 bool HLSPlayerSDK::CreateDecoder()
@@ -255,12 +257,14 @@ void HLSPlayerSDK::PlayFile()
 
 bool HLSPlayerSDK::GetEnv(JNIEnv** env)
 {
+	if (!mJvm) return false;
 	int  rval = mJvm->GetEnv((void**)env, mJniVersion);
 	if (rval == JNI_EDETACHED)
 	{
 		rval = mJvm->AttachCurrentThread(env, NULL);
 		if (rval != 0)
 		{
+			LOGE("Could not get the java environment (env)");
 			(*env) = NULL;
 			return false;
 		}

@@ -50,7 +50,7 @@ public:
 
 	bool UpdateFormatInfo();
 
-	void ReadUntilTime(double timeSecs);
+	bool ReadUntilTime(double timeSecs);
 private:
 	jclass mCAudioTrack;
 	jmethodID mAudioTrack;

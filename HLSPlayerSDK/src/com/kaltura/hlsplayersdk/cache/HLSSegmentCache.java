@@ -13,7 +13,7 @@ import com.squareup.okhttp.Request;
 
 public class HLSSegmentCache 
 {	
-	protected static long targetSize = 16*1024; // 16mb segment cache.
+	protected static long targetSize = 16*1024*1024; // 16mb segment cache.
 	protected static long minimumExpireAge = 5000; // Keep everything touched in last 5 seconds.
 	
 	protected static Map<String, SegmentCacheEntry> segmentCache = null;

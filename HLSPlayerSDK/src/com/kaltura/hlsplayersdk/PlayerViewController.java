@@ -74,6 +74,8 @@ public class PlayerViewController extends RelativeLayout implements
 	private static int mQualityLevel = 0;
 	private static int mSubtitleLanguage = 0;
 	private static int mAltAudioLanguage = 0;
+	
+	private static boolean noMoreSegments = false;;
 
 
 	/**
@@ -85,7 +87,11 @@ public class PlayerViewController extends RelativeLayout implements
 		
 		ManifestSegment seg = currentController.getStreamHandler().getNextFile(mQualityLevel);
 		if(seg == null)
+		{
+			noMoreSegments = true;
 			return;
+		}
+			
 
 		if (seg.altAudioSegment != null)
 		{
@@ -239,6 +245,7 @@ public class PlayerViewController extends RelativeLayout implements
 					int rval = NextFrame();
 					if (rval >= 0) mTimeMS = rval;
 					if (rval < 0) Log.i("videoThread", "NextFrame() returned " + rval);
+					if (rval == -1 && noMoreSegments) currentController.stop();
 					if (rval == -1013) // INFO_DISCONTINUITY
 					{
 						Log.i("videoThread", "Ran into a discontinuity (INFO_DISCONTINUITY)");
@@ -341,6 +348,7 @@ public class PlayerViewController extends RelativeLayout implements
 	 * actually start.
 	 */
 	public void onParserComplete(ManifestParser parser) {
+		noMoreSegments = false;
 		Log.i(this.getClass().getName() + ".onParserComplete", "Entered");
 		mStreamHandler = new StreamHandler(parser);
 		mSubtitleHandler = new SubtitleHandler(parser);
