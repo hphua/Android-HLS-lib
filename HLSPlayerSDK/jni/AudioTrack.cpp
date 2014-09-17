@@ -478,13 +478,13 @@ int AudioTrack::Update()
 		}
 	}
 
-	pthread_mutex_lock(&updateMutex);
 
 	JNIEnv* env;
 	if (!gHLSPlayerSDK->GetEnv(&env))
 		return AUDIOTHREAD_FINISH; // If we don't have a java environment at this point, something has killed it,
 								   // so we better kill the thread.
 
+	pthread_mutex_lock(&updateMutex);
 
 	MediaBuffer* mediaBuffer = NULL;
 

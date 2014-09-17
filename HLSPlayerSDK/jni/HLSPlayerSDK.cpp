@@ -264,6 +264,7 @@ bool HLSPlayerSDK::GetEnv(JNIEnv** env)
 		rval = mJvm->AttachCurrentThread(env, NULL);
 		if (rval != 0)
 		{
+			LOGE("Could not get the java environment (env)");
 			(*env) = NULL;
 			return false;
 		}
