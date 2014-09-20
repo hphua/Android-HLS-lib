@@ -17,9 +17,11 @@ public class HLSSegmentCache
 	protected static long minimumExpireAge = 5000; // Keep everything touched in last 5 seconds.
 	
 	protected static Map<String, SegmentCacheEntry> segmentCache = null;
-	//public static AsyncHttpClient client = null;
 	public static OkHttpClient httpClient = new OkHttpClient();
 	
+	public static native int allocAESCryptoState(byte[] key, byte[] iv);
+	public static native long decrypt(int cryptoHandle, byte[] data, long start, long length);
+
 	static public SegmentCacheEntry populateCache(final String segmentUri)
 	{
 		synchronized (segmentCache)
@@ -104,6 +106,8 @@ public class HLSSegmentCache
 	 */
 	static public long getSize(String segmentUri)
 	{
+		initialize();
+
 		Log.i("HLS Cache", "Querying size of " + segmentUri);
 		SegmentCacheEntry sce = segmentCache.get(segmentUri);
 		if (sce == null)
@@ -189,6 +193,9 @@ public class HLSSegmentCache
 				Log.i("HLS Cache", "Couldn't return any bytes.");
 				return 0;
 			}
+
+			// Ensure decrypted.
+			esce.ensureDecryptedTo(offset + size);
 			
 			// Copy the available bytes.
 			output.put(sce.data, (int)offset, (int)size);
