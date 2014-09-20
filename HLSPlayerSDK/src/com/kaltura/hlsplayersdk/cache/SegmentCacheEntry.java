@@ -8,7 +8,7 @@ import com.squareup.okhttp.Callback;
 import com.squareup.okhttp.Request;
 import com.squareup.okhttp.Response;
 
-class SegmentCacheEntry implements Callback {
+public class SegmentCacheEntry implements Callback {
 	public String uri;
 	public byte[] data;
 	public boolean running;
@@ -21,7 +21,6 @@ class SegmentCacheEntry implements Callback {
 	// encrypted. This allows us to avoid duplicating every segment.
 	protected long decryptHighWaterMark = 0;
 	
-
 	public static native int allocAESCryptoState(byte[] key, byte[] iv);
 	public static native void freeCryptoState(int id);
 	public static native long decrypt(int cryptoHandle, byte[] data, long start, long length);
@@ -36,8 +35,12 @@ class SegmentCacheEntry implements Callback {
 		if(cryptoHandle == -1)
 			return;
 		
+		Log.e("HLS Cache", "Decrypting to " + offset);
+		Log.e("HLS Cache", "  first byte = " + data[0]);
 		long delta = offset - decryptHighWaterMark;
 		decryptHighWaterMark = decrypt(cryptoHandle, data, decryptHighWaterMark, delta);
+		Log.e("HLS Cache", "Decrypted to " + decryptHighWaterMark);
+		Log.e("HLS Cache", "  first byte = " + data[0]);
 	}
 
 	@Override

@@ -58,7 +58,6 @@ public class ManifestEncryptionKey {
 	private String createIVFromID(int id)
 	{
 		String result = "0x" + String.format(Locale.US, "%032x", id);
-		
 		return result;
 	}
 }

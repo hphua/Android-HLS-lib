@@ -95,7 +95,7 @@ public class PlayerViewController extends RelativeLayout implements
 
 		if (seg.altAudioSegment != null)
 		{
-			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.altAudioSegment.uri, seg.altAudioSegment.altAudioIndex, seg.startTime, seg.cryptoId, seg.altAudioCryptoId);
+			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.altAudioSegment.uri, seg.altAudioSegment.altAudioIndex, seg.startTime, seg.cryptoId, seg.altAudioSegment.cryptoId);
 		}
 		else
 		{
@@ -119,7 +119,7 @@ public class PlayerViewController extends RelativeLayout implements
 		
 		if (seg.altAudioSegment != null)
 		{
-			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.altAudioSegment.uri, seg.altAudioSegment.altAudioIndex, seg.startTime, seg.cryptoId, seg.altAudioCryptoId);
+			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.altAudioSegment.uri, seg.altAudioSegment.altAudioIndex, seg.startTime, seg.cryptoId, seg.altAudioSegment.cryptoId);
 		}
 		else
 		{
@@ -392,7 +392,7 @@ public class PlayerViewController extends RelativeLayout implements
 		ManifestSegment seg = getStreamHandler().getFileForTime(0, 0);
 		if (seg.altAudioSegment != null)
 		{
-			FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.altAudioSegment.uri, seg.altAudioSegment.altAudioIndex, seg.startTime, seg.cryptoId, seg.altAudioCryptoId);
+			FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.altAudioSegment.uri, seg.altAudioSegment.altAudioIndex, seg.startTime, seg.cryptoId, seg.altAudioSegment.cryptoId);
 			if (mOnAudioTrackSwitchingListener != null)
 			{
 				mOnAudioTrackSwitchingListener.onAudioSwitchingStart(-1, seg.altAudioSegment.altAudioIndex);

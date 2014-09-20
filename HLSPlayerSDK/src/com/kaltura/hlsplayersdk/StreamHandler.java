@@ -532,6 +532,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 					}
 				}
 				seg.key = getKeyForIndex(i);
+				seg.initializeCrypto();
 				return seg;
 			}
 			

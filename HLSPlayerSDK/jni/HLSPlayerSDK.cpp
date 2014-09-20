@@ -32,7 +32,7 @@ std::tr1::unordered_map<int, AesCtx *> gCryptoStateMap;
 extern "C"
 {
 
-	jint Java_com_kaltura_hlsplayersdk_cache_SegmentCacheEntry_allocAESCryptoState(JNIEnv *env, jbyteArray key, jbyteArray iv)
+	jint Java_com_kaltura_hlsplayersdk_cache_SegmentCacheEntry_allocAESCryptoState(JNIEnv *env, jobject caller, jbyteArray key, jbyteArray iv)
 	{
 		if(gCryptoStateMapInitialized == false)
 		{
@@ -47,7 +47,10 @@ extern "C"
 
 		// Initialize the AES context.
 		AesCtx *ctx = new AesCtx();
-		AesCtxIni(ctx, (unsigned char*)keyPtr, (unsigned char*)ivPtr, 16, 1);
+		AesCtxIni(ctx, (unsigned char*)ivPtr, (unsigned char*)keyPtr, KEY128, CBC);
+
+		LOGI("KEY = %x%x%x%x", (int*)&keyPtr[0], (int*)&keyPtr[4], (int*)&keyPtr[8], (int*)&keyPtr[12]);
+		LOGI("IV  = %x%x%x%x", (int*)&ivPtr[0], (int*)&ivPtr[4], (int*)&ivPtr[8], (int*)&ivPtr[12]);
 
 		env->ReleaseByteArrayElements(key, keyPtr, 0);
 		env->ReleaseByteArrayElements(iv, ivPtr, 0);
@@ -58,7 +61,7 @@ extern "C"
 		return idx;
 	}
 
-	void Java_com_kaltura_hlsplayersdk_cache_SegmentCacheEntry_freeCryptoState(JNIEnv, jint handle)
+	void Java_com_kaltura_hlsplayersdk_cache_SegmentCacheEntry_freeCryptoState(JNIEnv, jobject caller, jint handle)
 	{
 		if(gCryptoStateMapInitialized == false)
 		{
@@ -80,7 +83,7 @@ extern "C"
 		delete got->second;
 	}
 
-	jlong Java_com_kaltura_hlsplayersdk_cache_SegmentCacheEntry_decrypt(JNIEnv *env, jint handle, jbyteArray bytes, jlong offset, jlong length)
+	jlong Java_com_kaltura_hlsplayersdk_cache_SegmentCacheEntry_decrypt(JNIEnv *env, jobject caller, jint handle, jbyteArray bytes, jlong offset, jlong length)
 	{
 		// Can we modify bytes in place?
 		jboolean isCopy = false;

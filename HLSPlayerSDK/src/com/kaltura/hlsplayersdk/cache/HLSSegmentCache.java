@@ -95,7 +95,7 @@ public class HLSSegmentCache
 		populateCache(segmentUri);
 
 		SegmentCacheEntry sce = segmentCache.get(segmentUri);
-		sce.setCryptoHandle(cryptoHandle);			
+		sce.setCryptoHandle(cryptoId);
 	}
 	
 	/**
