@@ -21,6 +21,11 @@ class SegmentCacheEntry implements Callback {
 	// encrypted. This allows us to avoid duplicating every segment.
 	protected long decryptHighWaterMark = 0;
 	
+
+	public static native int allocAESCryptoState(byte[] key, byte[] iv);
+	public static native void freeCryptoState(int id);
+	public static native long decrypt(int cryptoHandle, byte[] data, long start, long length);
+
 	public void setCryptoHandle(int handle)
 	{
 		cryptoHandle = handle;
@@ -28,8 +33,11 @@ class SegmentCacheEntry implements Callback {
 
 	public void ensureDecryptedTo(long offset)
 	{
+		if(cryptoHandle == -1)
+			return;
+		
 		long delta = offset - decryptHighWaterMark;
-		decryptHighWaterMark = HLSSegmentCache.decrypt(cryptoHandle, data, decryptHighWaterMark, delta);
+		decryptHighWaterMark = decrypt(cryptoHandle, data, decryptHighWaterMark, delta);
 	}
 
 	@Override

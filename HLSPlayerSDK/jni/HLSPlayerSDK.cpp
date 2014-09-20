@@ -284,7 +284,7 @@ extern "C"
 		return rval;
 	}
 
-	void Java_com_kaltura_hlsplayersdk_PlayerViewController_FeedSegment(JNIEnv* env, jobject jcaller, jstring jurl, jint quality, jint continuityEra, jstring jaltAudioUrl, jint altAudioIndex, jdouble startTime )
+	void Java_com_kaltura_hlsplayersdk_PlayerViewController_FeedSegment(JNIEnv* env, jobject jcaller, jstring jurl, jint quality, jint continuityEra, jstring jaltAudioUrl, jint altAudioIndex, jdouble startTime, int cryptoId, int altCryptoId )
 	{
 		LOGI("Entered");
 		
@@ -304,12 +304,12 @@ extern "C"
 		if (jaltAudioUrl) // this is because GetStringUTFChars returns const char*, but dies if you pass it a NULL pointer. Why can't it just return NULL if you pass it NULL, huh?
 		{
 			const char* altAudioUrl = env->GetStringUTFChars(jaltAudioUrl, 0);
-			gHLSPlayerSDK->GetPlayer()->FeedSegment(url, quality, continuityEra, altAudioUrl, altAudioIndex, startTime);
+			gHLSPlayerSDK->GetPlayer()->FeedSegment(url, quality, continuityEra, altAudioUrl, altAudioIndex, startTime, cryptoId, altCryptoId);
 			env->ReleaseStringUTFChars(jaltAudioUrl, altAudioUrl);
 		}
 		else
 		{
-			gHLSPlayerSDK->GetPlayer()->FeedSegment(url, quality, continuityEra, NULL, altAudioIndex, startTime);
+			gHLSPlayerSDK->GetPlayer()->FeedSegment(url, quality, continuityEra, NULL, altAudioIndex, startTime, cryptoId, altCryptoId);
 		}
 		env->ReleaseStringUTFChars(jurl, url);
 	}

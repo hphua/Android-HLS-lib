@@ -19,9 +19,6 @@ public class HLSSegmentCache
 	protected static Map<String, SegmentCacheEntry> segmentCache = null;
 	public static OkHttpClient httpClient = new OkHttpClient();
 	
-	public static native int allocAESCryptoState(byte[] key, byte[] iv);
-	public static native long decrypt(int cryptoHandle, byte[] data, long start, long length);
-
 	static public SegmentCacheEntry populateCache(final String segmentUri)
 	{
 		synchronized (segmentCache)
@@ -68,10 +65,7 @@ public class HLSSegmentCache
 			
 			// Store the data.
 			sce.data = data;
-			
-			// Drop the request
-			//sce.request = null;
-			
+						
 			// All done!
 			sce.lastTouchedMillis = System.currentTimeMillis();
 			sce.running = false;
@@ -95,10 +89,13 @@ public class HLSSegmentCache
 	 * 
 	 * @param segmentUri
 	 */
-	static public void precache(String segmentUri)
+	static public void precache(String segmentUri, int cryptoId)
 	{
 		initialize();
 		populateCache(segmentUri);
+
+		SegmentCacheEntry sce = segmentCache.get(segmentUri);
+		sce.setCryptoHandle(cryptoHandle);			
 	}
 	
 	/**

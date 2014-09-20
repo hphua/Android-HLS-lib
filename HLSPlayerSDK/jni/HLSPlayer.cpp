@@ -371,7 +371,7 @@ sp<HLSDataSource> MakeHLSDataSource()
 	return ds;
 }
 
-status_t HLSPlayer::FeedSegment(const char* path, int32_t quality, int continuityEra, const char* altAudioPath, int audioIndex, double time )
+status_t HLSPlayer::FeedSegment(const char* path, int32_t quality, int continuityEra, const char* altAudioPath, int audioIndex, double time, int cryptoId, int altAudioCryptoId )
 {
 	AutoLock locker(&lock);
 	LOGI("Quality = %d | Continuity = %d | audioIndex = %d | path = %s | altAudioPath = %s", quality, continuityEra, audioIndex, path, altAudioPath == NULL ? "NULL" : altAudioPath);
@@ -406,7 +406,7 @@ status_t HLSPlayer::FeedSegment(const char* path, int32_t quality, int continuit
 	{
 		LOGI("Same Era!");
 		// Yay! We can just append!
-		err = mDataSource->append(path, quality, continuityEra, time);
+		err = mDataSource->append(path, quality, continuityEra, time, cryptoId);
 		if (err == INFO_DISCONTINUITY)
 		{
 			LOGE("Could not append to data source! This shouldn't happen as we already checked the validity of the append.");
@@ -414,7 +414,7 @@ status_t HLSPlayer::FeedSegment(const char* path, int32_t quality, int continuit
 
 		if (mAlternateAudioDataSource.get() && altAudioPath)
 		{
-			err = mAlternateAudioDataSource->append(altAudioPath, audioIndex, 0, time);
+			err = mAlternateAudioDataSource->append(altAudioPath, audioIndex, 0, time, altAudioCryptoId);
 			if (err == INFO_DISCONTINUITY)
 			{
 				LOGE("Could not append to alternate audio data source! This shouldn't happen as we already checked the validity of the append.");
@@ -429,7 +429,7 @@ status_t HLSPlayer::FeedSegment(const char* path, int32_t quality, int continuit
 		if (mDataSourceCache.size() > 0 && mDataSourceCache.back().isSameEra(quality, continuityEra, audioIndex))
 		{
 			LOGI("Adding to end of existing era");
-			err = mDataSourceCache.back().dataSource->append(path, quality, continuityEra, time);
+			err = mDataSourceCache.back().dataSource->append(path, quality, continuityEra, time, cryptoId);
 			if (err == INFO_DISCONTINUITY)
 			{
 				LOGE("Could not append to data source! This shouldn't happen as we already checked the validity of the append.");
@@ -437,7 +437,7 @@ status_t HLSPlayer::FeedSegment(const char* path, int32_t quality, int continuit
 
 			if (mDataSourceCache.back().altAudioDataSource.get() && altAudioPath)
 			{
-				err = mDataSourceCache.back().altAudioDataSource->append(altAudioPath, audioIndex, 0, time);
+				err = mDataSourceCache.back().altAudioDataSource->append(altAudioPath, audioIndex, 0, time, altAudioCryptoId);
 				if (err == INFO_DISCONTINUITY)
 				{
 					LOGE("Could not append to alternate audio data source! This shouldn't happen as we already checked the validity of the append.");
@@ -449,11 +449,11 @@ status_t HLSPlayer::FeedSegment(const char* path, int32_t quality, int continuit
 			LOGI("Making New Datasource!");
 			DataSourceCacheObject dsc;
 			dsc.dataSource = MakeHLSDataSource();
-			dsc.dataSource->append(path, quality, continuityEra, time);
+			dsc.dataSource->append(path, quality, continuityEra, time, cryptoId);
 			if (altAudioPath != NULL)
 			{
 				dsc.altAudioDataSource = MakeHLSDataSource();
-				dsc.altAudioDataSource->append(altAudioPath, audioIndex, 0, time);
+				dsc.altAudioDataSource->append(altAudioPath, audioIndex, 0, time, altAudioCryptoId);
 			}
 			mDataSourceCache.push_back(dsc);
 		}

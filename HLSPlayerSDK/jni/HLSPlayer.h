@@ -33,7 +33,7 @@ public:
 	void Reset();
 
 	void SetSurface(JNIEnv* env, jobject surface);
-	android_video_shim::status_t FeedSegment(const char* path, int32_t quality, int continuityEra, const char* altAudioPath, int audioIndex, double time );
+	android_video_shim::status_t FeedSegment(const char* path, int32_t quality, int continuityEra, const char* altAudioPath, int audioIndex, double time, int cryptoId, int altCryptoId );
 
 	bool Play();
 	void Stop();
