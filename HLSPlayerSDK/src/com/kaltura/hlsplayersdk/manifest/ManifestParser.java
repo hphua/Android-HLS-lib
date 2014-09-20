@@ -182,10 +182,10 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 			}
 			else if (tagType.equals("EXT-X-KEY"))
 			{
-//				if (keys.size() > 0) keys.get(keys.size() - 1).endSegmentId = segments.size() - 1;
-//				ManifestEncryptionKey key = ManifestEncryptionKey.fromParams(tagParams);
-//				key.startSegmentId = segments.size();
-//				keys.add(key);
+				if (keys.size() > 0) keys.get(keys.size() - 1).endSegmentId = segments.size() - 1;
+				ManifestEncryptionKey key = ManifestEncryptionKey.fromParams(tagParams);
+				key.startSegmentId = segments.size();
+				keys.add(key);
 			}
 			else if (tagType.equals("EXT-X-VERSION"))
 			{

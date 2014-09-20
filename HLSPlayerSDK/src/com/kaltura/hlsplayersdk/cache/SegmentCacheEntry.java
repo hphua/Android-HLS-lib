@@ -26,10 +26,10 @@ class SegmentCacheEntry implements Callback {
 		cryptoHandle = handle;
 	}
 
-	public void ensureDecryptedTo(int offset)
+	public void ensureDecryptedTo(long offset)
 	{
 		long delta = offset - decryptHighWaterMark;
-		decryptHighWaterMark = HLSSegmentCache.decrypt(data, decryptHighWaterMark, delta);
+		decryptHighWaterMark = HLSSegmentCache.decrypt(cryptoHandle, data, decryptHighWaterMark, delta);
 	}
 
 	@Override

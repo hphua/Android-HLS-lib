@@ -22,6 +22,8 @@ public class ManifestSegment extends BaseManifestItem
 	public ManifestSegment altAudioSegment = null;
 	public int altAudioIndex = -1;
 	
+	public ManifestEncryptionKey key = null;
+	
 	@Override
 	public String toString()
 	{

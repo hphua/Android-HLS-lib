@@ -195,7 +195,7 @@ public class HLSSegmentCache
 			}
 
 			// Ensure decrypted.
-			esce.ensureDecryptedTo(offset + size);
+			sce.ensureDecryptedTo(offset + size);
 			
 			// Copy the available bytes.
 			output.put(sce.data, (int)offset, (int)size);
