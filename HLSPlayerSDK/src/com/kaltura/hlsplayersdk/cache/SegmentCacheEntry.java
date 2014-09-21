@@ -13,6 +13,7 @@ public class SegmentCacheEntry implements Callback {
 	public byte[] data;
 	public boolean running;
 	public long lastTouchedMillis;
+	public long forceSize = -1;
 
 	// If >= 0, ID of a crypto context on the native side.
 	protected int cryptoHandle = -1;
@@ -24,6 +25,11 @@ public class SegmentCacheEntry implements Callback {
 	public static native int allocAESCryptoState(byte[] key, byte[] iv);
 	public static native void freeCryptoState(int id);
 	public static native long decrypt(int cryptoHandle, byte[] data, long start, long length);
+
+	public boolean hasCrypto()
+	{
+		return (cryptoHandle != -1);
+	}
 
 	public void setCryptoHandle(int handle)
 	{
@@ -41,6 +47,11 @@ public class SegmentCacheEntry implements Callback {
 		decryptHighWaterMark = decrypt(cryptoHandle, data, decryptHighWaterMark, delta);
 		//Log.e("HLS Cache", "Decrypted to " + decryptHighWaterMark);
 		//Log.e("HLS Cache", "  first byte = " + data[0]);
+	}
+
+	public boolean isFullyDecrypted()
+	{
+		return (decryptHighWaterMark == data.length);
 	}
 
 	@Override

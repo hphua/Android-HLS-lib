@@ -113,6 +113,8 @@ public class HLSSegmentCache
 			sce = populateCache(segmentUri);
 		}
 		waitForLoad(sce);
+		if(sce.forceSize != -1)
+			return sce.forceSize;
 		return sce.data.length;
 	}
 	
@@ -208,6 +210,36 @@ public static String bytesToHex(ByteBuffer bytes) {
 
 			// Ensure decrypted.
 			sce.ensureDecryptedTo(offset + size);
+
+			// If we have decrypted to the end, look for padding and adjust length.
+			if(sce.isFullyDecrypted() && sce.hasCrypto() && sce.forceSize == -1)
+			{
+				// Look for padding.
+				byte padByte = sce.data[sce.data.length - 1];
+
+				boolean isPadded = true;
+				for(int i=sce.data.length-padByte; i<sce.data.length; i++)
+				{
+					if(sce.data[i] == padByte)
+						continue;
+
+					isPadded = false;
+					break;
+				}
+
+				if(isPadded)
+				{
+					// Note new size.
+					sce.forceSize = sce.data.length - padByte;
+
+					// Truncate length.
+					if(offset + size >= sce.forceSize)
+					{
+						size = sce.forceSize - offset;
+						Log.i("HLS Cache", "Truncating size due to padding to " + size);
+					}
+				}
+			}
 			
 			// Copy the available bytes.
 			output.put(sce.data, (int)offset, (int)size);
