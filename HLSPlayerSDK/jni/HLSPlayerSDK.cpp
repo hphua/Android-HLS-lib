@@ -126,14 +126,14 @@ extern "C"
 		jsize totalBufferLength = env->GetArrayLength(bytes);
 		jsize targetEnd = offset + length;
 		jsize neededGrowth = 16 - (targetEnd % 16);
-		neededGrowth = neededGrowth == 16 ? 0 : neededGrowth;
+		neededGrowth = (neededGrowth == 16) ? 0 : neededGrowth;
 
 		bool convertFinalWithPadding = false;
 
 		// Do we have to adjust anything?
 		if(neededGrowth != 0)
 		{
-			if(targetEnd + neededGrowth < totalBufferLength)
+			if(targetEnd + neededGrowth <= totalBufferLength)
 			{
 				// Easy case - bump end out if we have room.
 				length += neededGrowth;
@@ -159,6 +159,7 @@ extern "C"
 		if(convertFinalWithPadding)
 		{
 			assert(totalBufferLength - (offset + length) < 16);
+
 			LOGE("FINAL CASE %d %d", (int)(offset+length), (int)totalBufferLength);
 			char tmpIn[16], tmpOut[16];
 			int bufOffset = 0;

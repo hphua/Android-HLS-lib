@@ -148,6 +148,17 @@ public class HLSSegmentCache
 		read(segmentUri, 0, size, buffer);
 		return new String(buffer.array(), Charset.forName("UTF-8"));
 	}
+
+final protected static char[] hexArray = "0123456789ABCDEF".toCharArray();
+public static String bytesToHex(ByteBuffer bytes) {
+    char[] hexChars = new char[bytes.capacity() * 2];
+    for ( int j = 0; j < bytes.capacity(); j++ ) {
+        int v = bytes.get(j) & 0xFF;
+        hexChars[j * 2] = hexArray[v >>> 4];
+        hexChars[j * 2 + 1] = hexArray[v & 0x0F];
+    }
+    return new String(hexChars);
+}	
 	
 	/**
 	 * Read from segment and return bytes read + output.
@@ -159,6 +170,8 @@ public class HLSSegmentCache
 	 */
 	static public long read(String segmentUri, long offset, long size, ByteBuffer output)
 	{
+		boolean adjusted = false;
+
 		//Log.i("HLS Cache", "Reading " + segmentUri + " offset=" + offset + " size=" + size + " output.capacity()=" + output.capacity());
 		
 		initialize();
@@ -177,12 +190,14 @@ public class HLSSegmentCache
 		
 		synchronized(segmentCache)
 		{
+
 			// How many bytes can we serve?
 			if(offset + size > sce.data.length)
 			{
 				long newSize = sce.data.length - offset;
 				Log.i("HLS Cache", "Adjusting size to " + newSize + " from " + size);
 				size = newSize;
+				adjusted = true;
 			}
 			
 			if(size < 0)
@@ -197,6 +212,18 @@ public class HLSSegmentCache
 			// Copy the available bytes.
 			output.put(sce.data, (int)offset, (int)size);
 			
+			if(adjusted)
+			{
+				try
+				{
+					Log.i("HLS Cache", "Saw bytes: " + bytesToHex(output));
+				}
+				catch(Exception e)
+				{
+					Log.i("HLS Cache", "Failed to dump hex bytes");
+				}
+			}
+
 			// Return how much we read.
 			return size;			
 		}
