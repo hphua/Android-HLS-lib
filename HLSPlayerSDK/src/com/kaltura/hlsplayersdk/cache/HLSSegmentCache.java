@@ -231,13 +231,17 @@ public static String bytesToHex(ByteBuffer bytes) {
 				{
 					// Note new size.
 					sce.forceSize = sce.data.length - padByte;
-
-					// Truncate length.
-					if(offset + size >= sce.forceSize)
-					{
-						size = sce.forceSize - offset;
-						Log.i("HLS Cache", "Truncating size due to padding to " + size);
-					}
+					Log.i("HLS Cache", "Forcing segment size to " + sce.forceSize);
+				}
+			} 
+			
+			// Truncate length based on forced size.
+			if(sce.forceSize != -1)
+			{
+				if(offset + size >= sce.forceSize)
+				{
+					size = sce.forceSize - offset;
+					Log.i("HLS Cache", "Truncating size due to padding to " + size);
 				}
 			}
 			
