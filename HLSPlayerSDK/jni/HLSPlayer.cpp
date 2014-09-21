@@ -374,7 +374,7 @@ sp<HLSDataSource> MakeHLSDataSource()
 status_t HLSPlayer::FeedSegment(const char* path, int32_t quality, int continuityEra, const char* altAudioPath, int audioIndex, double time, int cryptoId, int altAudioCryptoId )
 {
 	AutoLock locker(&lock);
-	LOGI("Quality = %d | Continuity = %d | audioIndex = %d | path = %s | altAudioPath = %s", quality, continuityEra, audioIndex, path, altAudioPath == NULL ? "NULL" : altAudioPath);
+	LOGI("Quality = %d | Continuity = %d | audioIndex = %d | path = %s | altAudioPath = %s | cryptoId = %d | altAudioCryptoId = %d", quality, continuityEra, audioIndex, path, altAudioPath == NULL ? "NULL" : altAudioPath, cryptoId, altAudioCryptoId);
 
 	bool sameEra = false;
 

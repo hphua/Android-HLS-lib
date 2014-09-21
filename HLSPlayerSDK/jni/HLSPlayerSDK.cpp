@@ -49,8 +49,8 @@ extern "C"
 		AesCtx *ctx = new AesCtx();
 		AesCtxIni(ctx, (unsigned char*)ivPtr, (unsigned char*)keyPtr, KEY128, CBC);
 
-		LOGI("KEY = %x%x%x%x", (int*)&keyPtr[0], (int*)&keyPtr[4], (int*)&keyPtr[8], (int*)&keyPtr[12]);
-		LOGI("IV  = %x%x%x%x", (int*)&ivPtr[0], (int*)&ivPtr[4], (int*)&ivPtr[8], (int*)&ivPtr[12]);
+		LOGI("AES KEY = %8x%8x%8x%8x", *(int*)&keyPtr[0], *(int*)&keyPtr[4], *(int*)&keyPtr[8], *(int*)&keyPtr[12]);
+		LOGI("AES IV  = %8x%8x%8x%8x", *(int*)&ivPtr[0], *(int*)&ivPtr[4], *(int*)&ivPtr[8], *(int*)&ivPtr[12]);
 
 		env->ReleaseByteArrayElements(key, keyPtr, 0);
 		env->ReleaseByteArrayElements(iv, ivPtr, 0);
@@ -126,6 +126,8 @@ extern "C"
 		jsize totalBufferLength = env->GetArrayLength(bytes);
 		jsize targetEnd = offset + length;
 		jsize neededGrowth = 16 - (targetEnd % 16);
+		neededGrowth = neededGrowth == 16 ? 0 : neededGrowth;
+
 		bool convertFinalWithPadding = false;
 
 		// Do we have to adjust anything?
@@ -156,6 +158,8 @@ extern "C"
 		// Do the final bit if needed.
 		if(convertFinalWithPadding)
 		{
+			assert(totalBufferLength - (offset + length) < 16);
+			LOGE("FINAL CASE %d %d", (int)(offset+length), (int)totalBufferLength);
 			char tmpIn[16], tmpOut[16];
 			int bufOffset = 0;
 			
@@ -175,6 +179,7 @@ extern "C"
 
 			// ... and update length.
 			length += bufOffset;
+			LOGE("FINAL CASE bufOffset = %d final = %d", (int)(bufOffset), (int)(length + offset));
 		}
 
 		// Clean up.

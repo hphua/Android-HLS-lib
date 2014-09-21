@@ -35,12 +35,12 @@ public class SegmentCacheEntry implements Callback {
 		if(cryptoHandle == -1)
 			return;
 		
-		Log.e("HLS Cache", "Decrypting to " + offset);
-		Log.e("HLS Cache", "  first byte = " + data[0]);
+		//Log.e("HLS Cache", "Decrypting to " + offset);
+		//Log.e("HLS Cache", "  first byte = " + data[0]);
 		long delta = offset - decryptHighWaterMark;
 		decryptHighWaterMark = decrypt(cryptoHandle, data, decryptHighWaterMark, delta);
-		Log.e("HLS Cache", "Decrypted to " + decryptHighWaterMark);
-		Log.e("HLS Cache", "  first byte = " + data[0]);
+		//Log.e("HLS Cache", "Decrypted to " + decryptHighWaterMark);
+		//Log.e("HLS Cache", "  first byte = " + data[0]);
 	}
 
 	@Override

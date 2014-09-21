@@ -4,6 +4,8 @@ import java.nio.ByteBuffer;
 import com.kaltura.hlsplayersdk.cache.HLSSegmentCache;
 import com.kaltura.hlsplayersdk.cache.SegmentCacheEntry;
 
+import android.util.Log;
+
 public class ManifestSegment extends BaseManifestItem 
 {
 	public ManifestSegment()
@@ -49,20 +51,34 @@ public class ManifestSegment extends BaseManifestItem
 		
 	}
 
+	public static byte[] hexStringToByteArray(String s) {
+	    int len = s.length();
+	    byte[] data = new byte[len / 2];
+	    for (int i = 0; i < len; i += 2) {
+	        data[i / 2] = (byte) ((Character.digit(s.charAt(i), 16) << 4)
+	                             + Character.digit(s.charAt(i+1), 16));
+	    }
+	    return data;
+	}
+
 	public void initializeCrypto()
 	{
+		if(cryptoId != -1)
+			return;
+
 		// Read the key optimistically.
 		ByteBuffer keyBytes = ByteBuffer.allocate(16);
 		HLSSegmentCache.read(key.url, 0, 16, keyBytes);
 
-		// Super fake IV.
-		byte[] iv = new byte[16];
-		for(int i=0; i<16; i++) iv[i] = 0;
-		//E0A9
-		iv[14] = (byte)0xe0;
-		iv[15] = (byte)0xa9;
+		// Generate IV and cut off 0x part if present.
+		String ivStr = key.getIV(id);
+		if(ivStr.indexOf("0x") == 0 || ivStr.indexOf("0X") == 0)
+			ivStr = ivStr.substring(2);
+
+		byte[] iv = hexStringToByteArray(ivStr);
 
 		cryptoId = SegmentCacheEntry.allocAESCryptoState(keyBytes.array(), iv);
+		Log.e("Crypto", "Got crypto ID " + cryptoId);
 	}
 
 }

@@ -578,7 +578,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 			Log.i("StreamHandler.getNextFile", "Getting Next Segment[" + lastSegmentIndex + "]\n" + lastSegment.toString());
 
 			lastSegment.quality = quality;
-
+			lastSegment.initializeCrypto();
 			return lastSegment;
 			
 		}
