@@ -29,7 +29,7 @@ void HLSSegmentCache::initialize(JavaVM *jvm)
 	mClass = (jclass)env->NewGlobalRef((jobject)c);
 
 	// Get the static methods.
-	mPrecache = env->GetStaticMethodID(mClass, "precache", "(Ljava/lang/String;)V" );
+	mPrecache = env->GetStaticMethodID(mClass, "precache", "(Ljava/lang/String;I)V" );
 	if (env->ExceptionCheck())
 	{
 		LOGE("Could not find method com/kaltura/hlsplayersdk/cache/HLSSegmentCache.precache" );
@@ -53,7 +53,7 @@ void HLSSegmentCache::initialize(JavaVM *jvm)
 	LOGI("DONE");
 }
 
-void HLSSegmentCache::precache(const char *uri)
+void HLSSegmentCache::precache(const char *uri, int cryptoId)
 {
 	assert(mJVM); // Didn't initialize.
 
@@ -62,7 +62,7 @@ void HLSSegmentCache::precache(const char *uri)
 	mJVM->AttachCurrentThread(&env, NULL);
 
 	jstring juri = env->NewStringUTF(uri);
-	env->CallStaticVoidMethod(mClass, mPrecache, juri);
+	env->CallStaticVoidMethod(mClass, mPrecache, juri, cryptoId);
 }
 
 int64_t HLSSegmentCache::read(const char *uri, int64_t offset, int64_t size, void *bytes)

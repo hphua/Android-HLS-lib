@@ -64,7 +64,7 @@ public class PlayerViewController extends RelativeLayout implements
 	private native void TogglePause();
 	public native void SetSurface(Surface surface);
 	private native int NextFrame();
-	private native void FeedSegment(String url, int quality, int continuityEra, String altAudioURL, int altAudioIndex, double startTime);
+	private native void FeedSegment(String url, int quality, int continuityEra, String altAudioURL, int altAudioIndex, double startTime, int cryptoId, int altCryptoId);
 	private native void SeekTo(double timeInSeconds);
 	private native void ApplyFormatChange();
 
@@ -95,11 +95,11 @@ public class PlayerViewController extends RelativeLayout implements
 
 		if (seg.altAudioSegment != null)
 		{
-			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.altAudioSegment.uri, seg.altAudioSegment.altAudioIndex, seg.startTime);
+			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.altAudioSegment.uri, seg.altAudioSegment.altAudioIndex, seg.startTime, seg.cryptoId, seg.altAudioSegment.cryptoId);
 		}
 		else
 		{
-			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, null, -1, seg.startTime);
+			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, null, -1, seg.startTime, seg.cryptoId, -1);
 		}
 	}
 
@@ -119,11 +119,11 @@ public class PlayerViewController extends RelativeLayout implements
 		
 		if (seg.altAudioSegment != null)
 		{
-			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.altAudioSegment.uri, seg.altAudioSegment.altAudioIndex, seg.startTime);
+			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.altAudioSegment.uri, seg.altAudioSegment.altAudioIndex, seg.startTime, seg.cryptoId, seg.altAudioSegment.cryptoId);
 		}
 		else
 		{
-			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, null, -1, seg.startTime);
+			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, null, -1, seg.startTime, seg.cryptoId, -1);
 		}
 
 
@@ -392,7 +392,7 @@ public class PlayerViewController extends RelativeLayout implements
 		ManifestSegment seg = getStreamHandler().getFileForTime(0, 0);
 		if (seg.altAudioSegment != null)
 		{
-			FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.altAudioSegment.uri, seg.altAudioSegment.altAudioIndex, seg.startTime);
+			FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.altAudioSegment.uri, seg.altAudioSegment.altAudioIndex, seg.startTime, seg.cryptoId, seg.altAudioSegment.cryptoId);
 			if (mOnAudioTrackSwitchingListener != null)
 			{
 				mOnAudioTrackSwitchingListener.onAudioSwitchingStart(-1, seg.altAudioSegment.altAudioIndex);
@@ -401,7 +401,7 @@ public class PlayerViewController extends RelativeLayout implements
 		}
 		else
 		{
-			FeedSegment(seg.uri, seg.quality, seg.continuityEra, null, -1, seg.startTime);
+			FeedSegment(seg.uri, seg.quality, seg.continuityEra, null, -1, seg.startTime, seg.cryptoId, -1);
 		}
 
 		play();

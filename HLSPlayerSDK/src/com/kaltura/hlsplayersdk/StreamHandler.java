@@ -8,6 +8,7 @@ import java.util.Vector;
 
 import android.util.Log;
 
+import com.kaltura.hlsplayersdk.manifest.ManifestEncryptionKey;
 import com.kaltura.hlsplayersdk.manifest.ManifestParser;
 import com.kaltura.hlsplayersdk.manifest.ManifestPlaylist;
 import com.kaltura.hlsplayersdk.manifest.ManifestSegment;
@@ -530,6 +531,8 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 						seg.altAudioSegment.altAudioIndex = altAudioIndex;
 					}
 				}
+				seg.key = getKeyForIndex(i);
+				seg.initializeCrypto();
 				return seg;
 			}
 			
@@ -557,6 +560,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 		if ( lastSegmentIndex < segments.size())
 		{
 			ManifestSegment lastSegment = segments.get(lastSegmentIndex);
+			lastSegment.key = getKeyForIndex(lastSegmentIndex);
 			if (altAudioManifest != null)
 			{
 				if (altAudioManifest.segments.size() > lastSegmentIndex)
@@ -574,7 +578,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 			Log.i("StreamHandler.getNextFile", "Getting Next Segment[" + lastSegmentIndex + "]\n" + lastSegment.toString());
 
 			lastSegment.quality = quality;
-
+			lastSegment.initializeCrypto();
 			return lastSegment;
 			
 		}
@@ -583,26 +587,26 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 	}
 	
 	//TODO: MAKE THIS WORK
-//	public function getKeyForIndex( index:uint ):HLSManifestEncryptionKey
-//	{
-//		var keys:Vector.<HLSManifestEncryptionKey>;
-//		
-//		// Make sure we accessing returning the correct key list for the manifest type
-//		if ( manifest.type == HLSManifestParser.AUDIO ) keys = manifest.keys;
-//		else keys = getManifestForQuality( lastQuality ).keys;
-//		
-//		for ( var i:int = 0; i < keys.length; i++ )
-//		{
-//			var key:HLSManifestEncryptionKey = keys[ i ];
-//			if ( key.startSegmentId <= index && key.endSegmentId > index )
-//			{
-//				if ( !key.isLoaded ) key.load();
-//				return key;
-//			}
-//		}
-//		
-//		return null;
-//	}
+	public ManifestEncryptionKey getKeyForIndex( int index )
+	{
+		Vector<ManifestEncryptionKey> keys = null;
+		
+		
+		// Make sure we accessing returning the correct key list for the manifest type
+		if ( manifest.type == ManifestParser.AUDIO ) keys = manifest.keys;
+		else keys = getManifestForQuality( lastQuality ).keys;
+		
+		for ( int i = 0; i < keys.size(); i++ )
+		{
+			ManifestEncryptionKey key = keys.get( i );
+			if ( key.startSegmentId <= index && key.endSegmentId >= index )
+			{
+				return key;
+			}
+		}
+		
+		return null;
+	}
 	
 	
 	// Returns duration in ms

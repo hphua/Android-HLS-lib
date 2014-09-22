@@ -10,6 +10,7 @@
 #include <android/native_window.h>
 #include <android/native_window_jni.h>
 
+#include "aes.h"
 #include "HLSPlayer.h"
 #include "HLSPlayerSDK.h"
 #include "debug.h"
@@ -17,10 +18,179 @@
 #include "androidVideoShim.h"
 #include "HLSSegmentCache.h"
 
+#include <unordered_map>
+
 HLSPlayerSDK* gHLSPlayerSDK = NULL;
+
+
+// AES crypto engine state.
+bool gCryptoStateMapInitialized = false;
+pthread_mutex_t gCryptoStateMapLock;
+int gCryptoStateMapCounter = 1000;
+std::tr1::unordered_map<int, AesCtx *> gCryptoStateMap;
 
 extern "C"
 {
+
+	jint Java_com_kaltura_hlsplayersdk_cache_SegmentCacheEntry_allocAESCryptoState(JNIEnv *env, jobject caller, jbyteArray key, jbyteArray iv)
+	{
+		if(gCryptoStateMapInitialized == false)
+		{
+			initRecursivePthreadMutex(&gCryptoStateMapLock);
+			gCryptoStateMapInitialized = true;
+		}
+
+		AutoLock locker(&gCryptoStateMapLock);
+
+		jbyte *keyPtr = env->GetByteArrayElements(key, NULL);
+		jbyte *ivPtr = env->GetByteArrayElements(iv, NULL);
+
+		// Initialize the AES context.
+		AesCtx *ctx = new AesCtx();
+		AesCtxIni(ctx, (unsigned char*)ivPtr, (unsigned char*)keyPtr, KEY128, CBC);
+
+		LOGI("AES KEY = %8x%8x%8x%8x", *(int*)&keyPtr[0], *(int*)&keyPtr[4], *(int*)&keyPtr[8], *(int*)&keyPtr[12]);
+		LOGI("AES IV  = %8x%8x%8x%8x", *(int*)&ivPtr[0], *(int*)&ivPtr[4], *(int*)&ivPtr[8], *(int*)&ivPtr[12]);
+
+		env->ReleaseByteArrayElements(key, keyPtr, 0);
+		env->ReleaseByteArrayElements(iv, ivPtr, 0);
+
+		// Insert and assign a handle/id.
+		int idx = gCryptoStateMapCounter++;
+		gCryptoStateMap.insert(std::make_pair<int, AesCtx*>(idx, ctx));
+		return idx;
+	}
+
+	void Java_com_kaltura_hlsplayersdk_cache_SegmentCacheEntry_freeCryptoState(JNIEnv, jobject caller, jint handle)
+	{
+		if(gCryptoStateMapInitialized == false)
+		{
+			initRecursivePthreadMutex(&gCryptoStateMapLock);
+			gCryptoStateMapInitialized = true;
+		}
+
+		AutoLock locker(&gCryptoStateMapLock);
+
+		std::tr1::unordered_map<int, AesCtx*>::const_iterator got = gCryptoStateMap.find(handle);
+		if(got == gCryptoStateMap.end())
+		{
+			LOGE("Failed to locate cryptostate %d! Ignoring free request...", handle);
+			return;
+		}
+
+		// Free and remove from the map.
+		gCryptoStateMap.erase(handle);
+		delete got->second;
+	}
+
+	jlong Java_com_kaltura_hlsplayersdk_cache_SegmentCacheEntry_decrypt(JNIEnv *env, jobject caller, jint handle, jbyteArray bytes, jlong offset, jlong length)
+	{
+		// Can we modify bytes in place?
+		jboolean isCopy = false;
+		jbyte *bytesPtr = env->GetByteArrayElements(bytes, &isCopy);
+		if(isCopy)
+		{
+			LOGE("Got a copy; this could cause a lot of overhead!");
+		}
+
+		// Dummy debug to compare with AES; just writes zeroes over the "decrypted" region.
+		// memset((unsigned char*)bytesPtr + offset, 0, length);
+
+		// Get AES crypto state.
+		std::tr1::unordered_map<int, AesCtx*>::const_iterator got = gCryptoStateMap.find(handle);
+		if(got == gCryptoStateMap.end())
+		{
+			LOGE("Failed to locate cryptostate %d! Ignoring decrypt request...", handle);
+			env->ReleaseByteArrayElements(bytes, bytesPtr, 0);
+			return -1;
+		}
+
+		// Deal with buffering. 
+		//
+		// Key points:
+		//    - AES requires 16 byte chunks.
+		//    - Therefore we want to align all our start and end points
+		//      to 16 bytes - easily done since we know we always decrypt
+		//		the buffer from the start. We just have to make sure we
+		//      always round up to a multiple of 16.
+		//    - We have to pad with nulls at the end of the file to hit 
+		//      a 16 byte boundary, and strip the decrypted nulls after.
+		//
+		// Secondary points:
+		//	  - Don't worry about start, assume it's aligned (since we control
+		//      evolution of the high water mark).
+		//    - Push end out to 16 byte multiple.
+		//    - For last chunk, decode using a small 16 byte temp buffer to avoid
+		//      extraneous copies.
+
+		jsize totalBufferLength = env->GetArrayLength(bytes);
+		jsize targetEnd = offset + length;
+		jsize neededGrowth = 16 - (targetEnd % 16);
+		neededGrowth = (neededGrowth == 16) ? 0 : neededGrowth;
+
+		bool convertFinalWithPadding = false;
+
+		// Do we have to adjust anything?
+		if(neededGrowth != 0)
+		{
+			if(targetEnd + neededGrowth <= totalBufferLength)
+			{
+				// Easy case - bump end out if we have room.
+				length += neededGrowth;
+			}
+			else
+			{
+				// Slightly trickier case - round DOWN to nearest 16,
+				// and set the "convert last bit" flag.
+				length = (length + neededGrowth) - 16;
+				convertFinalWithPadding = true;
+			}
+		}
+
+		// Decrypt into a temporary buffer for now. We can rewrite the AES routine
+		// to do this internally with much smaller buffers.
+		void *outputBits = malloc(length);
+		AesDecrypt(got->second, (unsigned char*)bytesPtr + offset, (unsigned char*)outputBits, length);
+
+		// Copy back into place.
+		memcpy(bytesPtr + offset, outputBits, length);
+
+		// Do the final bit if needed.
+		if(convertFinalWithPadding)
+		{
+			assert(totalBufferLength - (offset + length) < 16);
+
+			LOGE("FINAL CASE %d %d", (int)(offset+length), (int)totalBufferLength);
+			char tmpIn[16], tmpOut[16];
+			int bufOffset = 0;
+			
+			// Null pad and copy last few bytes.
+			memset(tmpIn, 0, 16);
+			bufOffset=0;
+			for(int i=offset+length; i<totalBufferLength; i++)
+				tmpIn[bufOffset++] = bytesPtr[i];
+
+			// Decrypt.
+			AesDecrypt(got->second, (unsigned char*)tmpIn, (unsigned char*)tmpOut, 16);
+
+			// Copy back out...
+			bufOffset=0;
+			for(int i=offset+length; i<totalBufferLength; i++)
+				bytesPtr[i] = tmpIn[bufOffset++];
+
+			// ... and update length.
+			length += bufOffset;
+			LOGE("FINAL CASE bufOffset = %d final = %d", (int)(bufOffset), (int)(length + offset));
+		}
+
+		// Clean up.
+		free(outputBits);
+		env->ReleaseByteArrayElements(bytes, bytesPtr, 0);
+
+		// Is it meaningful to adjust the requested end point?
+		return offset + length;
+	}
+
 	void Java_com_kaltura_hlsplayersdk_PlayerViewController_InitNativeDecoder(JNIEnv * env, jobject jcaller)
 	{
 		android_video_shim::initLibraries();
@@ -123,7 +293,7 @@ extern "C"
 		return rval;
 	}
 
-	void Java_com_kaltura_hlsplayersdk_PlayerViewController_FeedSegment(JNIEnv* env, jobject jcaller, jstring jurl, jint quality, jint continuityEra, jstring jaltAudioUrl, jint altAudioIndex, jdouble startTime )
+	void Java_com_kaltura_hlsplayersdk_PlayerViewController_FeedSegment(JNIEnv* env, jobject jcaller, jstring jurl, jint quality, jint continuityEra, jstring jaltAudioUrl, jint altAudioIndex, jdouble startTime, int cryptoId, int altCryptoId )
 	{
 		LOGI("Entered");
 		
@@ -143,12 +313,12 @@ extern "C"
 		if (jaltAudioUrl) // this is because GetStringUTFChars returns const char*, but dies if you pass it a NULL pointer. Why can't it just return NULL if you pass it NULL, huh?
 		{
 			const char* altAudioUrl = env->GetStringUTFChars(jaltAudioUrl, 0);
-			gHLSPlayerSDK->GetPlayer()->FeedSegment(url, quality, continuityEra, altAudioUrl, altAudioIndex, startTime);
+			gHLSPlayerSDK->GetPlayer()->FeedSegment(url, quality, continuityEra, altAudioUrl, altAudioIndex, startTime, cryptoId, altCryptoId);
 			env->ReleaseStringUTFChars(jaltAudioUrl, altAudioUrl);
 		}
 		else
 		{
-			gHLSPlayerSDK->GetPlayer()->FeedSegment(url, quality, continuityEra, NULL, altAudioIndex, startTime);
+			gHLSPlayerSDK->GetPlayer()->FeedSegment(url, quality, continuityEra, NULL, altAudioIndex, startTime, cryptoId, altCryptoId);
 		}
 		env->ReleaseStringUTFChars(jurl, url);
 	}

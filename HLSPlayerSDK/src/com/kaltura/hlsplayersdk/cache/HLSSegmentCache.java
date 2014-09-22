@@ -17,7 +17,6 @@ public class HLSSegmentCache
 	protected static long minimumExpireAge = 5000; // Keep everything touched in last 5 seconds.
 	
 	protected static Map<String, SegmentCacheEntry> segmentCache = null;
-	//public static AsyncHttpClient client = null;
 	public static OkHttpClient httpClient = new OkHttpClient();
 	
 	static public SegmentCacheEntry populateCache(final String segmentUri)
@@ -66,10 +65,7 @@ public class HLSSegmentCache
 			
 			// Store the data.
 			sce.data = data;
-			
-			// Drop the request
-			//sce.request = null;
-			
+						
 			// All done!
 			sce.lastTouchedMillis = System.currentTimeMillis();
 			sce.running = false;
@@ -93,10 +89,13 @@ public class HLSSegmentCache
 	 * 
 	 * @param segmentUri
 	 */
-	static public void precache(String segmentUri)
+	static public void precache(String segmentUri, int cryptoId)
 	{
 		initialize();
 		populateCache(segmentUri);
+
+		SegmentCacheEntry sce = segmentCache.get(segmentUri);
+		sce.setCryptoHandle(cryptoId);
 	}
 	
 	/**
@@ -104,6 +103,8 @@ public class HLSSegmentCache
 	 */
 	static public long getSize(String segmentUri)
 	{
+		initialize();
+
 		Log.i("HLS Cache", "Querying size of " + segmentUri);
 		SegmentCacheEntry sce = segmentCache.get(segmentUri);
 		if (sce == null)
@@ -112,6 +113,8 @@ public class HLSSegmentCache
 			sce = populateCache(segmentUri);
 		}
 		waitForLoad(sce);
+		if(sce.forceSize != -1)
+			return sce.forceSize;
 		return sce.data.length;
 	}
 	
@@ -147,6 +150,17 @@ public class HLSSegmentCache
 		read(segmentUri, 0, size, buffer);
 		return new String(buffer.array(), Charset.forName("UTF-8"));
 	}
+
+final protected static char[] hexArray = "0123456789ABCDEF".toCharArray();
+public static String bytesToHex(ByteBuffer bytes) {
+    char[] hexChars = new char[bytes.capacity() * 2];
+    for ( int j = 0; j < bytes.capacity(); j++ ) {
+        int v = bytes.get(j) & 0xFF;
+        hexChars[j * 2] = hexArray[v >>> 4];
+        hexChars[j * 2 + 1] = hexArray[v & 0x0F];
+    }
+    return new String(hexChars);
+}	
 	
 	/**
 	 * Read from segment and return bytes read + output.
@@ -158,6 +172,8 @@ public class HLSSegmentCache
 	 */
 	static public long read(String segmentUri, long offset, long size, ByteBuffer output)
 	{
+		boolean adjusted = false;
+
 		//Log.i("HLS Cache", "Reading " + segmentUri + " offset=" + offset + " size=" + size + " output.capacity()=" + output.capacity());
 		
 		initialize();
@@ -176,12 +192,14 @@ public class HLSSegmentCache
 		
 		synchronized(segmentCache)
 		{
+
 			// How many bytes can we serve?
 			if(offset + size > sce.data.length)
 			{
 				long newSize = sce.data.length - offset;
 				Log.i("HLS Cache", "Adjusting size to " + newSize + " from " + size);
 				size = newSize;
+				adjusted = true;
 			}
 			
 			if(size < 0)
@@ -189,10 +207,59 @@ public class HLSSegmentCache
 				Log.i("HLS Cache", "Couldn't return any bytes.");
 				return 0;
 			}
+
+			// Ensure decrypted.
+			sce.ensureDecryptedTo(offset + size);
+
+			// If we have decrypted to the end, look for padding and adjust length.
+			if(sce.isFullyDecrypted() && sce.hasCrypto() && sce.forceSize == -1)
+			{
+				// Look for padding.
+				byte padByte = sce.data[sce.data.length - 1];
+
+				boolean isPadded = true;
+				for(int i=sce.data.length-padByte; i<sce.data.length; i++)
+				{
+					if(sce.data[i] == padByte)
+						continue;
+
+					isPadded = false;
+					break;
+				}
+
+				if(isPadded)
+				{
+					// Note new size.
+					sce.forceSize = sce.data.length - padByte;
+					Log.i("HLS Cache", "Forcing segment size to " + sce.forceSize);
+				}
+			} 
+			
+			// Truncate length based on forced size.
+			if(sce.forceSize != -1)
+			{
+				if(offset + size >= sce.forceSize)
+				{
+					size = sce.forceSize - offset;
+					Log.i("HLS Cache", "Truncating size due to padding to " + size);
+				}
+			}
 			
 			// Copy the available bytes.
 			output.put(sce.data, (int)offset, (int)size);
 			
+			if(adjusted)
+			{
+				try
+				{
+					Log.i("HLS Cache", "Saw bytes: " + bytesToHex(output));
+				}
+				catch(Exception e)
+				{
+					Log.i("HLS Cache", "Failed to dump hex bytes");
+				}
+			}
+
 			// Return how much we read.
 			return size;			
 		}

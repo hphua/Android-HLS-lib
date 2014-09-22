@@ -1845,7 +1845,7 @@ namespace android_video_shim
         	return mSources.size() == 0 || (mSources.size() > 0 && quality == mQuality && continuityEra == mContinuityEra);
         }
 
-        status_t append(const char* uri, int quality, int continuityEra, double startTime)
+        status_t append(const char* uri, int quality, int continuityEra, double startTime, int cryptoId)
         {
             AutoLock locker(&lock);
 
@@ -1862,7 +1862,7 @@ namespace android_video_shim
             uri = strdup(uri);
 
             // Queue cache to load it.
-            HLSSegmentCache::precache(uri);
+            HLSSegmentCache::precache(uri, cryptoId);
 
             // Stick it in our sources.
             mSources.push_back(uri);

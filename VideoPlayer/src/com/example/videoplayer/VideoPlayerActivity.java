@@ -57,7 +57,7 @@ OnQualitySwitchingListener, OnQualityTracksListListener  {
         }
         
         initPlayerView();
-
+        
         if(false)
         {
 /*            // Test the HLS Segment Cache.
@@ -164,6 +164,12 @@ OnQualitySwitchingListener, OnQualityTracksListListener  {
         else if (id == R.id.bipbop)
         {
         	lastUrl = "http://devimages.apple.com/iphone/samples/bipbop/bipbopall.m3u8";
+        	playerView.setVideoUrl(lastUrl);
+        	return true;
+        }
+        else if (id == R.id.aes_vod)
+        {
+        	lastUrl = "http://live.cdn.antel.net.uy/test/hls/teststream1.m3u8";
         	playerView.setVideoUrl(lastUrl);
         	return true;
         }
