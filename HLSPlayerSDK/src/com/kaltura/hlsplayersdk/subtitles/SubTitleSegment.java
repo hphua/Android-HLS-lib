@@ -80,7 +80,7 @@ public class SubTitleSegment {
 	
 	public void precache()
 	{
-		HLSSegmentCache.precache(_url);
+		HLSSegmentCache.precache(_url, -1);
 	}
 	
 	

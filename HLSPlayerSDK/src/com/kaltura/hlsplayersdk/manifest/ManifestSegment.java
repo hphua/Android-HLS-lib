@@ -63,7 +63,7 @@ public class ManifestSegment extends BaseManifestItem
 
 	public void initializeCrypto()
 	{
-		if(cryptoId != -1)
+		if(cryptoId != -1 || key == null)
 			return;
 
 		// Read the key optimistically.
