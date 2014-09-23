@@ -78,7 +78,7 @@ public class ManifestSegment extends BaseManifestItem
 		byte[] iv = hexStringToByteArray(ivStr);
 
 		cryptoId = SegmentCacheEntry.allocAESCryptoState(keyBytes.array(), iv);
-		Log.e("Crypto", "Got crypto ID " + cryptoId);
+		Log.i("Crypto", "Got crypto ID " + cryptoId);
 	}
 
 }
