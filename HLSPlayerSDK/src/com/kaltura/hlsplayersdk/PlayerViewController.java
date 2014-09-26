@@ -9,6 +9,9 @@ import android.media.MediaPlayer.OnErrorListener;
 import android.media.MediaPlayer.OnPreparedListener;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.Surface;
@@ -75,7 +78,7 @@ public class PlayerViewController extends RelativeLayout implements
 	private static int mSubtitleLanguage = 0;
 	private static int mAltAudioLanguage = 0;
 	
-	private static boolean noMoreSegments = false;;
+	private static boolean noMoreSegments = false;
 
 
 	/**
@@ -143,26 +146,38 @@ public class PlayerViewController extends RelativeLayout implements
 	public static void enableHWRendererMode(boolean enablePushBuffers, int w,
 			int h, int colf) {
 
+		final boolean epb = enablePushBuffers;
+
+		
 		Log.i("PlayerViewController", "Initializing hw surface.");
 		
-		if (currentController.mPlayerView != null) {
-			currentController.removeView(currentController.mPlayerView);
-		}
+		currentController.mActivity.runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				
+				if (currentController.mPlayerView != null) {
+					currentController.removeView(currentController.mPlayerView);
+				}
+		
+				@SuppressWarnings("deprecation")
+				LayoutParams lp = new LayoutParams(ViewGroup.LayoutParams.FILL_PARENT,
+						ViewGroup.LayoutParams.FILL_PARENT);
+				lp.addRule(RelativeLayout.CENTER_IN_PARENT, RelativeLayout.TRUE);
+				currentController.mPlayerView = new PlayerView(
+						currentController.mActivity, currentController,
+						epb);
+				currentController.addView(currentController.mPlayerView, lp);
+		
+				Log.w("addComponents", "Surface Holder is " + currentController.mPlayerView.getHolder());
+				if (currentController.mPlayerView.getHolder() != null)
+					Log.w("addComponents", "Surface Holder is " + currentController.mPlayerView.getHolder().getSurface());
+		
+				// Preserve resolution info for layout.
+				setVideoResolution(currentController.mVideoWidth, currentController.mVideoHeight);
 
-		LayoutParams lp = new LayoutParams(ViewGroup.LayoutParams.FILL_PARENT,
-				ViewGroup.LayoutParams.FILL_PARENT);
-		lp.addRule(RelativeLayout.CENTER_IN_PARENT, RelativeLayout.TRUE);
-		currentController.mPlayerView = new PlayerView(
-				currentController.mActivity, currentController,
-				enablePushBuffers);
-		currentController.addView(currentController.mPlayerView, lp);
-
-		Log.w("addComponents", "Surface Holder is " + currentController.mPlayerView.getHolder());
-		if (currentController.mPlayerView.getHolder() != null)
-			Log.w("addComponents", "Surface Holder is " + currentController.mPlayerView.getHolder().getSurface());
-
-		// Preserve resolution info for layout.
-		setVideoResolution(currentController.mVideoWidth, currentController.mVideoHeight);
+			}
+		});
+		
 	}
 
 	/**
@@ -171,19 +186,27 @@ public class PlayerViewController extends RelativeLayout implements
 	 * @param h Actual height of video.
 	 */
 	public static void setVideoResolution(int w, int h) {
+		final int ww = w;
+		final int hh = h;
 		if (currentController != null) 
 		{
-			currentController.mVideoWidth = w;
-			currentController.mVideoHeight = h;
+			currentController.mActivity.runOnUiThread(new Runnable() {
+				@Override
+				public void run() {
+					currentController.mVideoWidth = ww;
+					currentController.mVideoHeight = hh;
+					
+					if(currentController.mPlayerView != null)
+					{
+						currentController.mPlayerView.mVideoWidth = ww;
+						currentController.mPlayerView.mVideoHeight = hh;
+						currentController.mPlayerView.requestLayout();
+		
+					}
 			
-			if(currentController.mPlayerView != null)
-			{
-				currentController.mPlayerView.mVideoWidth = w;
-				currentController.mPlayerView.mVideoHeight = h;
-				currentController.mPlayerView.requestLayout();
-			}
-			
-			currentController.requestLayout();
+					currentController.requestLayout();
+				}
+			});
 		}
 	}
 	
@@ -215,6 +238,34 @@ public class PlayerViewController extends RelativeLayout implements
 			}
 				
 		}
+	}
+	
+	// Interface thread
+	class InterfaceThread extends Thread
+	{
+		public Handler mHandler;
+		
+		public void run()
+		{
+			Looper.prepare();
+			
+			mHandler = new Handler()
+			{
+				public void handleMessage(Message msg)
+				{
+					
+				}
+			};
+			
+			Looper.loop();
+		}
+	}
+	
+	private InterfaceThread mInterfaceThread = new InterfaceThread();
+	
+	public static InterfaceThread GetInterfaceThread()
+	{
+		return currentController.mInterfaceThread;
 	}
 
 	// Instance members.
@@ -304,15 +355,18 @@ public class PlayerViewController extends RelativeLayout implements
 
 	public PlayerViewController(Context context) {
 		super(context);
+		mInterfaceThread.start();
 	}
 
 	public PlayerViewController(Context context, AttributeSet attrs) {
 		super(context, attrs);
+		mInterfaceThread.start();
 	}
 
 	public PlayerViewController(Context context, AttributeSet attrs,
 			int defStyle) {
 		super(context, attrs, defStyle);
+		mInterfaceThread.start();
 	}
 
 	/**
@@ -340,7 +394,9 @@ public class PlayerViewController extends RelativeLayout implements
 	public void close() {
 		Log.i("PlayerViewController", "Closing resources.");
 		mRenderThread.interrupt();
+		mInterfaceThread.interrupt();
 		CloseNativeDecoder();
+		
 	}
 
 	/**

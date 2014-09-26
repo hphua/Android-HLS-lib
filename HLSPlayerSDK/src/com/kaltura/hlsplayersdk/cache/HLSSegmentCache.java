@@ -8,6 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import android.util.Log;
 
+import com.squareup.okhttp.Call;
 import com.squareup.okhttp.OkHttpClient;
 import com.squareup.okhttp.Request;
 
@@ -42,7 +43,9 @@ public class HLSSegmentCache
 			Request request = new Request.Builder()
 		      .url(segmentUri)
 		      .build();
-			httpClient.newCall(request).enqueue(sce);
+			Call c = httpClient.newCall(request).enqueue(sce);
+			
+			
 
 			segmentCache.put(segmentUri, sce);		
 			return sce;
