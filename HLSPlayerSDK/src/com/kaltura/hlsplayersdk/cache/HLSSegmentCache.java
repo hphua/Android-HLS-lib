@@ -8,7 +8,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import android.util.Log;
 
-import com.squareup.okhttp.Call;
 import com.squareup.okhttp.OkHttpClient;
 import com.squareup.okhttp.Request;
 
@@ -43,8 +42,7 @@ public class HLSSegmentCache
 			Request request = new Request.Builder()
 		      .url(segmentUri)
 		      .build();
-			Call c = httpClient.newCall(request).enqueue(sce);
-			
+			httpClient.newCall(request).enqueue(sce);
 			
 
 			segmentCache.put(segmentUri, sce);		
@@ -91,6 +89,7 @@ public class HLSSegmentCache
 	 * initiate the download.
 	 * 
 	 * @param segmentUri
+	 * @param cryptoId
 	 */
 	static public void precache(String segmentUri, int cryptoId)
 	{
@@ -100,6 +99,49 @@ public class HLSSegmentCache
 		SegmentCacheEntry sce = segmentCache.get(segmentUri);
 		sce.setCryptoHandle(cryptoId);
 	}
+	
+	/**
+	 * Hint we will soon be wanting data from this segment and that we should 
+	 * initiate the download.
+	 * 
+	 * @param segmentUri
+	 * @param cryptoId
+	 * @param SegmentCachedListener
+	 */
+	static public void precache(String segmentUri, int cryptoId, SegmentCachedListener segmentCachedListener )
+	{
+		precache(segmentUri, cryptoId);
+		SegmentCacheEntry sce = segmentCache.get(segmentUri);
+		sce.registerSegmentCachedListener(segmentCachedListener);
+	}
+	
+	/**
+	 * Cancels all cache event notifications for a particular cache entry.
+	 * 
+	 * @param segmentUri
+	 */
+	static public void cancelCacheEvent(String segmentUri)
+	{
+		synchronized (segmentCache)
+		{
+			SegmentCacheEntry sce = segmentCache.get(segmentUri);
+			if (sce != null) sce.registerSegmentCachedListener(null);
+		}
+	}
+	
+	static public void cancelAllCacheEvents()
+	{
+		initialize();
+		//synchronized (segmentCache)
+		{
+			// Get all the values in the set.
+			Collection<SegmentCacheEntry> values = segmentCache.values();
+
+			for(SegmentCacheEntry v : values)
+				v.registerSegmentCachedListener(null);
+		}
+	}
+	
 	
 	/**
 	 * Return the size of a downloaded segment. Blocking.

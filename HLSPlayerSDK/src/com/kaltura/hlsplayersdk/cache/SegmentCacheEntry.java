@@ -55,10 +55,18 @@ public class SegmentCacheEntry implements Callback {
 	{
 		return (decryptHighWaterMark == data.length);
 	}
+	
+	private SegmentCachedListener mSegmentCachedListener = null;
+	public void registerSegmentCachedListener(SegmentCachedListener listener)
+	{
+		mSegmentCachedListener = listener;
+	}
 
 	@Override
 	public void onFailure(Request arg0, IOException arg1) {
 		Log.e("HLS Cache", "Failed to download '" + uri + "'! " + arg1.toString());
+		if (mSegmentCachedListener != null)
+			mSegmentCachedListener.onSegmentFailed(uri, arg1);
 	}
 	
 	@Override
@@ -67,5 +75,7 @@ public class SegmentCacheEntry implements Callback {
 		
 		Log.i("HLS Cache", "Got " + uri);
 		HLSSegmentCache.store(uri, response.body().bytes());
+		if (mSegmentCachedListener != null)
+			mSegmentCachedListener.onSegmentCompleted(uri);
 	}
 }

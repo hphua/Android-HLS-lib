@@ -1,5 +1,6 @@
 package com.kaltura.hlsplayersdk;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Vector;
 
@@ -19,6 +20,8 @@ import android.view.ViewGroup;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
+import com.kaltura.hlsplayersdk.cache.HLSSegmentCache;
+import com.kaltura.hlsplayersdk.cache.SegmentCachedListener;
 import com.kaltura.hlsplayersdk.events.OnPlayerStateChangeListener;
 import com.kaltura.hlsplayersdk.events.OnPlayheadUpdateListener;
 import com.kaltura.hlsplayersdk.events.OnProgressListener;
@@ -48,7 +51,7 @@ import com.kaltura.playersdk.events.OnTextTracksListListener;
  */
 public class PlayerViewController extends RelativeLayout implements
 		VideoPlayerInterface, URLLoader.DownloadEventListener, OnParseCompleteListener, 
-		TextTracksInterface, AlternateAudioTracksInterface, QualityTracksInterface {
+		TextTracksInterface, AlternateAudioTracksInterface, QualityTracksInterface, SegmentCachedListener {
 
 	// State constants.
 	private final int STATE_STOPPED = 1;
@@ -448,6 +451,7 @@ public class PlayerViewController extends RelativeLayout implements
 		ManifestSegment seg = getStreamHandler().getFileForTime(0, 0);
 		if (seg.altAudioSegment != null)
 		{
+			HLSSegmentCache.precache(seg.uri, seg.cryptoId, this);
 			FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.altAudioSegment.uri, seg.altAudioSegment.altAudioIndex, seg.startTime, seg.cryptoId, seg.altAudioSegment.cryptoId);
 			if (mOnAudioTrackSwitchingListener != null)
 			{
@@ -457,14 +461,29 @@ public class PlayerViewController extends RelativeLayout implements
 		}
 		else
 		{
+			HLSSegmentCache.precache(seg.uri, seg.cryptoId, this);
 			FeedSegment(seg.uri, seg.quality, seg.continuityEra, null, -1, seg.startTime, seg.cryptoId, -1);
 		}
 
+
+	}
+	
+	@Override
+	public void onSegmentCompleted(String uri) {
+		HLSSegmentCache.cancelCacheEvent(uri);
+		
 		play();
 		
 		// Fire prepared event.
 		if(mPreparedListener != null)
 			mPreparedListener.onPrepared(null);		
+		
+	}
+	@Override
+	public void onSegmentFailed(String uri, IOException e) {
+
+		HLSSegmentCache.cancelCacheEvent(uri);
+		
 	}
 
 	@Override
@@ -586,6 +605,7 @@ public class PlayerViewController extends RelativeLayout implements
 	
 	public void setVideoUrl(String url) {
 		Log.i("PlayerView.setVideoUrl", url);
+		HLSSegmentCache.cancelAllCacheEvents();
 		StopPlayer();
 		ResetPlayer();
 
@@ -735,6 +755,7 @@ public class PlayerViewController extends RelativeLayout implements
 	public void registerQualitySwitchingChange( OnQualitySwitchingListener listener) {
 		mOnQualitySwitchingListener = listener;		
 	}
+
 
 
 	
