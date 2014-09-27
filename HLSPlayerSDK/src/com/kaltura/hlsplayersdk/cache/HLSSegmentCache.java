@@ -112,7 +112,10 @@ public class HLSSegmentCache
 	{
 		precache(segmentUri, cryptoId);
 		SegmentCacheEntry sce = segmentCache.get(segmentUri);
-		sce.registerSegmentCachedListener(segmentCachedListener);
+		if (sce.running)
+			sce.registerSegmentCachedListener(segmentCachedListener);
+		else
+			segmentCachedListener.onSegmentCompleted(segmentUri);
 	}
 	
 	/**
