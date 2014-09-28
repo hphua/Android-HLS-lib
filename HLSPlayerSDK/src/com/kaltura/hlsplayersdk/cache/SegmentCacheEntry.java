@@ -59,7 +59,17 @@ public class SegmentCacheEntry implements Callback {
 	private SegmentCachedListener mSegmentCachedListener = null;
 	public void registerSegmentCachedListener(SegmentCachedListener listener)
 	{
-		mSegmentCachedListener = listener;
+		if (mSegmentCachedListener != listener)
+		{
+			Log.i("SegmentCacheEntry", "Setting the SegmentCachedListener to a new value: " + listener);
+			mSegmentCachedListener = listener;
+		}
+	}
+	
+	public void notifySegmentCached()
+	{
+		if (mSegmentCachedListener != null)
+			mSegmentCachedListener.onSegmentCompleted(uri);
 	}
 
 	@Override
@@ -75,7 +85,6 @@ public class SegmentCacheEntry implements Callback {
 		
 		Log.i("HLS Cache", "Got " + uri);
 		HLSSegmentCache.store(uri, response.body().bytes());
-		if (mSegmentCachedListener != null)
-			mSegmentCachedListener.onSegmentCompleted(uri);
+
 	}
 }

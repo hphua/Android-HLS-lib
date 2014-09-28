@@ -1474,8 +1474,6 @@ void HLSPlayer::ApplyFormatChange()
 	}
 
 	NotifyFormatChange(curQuality, newQuality, curAudioTrack, newAudioTrack);
-
-
 }
 
 void HLSPlayer::NotifyFormatChange(int curQuality, int newQuality, int curAudio, int newAudio)

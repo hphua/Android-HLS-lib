@@ -69,6 +69,7 @@ public class HLSSegmentCache
 						
 			// All done!
 			sce.lastTouchedMillis = System.currentTimeMillis();
+			sce.notifySegmentCached();
 			sce.running = false;
 		}
 
@@ -111,11 +112,15 @@ public class HLSSegmentCache
 	static public void precache(String segmentUri, int cryptoId, SegmentCachedListener segmentCachedListener )
 	{
 		precache(segmentUri, cryptoId);
-		SegmentCacheEntry sce = segmentCache.get(segmentUri);
-		if (sce.running)
-			sce.registerSegmentCachedListener(segmentCachedListener);
-		else
-			segmentCachedListener.onSegmentCompleted(segmentUri);
+		synchronized (segmentCache)
+		{
+			SegmentCacheEntry sce = segmentCache.get(segmentUri);
+			if (sce.running)
+				sce.registerSegmentCachedListener(segmentCachedListener);
+			else
+				segmentCachedListener.onSegmentCompleted(segmentUri);
+			
+		}
 	}
 	
 	/**
@@ -125,6 +130,7 @@ public class HLSSegmentCache
 	 */
 	static public void cancelCacheEvent(String segmentUri)
 	{
+		initialize();
 		synchronized (segmentCache)
 		{
 			SegmentCacheEntry sce = segmentCache.get(segmentUri);
@@ -135,7 +141,7 @@ public class HLSSegmentCache
 	static public void cancelAllCacheEvents()
 	{
 		initialize();
-		//synchronized (segmentCache)
+		synchronized (segmentCache)
 		{
 			// Get all the values in the set.
 			Collection<SegmentCacheEntry> values = segmentCache.values();

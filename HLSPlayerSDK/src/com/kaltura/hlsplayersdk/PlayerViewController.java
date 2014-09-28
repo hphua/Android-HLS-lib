@@ -358,18 +358,15 @@ public class PlayerViewController extends RelativeLayout implements
 
 	public PlayerViewController(Context context) {
 		super(context);
-		mInterfaceThread.start();
 	}
 
 	public PlayerViewController(Context context, AttributeSet attrs) {
 		super(context, attrs);
-		mInterfaceThread.start();
 	}
 
 	public PlayerViewController(Context context, AttributeSet attrs,
 			int defStyle) {
 		super(context, attrs, defStyle);
-		mInterfaceThread.start();
 	}
 
 	/**
@@ -379,6 +376,8 @@ public class PlayerViewController extends RelativeLayout implements
 		try {
 			System.loadLibrary("HLSPlayerSDK");
 			InitNativeDecoder();
+			mInterfaceThread.start();
+
 		} catch (Exception e) {
 			Log.i("PlayerViewController", "Failed to initialize native video library.");
 		}
