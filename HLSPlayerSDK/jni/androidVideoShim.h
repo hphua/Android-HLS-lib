@@ -1900,6 +1900,7 @@ namespace android_video_shim
         status_t _initCheck()
         {
             AutoLock locker(&lock);
+            LOGI("_initCheck!");
 
             // With the new segment cache, we cannot fail!
 

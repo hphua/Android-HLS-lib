@@ -12,7 +12,8 @@
 
 enum Playstate
 {
-	STOPPED = 1,
+	INITIALIZED = 0,
+	STOPPED,
 	PAUSED,
 	PLAYING,
 	SEEKING,

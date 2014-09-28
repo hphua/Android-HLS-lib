@@ -43,6 +43,7 @@ public class HLSSegmentCache
 		      .url(segmentUri)
 		      .build();
 			httpClient.newCall(request).enqueue(sce);
+			
 
 			segmentCache.put(segmentUri, sce);		
 			return sce;
@@ -51,12 +52,13 @@ public class HLSSegmentCache
 	
 	static public void store(String segmentUri, byte[] data)
 	{
+		SegmentCacheEntry sce = null;
 		synchronized (segmentCache)
 		{
 			Log.i("HLS Cache", "Storing result of " + data.length + " for " + segmentUri);
 			
 			// Look up the cache entry.
-			SegmentCacheEntry sce = segmentCache.get(segmentUri);
+			sce = segmentCache.get(segmentUri);
 			if(sce == null)
 			{
 				Log.e("HLS Cache", "Lost entry for " + segmentUri + "!");
@@ -68,8 +70,11 @@ public class HLSSegmentCache
 						
 			// All done!
 			sce.lastTouchedMillis = System.currentTimeMillis();
+			//sce.notifySegmentCached();
 			sce.running = false;
 		}
+		
+		sce.notifySegmentCached();
 
 		expire();
 	}
@@ -88,6 +93,7 @@ public class HLSSegmentCache
 	 * initiate the download.
 	 * 
 	 * @param segmentUri
+	 * @param cryptoId
 	 */
 	static public void precache(String segmentUri, int cryptoId)
 	{
@@ -97,6 +103,57 @@ public class HLSSegmentCache
 		SegmentCacheEntry sce = segmentCache.get(segmentUri);
 		sce.setCryptoHandle(cryptoId);
 	}
+	
+	/**
+	 * Hint we will soon be wanting data from this segment and that we should 
+	 * initiate the download.
+	 * 
+	 * @param segmentUri
+	 * @param cryptoId
+	 * @param SegmentCachedListener
+	 */
+	static public void precache(String segmentUri, int cryptoId, SegmentCachedListener segmentCachedListener )
+	{
+		precache(segmentUri, cryptoId);
+		synchronized (segmentCache)
+		{
+			SegmentCacheEntry sce = segmentCache.get(segmentUri);
+			if (sce.running)
+				sce.registerSegmentCachedListener(segmentCachedListener);
+			else
+				segmentCachedListener.onSegmentCompleted(segmentUri);
+			
+		}
+	}
+	
+	/**
+	 * Cancels all cache event notifications for a particular cache entry.
+	 * 
+	 * @param segmentUri
+	 */
+	static public void cancelCacheEvent(String segmentUri)
+	{
+		initialize();
+		synchronized (segmentCache)
+		{
+			SegmentCacheEntry sce = segmentCache.get(segmentUri);
+			if (sce != null) sce.registerSegmentCachedListener(null);
+		}
+	}
+	
+	static public void cancelAllCacheEvents()
+	{
+		initialize();
+		synchronized (segmentCache)
+		{
+			// Get all the values in the set.
+			Collection<SegmentCacheEntry> values = segmentCache.values();
+
+			for(SegmentCacheEntry v : values)
+				v.registerSegmentCachedListener(null);
+		}
+	}
+	
 	
 	/**
 	 * Return the size of a downloaded segment. Blocking.

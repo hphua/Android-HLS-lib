@@ -1,5 +1,6 @@
 package com.kaltura.hlsplayersdk;
 
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Vector;
 
@@ -9,6 +10,9 @@ import android.media.MediaPlayer.OnErrorListener;
 import android.media.MediaPlayer.OnPreparedListener;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.Message;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.Surface;
@@ -16,6 +20,8 @@ import android.view.ViewGroup;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
+import com.kaltura.hlsplayersdk.cache.HLSSegmentCache;
+import com.kaltura.hlsplayersdk.cache.SegmentCachedListener;
 import com.kaltura.hlsplayersdk.events.OnPlayerStateChangeListener;
 import com.kaltura.hlsplayersdk.events.OnPlayheadUpdateListener;
 import com.kaltura.hlsplayersdk.events.OnProgressListener;
@@ -45,7 +51,7 @@ import com.kaltura.playersdk.events.OnTextTracksListListener;
  */
 public class PlayerViewController extends RelativeLayout implements
 		VideoPlayerInterface, URLLoader.DownloadEventListener, OnParseCompleteListener, 
-		TextTracksInterface, AlternateAudioTracksInterface, QualityTracksInterface {
+		TextTracksInterface, AlternateAudioTracksInterface, QualityTracksInterface, SegmentCachedListener {
 
 	// State constants.
 	private final int STATE_STOPPED = 1;
@@ -75,7 +81,7 @@ public class PlayerViewController extends RelativeLayout implements
 	private static int mSubtitleLanguage = 0;
 	private static int mAltAudioLanguage = 0;
 	
-	private static boolean noMoreSegments = false;;
+	private static boolean noMoreSegments = false;
 
 
 	/**
@@ -143,26 +149,38 @@ public class PlayerViewController extends RelativeLayout implements
 	public static void enableHWRendererMode(boolean enablePushBuffers, int w,
 			int h, int colf) {
 
+		final boolean epb = enablePushBuffers;
+
+		
 		Log.i("PlayerViewController", "Initializing hw surface.");
 		
-		if (currentController.mPlayerView != null) {
-			currentController.removeView(currentController.mPlayerView);
-		}
+		currentController.mActivity.runOnUiThread(new Runnable() {
+			@Override
+			public void run() {
+				
+				if (currentController.mPlayerView != null) {
+					currentController.removeView(currentController.mPlayerView);
+				}
+		
+				@SuppressWarnings("deprecation")
+				LayoutParams lp = new LayoutParams(ViewGroup.LayoutParams.FILL_PARENT,
+						ViewGroup.LayoutParams.FILL_PARENT);
+				lp.addRule(RelativeLayout.CENTER_IN_PARENT, RelativeLayout.TRUE);
+				currentController.mPlayerView = new PlayerView(
+						currentController.mActivity, currentController,
+						epb);
+				currentController.addView(currentController.mPlayerView, lp);
+		
+				Log.w("addComponents", "Surface Holder is " + currentController.mPlayerView.getHolder());
+				if (currentController.mPlayerView.getHolder() != null)
+					Log.w("addComponents", "Surface Holder is " + currentController.mPlayerView.getHolder().getSurface());
+		
+				// Preserve resolution info for layout.
+				setVideoResolution(currentController.mVideoWidth, currentController.mVideoHeight);
 
-		LayoutParams lp = new LayoutParams(ViewGroup.LayoutParams.FILL_PARENT,
-				ViewGroup.LayoutParams.FILL_PARENT);
-		lp.addRule(RelativeLayout.CENTER_IN_PARENT, RelativeLayout.TRUE);
-		currentController.mPlayerView = new PlayerView(
-				currentController.mActivity, currentController,
-				enablePushBuffers);
-		currentController.addView(currentController.mPlayerView, lp);
-
-		Log.w("addComponents", "Surface Holder is " + currentController.mPlayerView.getHolder());
-		if (currentController.mPlayerView.getHolder() != null)
-			Log.w("addComponents", "Surface Holder is " + currentController.mPlayerView.getHolder().getSurface());
-
-		// Preserve resolution info for layout.
-		setVideoResolution(currentController.mVideoWidth, currentController.mVideoHeight);
+			}
+		});
+		
 	}
 
 	/**
@@ -171,19 +189,27 @@ public class PlayerViewController extends RelativeLayout implements
 	 * @param h Actual height of video.
 	 */
 	public static void setVideoResolution(int w, int h) {
+		final int ww = w;
+		final int hh = h;
 		if (currentController != null) 
 		{
-			currentController.mVideoWidth = w;
-			currentController.mVideoHeight = h;
+			currentController.mActivity.runOnUiThread(new Runnable() {
+				@Override
+				public void run() {
+					currentController.mVideoWidth = ww;
+					currentController.mVideoHeight = hh;
+					
+					if(currentController.mPlayerView != null)
+					{
+						currentController.mPlayerView.mVideoWidth = ww;
+						currentController.mPlayerView.mVideoHeight = hh;
+						currentController.mPlayerView.requestLayout();
+		
+					}
 			
-			if(currentController.mPlayerView != null)
-			{
-				currentController.mPlayerView.mVideoWidth = w;
-				currentController.mPlayerView.mVideoHeight = h;
-				currentController.mPlayerView.requestLayout();
-			}
-			
-			currentController.requestLayout();
+					currentController.requestLayout();
+				}
+			});
 		}
 	}
 	
@@ -215,6 +241,34 @@ public class PlayerViewController extends RelativeLayout implements
 			}
 				
 		}
+	}
+	
+	// Interface thread
+	class InterfaceThread extends Thread
+	{
+		public Handler mHandler;
+		
+		public void run()
+		{
+			Looper.prepare();
+			
+			mHandler = new Handler()
+			{
+				public void handleMessage(Message msg)
+				{
+					
+				}
+			};
+			
+			Looper.loop();
+		}
+	}
+	
+	private InterfaceThread mInterfaceThread = new InterfaceThread();
+	
+	public static InterfaceThread GetInterfaceThread()
+	{
+		return currentController.mInterfaceThread;
 	}
 
 	// Instance members.
@@ -322,6 +376,8 @@ public class PlayerViewController extends RelativeLayout implements
 		try {
 			System.loadLibrary("HLSPlayerSDK");
 			InitNativeDecoder();
+			mInterfaceThread.start();
+
 		} catch (Exception e) {
 			Log.i("PlayerViewController", "Failed to initialize native video library.");
 		}
@@ -340,7 +396,17 @@ public class PlayerViewController extends RelativeLayout implements
 	public void close() {
 		Log.i("PlayerViewController", "Closing resources.");
 		mRenderThread.interrupt();
+		mInterfaceThread.interrupt();
 		CloseNativeDecoder();
+		
+	}
+	
+	/**
+	 *  Reset any state that we have
+	 */
+	public void reset()
+	{
+		mTimeMS = 0;
 	}
 
 	/**
@@ -392,7 +458,11 @@ public class PlayerViewController extends RelativeLayout implements
 		ManifestSegment seg = getStreamHandler().getFileForTime(0, 0);
 		if (seg.altAudioSegment != null)
 		{
+			// We need to feed the segment before calling precache so that the datasource can be initialized before we
+			// supply the event handler to the segment cache. In the case where the segment is already in the cache, the
+			// event handler can be called immediately.
 			FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.altAudioSegment.uri, seg.altAudioSegment.altAudioIndex, seg.startTime, seg.cryptoId, seg.altAudioSegment.cryptoId);
+			HLSSegmentCache.precache(seg.uri, seg.cryptoId, this);
 			if (mOnAudioTrackSwitchingListener != null)
 			{
 				mOnAudioTrackSwitchingListener.onAudioSwitchingStart(-1, seg.altAudioSegment.altAudioIndex);
@@ -401,14 +471,32 @@ public class PlayerViewController extends RelativeLayout implements
 		}
 		else
 		{
+			// We need to feed the segment before calling precache so that the datasource can be initialized before we
+			// supply the event handler to the segment cache. In the case where the segment is already in the cache, the
+			// event handler can be called immediately.
 			FeedSegment(seg.uri, seg.quality, seg.continuityEra, null, -1, seg.startTime, seg.cryptoId, -1);
+			HLSSegmentCache.precache(seg.uri, seg.cryptoId, this);
 		}
 
+
+	}
+	
+	@Override
+	public void onSegmentCompleted(String uri) {
+		HLSSegmentCache.cancelCacheEvent(uri);
+		
 		play();
 		
 		// Fire prepared event.
 		if(mPreparedListener != null)
 			mPreparedListener.onPrepared(null);		
+		
+	}
+	@Override
+	public void onSegmentFailed(String uri, IOException e) {
+
+		HLSSegmentCache.cancelCacheEvent(uri);
+		
 	}
 
 	@Override
@@ -507,6 +595,7 @@ public class PlayerViewController extends RelativeLayout implements
 	}
 
 	public void seek(int msec) {
+		HLSSegmentCache.cancelAllCacheEvents();
 		int curPos = getCurrentPosition();
 		SeekTo((curPos + msec) / 1000);
 	}
@@ -530,8 +619,10 @@ public class PlayerViewController extends RelativeLayout implements
 	
 	public void setVideoUrl(String url) {
 		Log.i("PlayerView.setVideoUrl", url);
+		HLSSegmentCache.cancelAllCacheEvents();
 		StopPlayer();
 		ResetPlayer();
+		reset();
 
 		// Confirm network is ready to go.
 		if(!isOnline())
@@ -679,6 +770,7 @@ public class PlayerViewController extends RelativeLayout implements
 	public void registerQualitySwitchingChange( OnQualitySwitchingListener listener) {
 		mOnQualitySwitchingListener = listener;		
 	}
+
 
 
 	
