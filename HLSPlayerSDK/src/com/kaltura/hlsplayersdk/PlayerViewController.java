@@ -451,8 +451,11 @@ public class PlayerViewController extends RelativeLayout implements
 		ManifestSegment seg = getStreamHandler().getFileForTime(0, 0);
 		if (seg.altAudioSegment != null)
 		{
-			HLSSegmentCache.precache(seg.uri, seg.cryptoId, this);
+			// We need to feed the segment before calling precache so that the datasource can be initialized before we
+			// supply the event handler to the segment cache. In the case where the segment is already in the cache, the
+			// event handler can be called immediately.
 			FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.altAudioSegment.uri, seg.altAudioSegment.altAudioIndex, seg.startTime, seg.cryptoId, seg.altAudioSegment.cryptoId);
+			HLSSegmentCache.precache(seg.uri, seg.cryptoId, this);
 			if (mOnAudioTrackSwitchingListener != null)
 			{
 				mOnAudioTrackSwitchingListener.onAudioSwitchingStart(-1, seg.altAudioSegment.altAudioIndex);
@@ -461,8 +464,11 @@ public class PlayerViewController extends RelativeLayout implements
 		}
 		else
 		{
-			HLSSegmentCache.precache(seg.uri, seg.cryptoId, this);
+			// We need to feed the segment before calling precache so that the datasource can be initialized before we
+			// supply the event handler to the segment cache. In the case where the segment is already in the cache, the
+			// event handler can be called immediately.
 			FeedSegment(seg.uri, seg.quality, seg.continuityEra, null, -1, seg.startTime, seg.cryptoId, -1);
+			HLSSegmentCache.precache(seg.uri, seg.cryptoId, this);
 		}
 
 

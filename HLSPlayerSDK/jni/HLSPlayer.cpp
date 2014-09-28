@@ -476,14 +476,7 @@ bool HLSPlayer::InitTracks()
 {
 	AutoLock locker(&lock);
 	LOGI("Entered: mDataSource=%p", mDataSource.get());
-	status_t err = mDataSource->initCheck();
-	if (err != OK)
-	{
-		LOGE("DataSource is invalid: %s", strerror(-err));
-		// Don't bail as the HTTP sources will return errors sometimes due to
-		// internal race conditions.
-		//return false;
-	}
+	if (!mDataSource.get()) return false;
 
 	mExtractor = MediaExtractor::Create(mDataSource, "video/mp2ts");
 	if (mExtractor == NULL)
@@ -491,12 +484,6 @@ bool HLSPlayer::InitTracks()
 		LOGE("Could not create MediaExtractor from DataSource @ %p", mDataSource.get());
 		return false;
 	}
-
-//	if (mExtractor->getDrmFlag())
-//	{
-//		LOGERROR(METHOD, "This datasource has DRM - not implemented!!!");
-//		return false;
-//	}
 
 	LOGI("Getting bit rate of streams.");
 	int64_t totalBitRate = 0;
