@@ -85,6 +85,7 @@ public class SegmentCacheEntry implements Callback {
 		
 		Log.i("HLS Cache", "Got " + uri);
 		HLSSegmentCache.store(uri, response.body().bytes());
+		
 
 	}
 }

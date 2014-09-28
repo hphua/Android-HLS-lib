@@ -52,12 +52,13 @@ public class HLSSegmentCache
 	
 	static public void store(String segmentUri, byte[] data)
 	{
+		SegmentCacheEntry sce = null;
 		synchronized (segmentCache)
 		{
 			Log.i("HLS Cache", "Storing result of " + data.length + " for " + segmentUri);
 			
 			// Look up the cache entry.
-			SegmentCacheEntry sce = segmentCache.get(segmentUri);
+			sce = segmentCache.get(segmentUri);
 			if(sce == null)
 			{
 				Log.e("HLS Cache", "Lost entry for " + segmentUri + "!");
@@ -69,9 +70,11 @@ public class HLSSegmentCache
 						
 			// All done!
 			sce.lastTouchedMillis = System.currentTimeMillis();
-			sce.notifySegmentCached();
+			//sce.notifySegmentCached();
 			sce.running = false;
 		}
+		
+		sce.notifySegmentCached();
 
 		expire();
 	}
