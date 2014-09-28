@@ -634,6 +634,10 @@ bool HLSPlayer::CreateAudioPlayer()
 		return false;
 	}
 
+	if (pthread_create(&audioThread, NULL, audio_thread_func, (void*)mJAudioTrack  ) != 0)
+		return false;
+
+
 	if(mAudioSource.get())
 		mJAudioTrack->Set(mAudioSource);
 	else
@@ -855,9 +859,6 @@ bool HLSPlayer::Play()
 	}
 #endif
 
-	if (pthread_create(&audioThread, NULL, audio_thread_func, (void*)mJAudioTrack  ) != 0)
-		return false;
-
 	LOGI("   OK! err=%d", err);
 	SetState(PLAYING);
 
@@ -914,7 +915,7 @@ int HLSPlayer::Update()
 	{
 
 		int segCount = ((HLSDataSource*) mDataSource.get())->getPreloadedSegmentCount();
-		//LOGI("Segment Count %d", segCount);
+		LOGI("Segment Count %d", segCount);
 		if (segCount < SEGMENTS_TO_BUFFER) // (current segment + 2)
 		{
 			if (mDataSourceCache.size() > 0)
@@ -1019,7 +1020,7 @@ int HLSPlayer::Update()
 				LOGE("timeUs = %lld | mLastVideoTimeUs = %lld :: Why did this happen? Were we seeking?", timeUs, mLastVideoTimeUs);
 			}
 
-			//LOGI("audioTime = %lld | videoTime = %lld | diff = %lld | mVideoFrameDelta = %lld", audioTime, timeUs, audioTime - timeUs, mVideoFrameDelta);
+			LOGTIMING("audioTime = %lld | videoTime = %lld | diff = %lld | mVideoFrameDelta = %lld", audioTime, timeUs, audioTime - timeUs, mVideoFrameDelta);
 
 			int64_t delta = audioTime - timeUs;
 
@@ -1225,8 +1226,9 @@ void HLSPlayer::SetState(int status)
 
 	if (mStatus != status)
 	{
+		LOGI("Status Changing");
+		LogState();
 		mStatus = status;
-		LOGI("Status Changed");
 		LogState();
 	}
 }
@@ -1375,7 +1377,7 @@ void HLSPlayer::StopEverything()
 {
 	AutoLock locker(&lock);
 
-	mJAudioTrack->Stop(true); // Passing true means we're seeking.
+	if (mJAudioTrack) mJAudioTrack->Stop(true); // Passing true means we're seeking.
 
 	mAudioTrack.clear();
 	mAudioTrack23.clear();
@@ -1449,10 +1451,17 @@ void HLSPlayer::ApplyFormatChange()
 
 	if (err == OK)
 	{
-		if(mAudioSource.get())
-			mJAudioTrack->Set(mAudioSource);
+		if (!mJAudioTrack)
+		{
+			CreateAudioPlayer(); // CreateAudioPlayer sets the sources internally
+		}
 		else
-			mJAudioTrack->Set23(mAudioSource23);
+		{
+			if(mAudioSource.get())
+				mJAudioTrack->Set(mAudioSource);
+			else
+				mJAudioTrack->Set23(mAudioSource23);
+		}
 	}
 	else
 	{
@@ -1556,10 +1565,17 @@ void HLSPlayer::Seek(double time)
 
 	if (err == OK)
 	{
-		if(mAudioSource.get())
-			mJAudioTrack->Set(mAudioSource);
+		if (!mJAudioTrack)
+		{
+			CreateAudioPlayer(); // CreateAudioPlayer sets the sources internally
+		}
 		else
-			mJAudioTrack->Set23(mAudioSource23);
+		{
+			if(mAudioSource.get())
+				mJAudioTrack->Set(mAudioSource);
+			else
+				mJAudioTrack->Set23(mAudioSource23);
+		}
 	}
 	else
 	{

@@ -401,6 +401,14 @@ public class PlayerViewController extends RelativeLayout implements
 		CloseNativeDecoder();
 		
 	}
+	
+	/**
+	 *  Reset any state that we have
+	 */
+	public void reset()
+	{
+		mTimeMS = 0;
+	}
 
 	/**
 	 * Called when the manifest parser is complete. Once this is done, play can
@@ -588,6 +596,7 @@ public class PlayerViewController extends RelativeLayout implements
 	}
 
 	public void seek(int msec) {
+		HLSSegmentCache.cancelAllCacheEvents();
 		int curPos = getCurrentPosition();
 		SeekTo((curPos + msec) / 1000);
 	}
@@ -614,6 +623,7 @@ public class PlayerViewController extends RelativeLayout implements
 		HLSSegmentCache.cancelAllCacheEvents();
 		StopPlayer();
 		ResetPlayer();
+		reset();
 
 		// Confirm network is ready to go.
 		if(!isOnline())

@@ -15,14 +15,14 @@
 #define _DEBUG_E
 #define _DEBUG_W
 #define _DEBUG_I
-//#define _DEBUG_V
+#define _DEBUG_V
 //#define _DEBUG_V2
 //#define _DEBUG_RUN
 
 //#define _DATA_MINING
 //#define _DEBUG_SCREENINFO
 //#define _SYMBOL_ERRORS
-//#define _TIMING
+#define _TIMING
 
 
 //#define _VERBOSE

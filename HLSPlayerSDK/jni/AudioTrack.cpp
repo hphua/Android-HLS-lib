@@ -18,7 +18,7 @@ using namespace android_video_shim;
 
 AudioTrack::AudioTrack(JavaVM* jvm) : mJvm(jvm), mAudioTrack(NULL), mGetMinBufferSize(NULL), mPlay(NULL), mPause(NULL), mStop(NULL), mFlush(NULL), buffer(NULL),
 										mRelease(NULL), mGetTimestamp(NULL), mCAudioTrack(NULL), mWrite(NULL), mGetPlaybackHeadPosition(NULL), mSetPositionNotificationPeriod(NULL),
-										mSampleRate(0), mNumChannels(0), mBufferSizeInBytes(0), mChannelMask(0), mTrack(NULL), mPlayState(STOPPED),
+										mSampleRate(0), mNumChannels(0), mBufferSizeInBytes(0), mChannelMask(0), mTrack(NULL), mPlayState(INITIALIZED),
 										mTimeStampOffset(0), samplesWritten(0), mWaiting(true)
 {
 	if (!mJvm)
@@ -275,9 +275,9 @@ bool AudioTrack::Start()
 
 	mPlayState = PLAYING;
 
-	if (lastPlayState == PAUSED || lastPlayState == SEEKING)
+	if (lastPlayState == PAUSED || lastPlayState == SEEKING || lastPlayState == INITIALIZED)
 	{
-		LOGI("Playing Audio Thread: state = %s | semPause.count = %d", lastPlayState==PAUSED?"PAUSED":(lastPlayState==SEEKING?"SEEKING":"Not Possible!"), semPause.count );
+		LOGI("Playing Audio Thread: state = %s | semPause.count = %d", lastPlayState==PAUSED?"PAUSED":(lastPlayState==SEEKING?"SEEKING":(lastPlayState==INITIALIZED?"INITIALIZED":"Not Possible!")), semPause.count );
 		sem_post(&semPause);
 	}
 	mWaiting = false;
@@ -295,9 +295,9 @@ void AudioTrack::Play()
 
 	mPlayState = PLAYING;
 
-	if (lastPlayState == PAUSED || lastPlayState == SEEKING)
+	if (lastPlayState == PAUSED || lastPlayState == SEEKING || lastPlayState == INITIALIZED)
 	{
-		LOGI("Playing Audio Thread: state = %s | semPause.count = %d", lastPlayState==PAUSED?"PAUSED":(lastPlayState==SEEKING?"SEEKING":"Not Possible!"), semPause.count );
+		LOGI("Playing Audio Thread: state = %s | semPause.count = %d", lastPlayState==PAUSED?"PAUSED":(lastPlayState==SEEKING?"SEEKING":(lastPlayState==INITIALIZED?"INITIALIZED":"Not Possible!")), semPause.count );
 		sem_post(&semPause);
 	}
 
@@ -456,6 +456,12 @@ int AudioTrack::Update()
 	if (mWaiting) return AUDIOTHREAD_WAIT;
 	if (mPlayState != PLAYING)
 	{
+		while (mPlayState == INITIALIZED)
+		{
+			LOGI("Audio Thread initialized. Waiting to start | semPause.count = %d", semPause.count);
+			sem_wait(&semPause);
+		}
+
 		while (mPlayState == PAUSED)
 		{
 			LOGI("Pausing Audio Thread: state = PAUSED | semPause.count = %d", semPause.count );
