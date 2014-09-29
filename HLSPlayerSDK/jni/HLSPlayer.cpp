@@ -1405,6 +1405,22 @@ void HLSPlayer::StopEverything()
 	mFrameCount = 0;
 }
 
+bool HLSPlayer::EnsureAudioPlayerCreatedAndSourcesSet()
+{
+	if (!mJAudioTrack)
+	{
+		return CreateAudioPlayer(); // CreateAudioPlayer sets the sources internally
+	}
+	else
+	{
+		if(mAudioSource.get())
+			return mJAudioTrack->Set(mAudioSource);
+		else
+			return mJAudioTrack->Set23(mAudioSource23);
+	}
+	return false;
+}
+
 void HLSPlayer::ApplyFormatChange()
 {
 	AutoLock locker(&lock);
@@ -1451,16 +1467,9 @@ void HLSPlayer::ApplyFormatChange()
 
 	if (err == OK)
 	{
-		if (!mJAudioTrack)
+		if (!EnsureAudioPlayerCreatedAndSourcesSet())
 		{
-			CreateAudioPlayer(); // CreateAudioPlayer sets the sources internally
-		}
-		else
-		{
-			if(mAudioSource.get())
-				mJAudioTrack->Set(mAudioSource);
-			else
-				mJAudioTrack->Set23(mAudioSource23);
+			LOGE("Setting Audio Tracks failed!");
 		}
 	}
 	else
@@ -1563,16 +1572,9 @@ void HLSPlayer::Seek(double time)
 
 	if (err == OK)
 	{
-		if (!mJAudioTrack)
+		if (!EnsureAudioPlayerCreatedAndSourcesSet())
 		{
-			CreateAudioPlayer(); // CreateAudioPlayer sets the sources internally
-		}
-		else
-		{
-			if(mAudioSource.get())
-				mJAudioTrack->Set(mAudioSource);
-			else
-				mJAudioTrack->Set23(mAudioSource23);
+			LOGE("Setting Audio Tracks failed!");
 		}
 	}
 	else

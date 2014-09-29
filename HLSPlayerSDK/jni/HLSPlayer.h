@@ -60,6 +60,7 @@ private:
 	bool InitAudio();
 	bool InitSources();
 	bool CreateAudioPlayer();
+	bool EnsureAudioPlayerCreatedAndSourcesSet();
 	bool CreateVideoPlayer();
 	bool RenderBuffer(android_video_shim::MediaBuffer* buffer);
 	void LogState();
