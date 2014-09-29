@@ -66,7 +66,7 @@ public class URLLoader implements Callback
 		if (mDownloadEventListener != null)
 		{
 			// Post back to main thread to avoid re-entrancy that breaks OkHTTP.
-			PlayerViewController.GetInterfaceThread().mHandler.post(new Runnable()
+			PlayerViewController.GetInterfaceThread().getHandler().post(new Runnable()
 			{
 				@Override
 				public void run() {
@@ -88,7 +88,7 @@ public class URLLoader implements Callback
 		if (mDownloadEventListener != null)
 		{
 			// Post back to main thread to avoid re-entrancy that breaks OkHTTP.
-			PlayerViewController.GetInterfaceThread().mHandler.post(new Runnable()
+			PlayerViewController.GetInterfaceThread().getHandler().post(new Runnable()
 			{
 				@Override
 				public void run() {

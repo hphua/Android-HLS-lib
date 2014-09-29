@@ -11,6 +11,7 @@ import android.media.MediaPlayer.OnPreparedListener;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Handler;
+import android.os.HandlerThread;
 import android.os.Looper;
 import android.os.Message;
 import android.util.AttributeSet;
@@ -244,27 +245,28 @@ public class PlayerViewController extends RelativeLayout implements
 	}
 	
 	// Interface thread
-	class InterfaceThread extends Thread
+	static class InterfaceThread extends HandlerThread
 	{
-		public Handler mHandler;
+		private Handler mHandler = null;
 		
-		public void run()
+		InterfaceThread()
 		{
-			Looper.prepare();
-			
-			mHandler = new Handler()
-			{
-				public void handleMessage(Message msg)
-				{
-					
-				}
-			};
-			
-			Looper.loop();
+			super("InterfaceThread");
+			start();
+			setHandler(new Handler(getLooper()));
 		}
+
+		public Handler getHandler() {
+			return mHandler;
+		}
+
+		private void setHandler(Handler mHandler) {
+			this.mHandler = mHandler;
+		}
+		
 	}
 	
-	private InterfaceThread mInterfaceThread = new InterfaceThread();
+	private InterfaceThread mInterfaceThread = null;
 	
 	public static InterfaceThread GetInterfaceThread()
 	{
@@ -376,7 +378,7 @@ public class PlayerViewController extends RelativeLayout implements
 		try {
 			System.loadLibrary("HLSPlayerSDK");
 			InitNativeDecoder();
-			mInterfaceThread.start();
+			mInterfaceThread = new InterfaceThread();
 
 		} catch (Exception e) {
 			Log.i("PlayerViewController", "Failed to initialize native video library.");
