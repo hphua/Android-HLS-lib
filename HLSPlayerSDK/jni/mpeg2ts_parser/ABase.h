@@ -18,6 +18,9 @@
 
 #define A_BASE_H_
 
+#include "../androidVideoShim.h"
+using namespace android_video_shim;
+
 #define DISALLOW_EVIL_CONSTRUCTORS(name) \
     name(const name &); \
     name &operator=(const name &)

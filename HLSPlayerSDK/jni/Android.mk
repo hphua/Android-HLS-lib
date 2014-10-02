@@ -3,7 +3,13 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 
 LOCAL_MODULE    := HLSPlayerSDK
-LOCAL_SRC_FILES := HLSPlayerSDK.cpp HLSSegment.cpp HLSPlayer.cpp androidVideoShim.cpp androidVideoShim_ColorConverter.cpp AudioTrack.cpp HLSSegmentCache.cpp RefCounted.cpp aes.c
+
+LOCAL_SRC_FILES := HLSPlayerSDK.cpp HLSSegment.cpp HLSPlayer.cpp AudioTrack.cpp  RefCounted.cpp 
+LOCAL_SRC_FILES += androidVideoShim.cpp androidVideoShim_ColorConverter.cpp 
+LOCAL_SRC_FILES += aes.c
+LOCAL_SRC_FILES += HLSSegmentCache.cpp
+LOCAL_SRC_FILES += mpeg2ts_parser/MPEG2TSExtractor.cpp
+
 LOCAL_CFLAGS += -DHAVE_SYS_UIO_H -Wno-multichar -Wno-pmf-conversions -g
 LOCAL_C_INCLUDES += $(TOP)/system/core/include
 

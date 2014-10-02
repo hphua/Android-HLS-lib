@@ -20,11 +20,11 @@
 
 #include <sys/types.h>
 
-#include <media/stagefright/foundation/ABase.h>
-#include <media/stagefright/foundation/AMessage.h>
-#include <utils/KeyedVector.h>
-#include <utils/Vector.h>
-#include <utils/RefBase.h>
+#include "ABase.h"
+#include "AMessage.h"
+#include "KeyedVector.h"
+#include "Vector.h"
+//#include <utils/RefBase.h>
 
 namespace android {
 
@@ -75,7 +75,7 @@ struct ATSParser : public RefBase {
         AUDIO = 1,
         NUM_SOURCE_TYPES = 2
     };
-    sp<MediaSource> getSource(SourceType type);
+    sp<android_video_shim::MediaSource> getSource(SourceType type);
 
     bool PTSTimeDeltaEstablished();
 

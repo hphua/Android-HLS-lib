@@ -18,10 +18,11 @@
 
 #define ANOTHER_PACKET_SOURCE_H_
 
-#include <media/stagefright/foundation/ABase.h>
-#include <media/stagefright/MediaSource.h>
-#include <utils/threads.h>
-#include <utils/List.h>
+#include "ABase.h"
+//#include <media/stagefright/MediaSource.h>
+//#include <utils/threads.h>
+#include "threads.h"
+#include "List.h"
 
 #include "ATSParser.h"
 
@@ -29,7 +30,7 @@ namespace android {
 
 struct ABuffer;
 
-struct AnotherPacketSource : public MediaSource {
+struct AnotherPacketSource : public RefBase /*: public MediaSource*/ {
     AnotherPacketSource(const sp<MetaData> &meta);
 
     void setFormat(const sp<MetaData> &meta);
@@ -39,7 +40,7 @@ struct AnotherPacketSource : public MediaSource {
     virtual sp<MetaData> getFormat();
 
     virtual status_t read(
-            MediaBuffer **buffer, const ReadOptions *options = NULL);
+            MediaBuffer **buffer, const android_video_shim::MediaSource::ReadOptions *options = NULL);
 
     void clear();
 

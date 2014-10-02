@@ -16,10 +16,12 @@
 
 //#define LOG_NDEBUG 0
 #define LOG_TAG "MPEG2TSExtractor"
-//#include <utils/Log.h>
+#include <android/log.h>
 
-#include "include/MPEG2TSExtractor.h"
-#include "include/NuCachedSource2.h"
+#define ALOGI SLOGV
+
+#include "MPEG2TSExtractor.h"
+//#include "include/NuCachedSource2.h"
 
 #include "ADebug.h"
 
@@ -30,7 +32,7 @@ namespace android {
 
 static const size_t kTSPacketSize = 188;
 
-struct MPEG2TSSource : public MediaSource {
+struct MPEG2TSSource : public android_video_shim::MediaSource {
     MPEG2TSSource(
             const sp<MPEG2TSExtractor> &extractor,
             const sp<AnotherPacketSource> &impl,
@@ -41,7 +43,7 @@ struct MPEG2TSSource : public MediaSource {
     virtual sp<MetaData> getFormat();
 
     virtual status_t read(
-            MediaBuffer **buffer, const ReadOptions *options = NULL);
+            MediaBuffer **buffer, const android_video_shim::MediaSource::ReadOptions *options = NULL);
 
 private:
     sp<MPEG2TSExtractor> mExtractor;
@@ -76,11 +78,11 @@ sp<MetaData> MPEG2TSSource::getFormat() {
 }
 
 status_t MPEG2TSSource::read(
-        MediaBuffer **out, const ReadOptions *options) {
+        MediaBuffer **out, const android_video_shim::MediaSource::ReadOptions *options) {
     *out = NULL;
 
     int64_t seekTimeUs;
-    ReadOptions::SeekMode seekMode;
+    android_video_shim::MediaSource::ReadOptions::SeekMode seekMode;
     if (mSeekable && options && options->getSeekTo(&seekTimeUs, &seekMode)) {
         return ERROR_UNSUPPORTED;
     }
@@ -102,7 +104,7 @@ status_t MPEG2TSSource::read(
 
 ////////////////////////////////////////////////////////////////////////////////
 
-MPEG2TSExtractor::MPEG2TSExtractor(const sp<DataSource> &source)
+MPEG2TSExtractor::MPEG2TSExtractor(const sp<HLSDataSource> &source)
     : mDataSource(source),
       mParser(new ATSParser),
       mOffset(0) {
@@ -113,7 +115,7 @@ size_t MPEG2TSExtractor::countTracks() {
     return mSourceImpls.size();
 }
 
-sp<MediaSource> MPEG2TSExtractor::getTrack(size_t index) {
+sp<android_video_shim::MediaSource> MPEG2TSExtractor::getTrack(size_t index) {
     if (index >= mSourceImpls.size()) {
         return NULL;
     }
@@ -142,7 +144,8 @@ sp<MetaData> MPEG2TSExtractor::getTrackMetaData(
 
 sp<MetaData> MPEG2TSExtractor::getMetaData() {
     sp<MetaData> meta = new MetaData;
-    meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_CONTAINER_MPEG2TS);
+
+    //meta->setCString(kKeyMIMEType, MEDIA_MIMETYPE_CONTAINER_MPEG2TS);
 
     return meta;
 }
@@ -202,15 +205,15 @@ status_t MPEG2TSExtractor::feedMore() {
 }
 
 uint32_t MPEG2TSExtractor::flags() const {
-    return CAN_PAUSE;
+    return 0; //CAN_PAUSE;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SniffMPEG2TS(
-        const sp<DataSource> &source, String8 *mimeType, float *confidence,
+        const sp<HLSDataSource> &source, String8 *mimeType, float *confidence,
         sp<AMessage> *) {
-    for (int i = 0; i < 5; ++i) {
+/*    for (int i = 0; i < 5; ++i) {
         char header;
         if (source->readAt(kTSPacketSize * i, &header, 1) != 1
                 || header != 0x47) {
@@ -221,6 +224,7 @@ bool SniffMPEG2TS(
     *confidence = 0.1f;
     mimeType->setTo(MEDIA_MIMETYPE_CONTAINER_MPEG2TS);
 
+    return true; */
     return true;
 }
 
