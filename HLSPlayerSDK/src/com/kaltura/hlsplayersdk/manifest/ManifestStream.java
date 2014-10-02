@@ -9,6 +9,8 @@ public class ManifestStream extends BaseManifestItem {
 	public String codecs;
 	public int width;
 	public int height;
+	public ManifestStream backupStream = null;
+	public int numBackups = 0;
 	
 	
 	public static ManifestStream fromString(String input)
