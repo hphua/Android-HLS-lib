@@ -369,7 +369,7 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 	private void linkBackupStreams(int startIndex, int count)
 	{
 		// store the index of the last item so we don't have to do the math more than once
-		int lastIndex = startIndex + (count - 1);
+		int lastIndex = startIndex + count;
 
 		// link the last stream to the first stream
 		streams.get(lastIndex).backupStream = streams.get(startIndex);
