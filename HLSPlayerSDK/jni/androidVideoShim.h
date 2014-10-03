@@ -1105,7 +1105,10 @@ namespace android_video_shim
 
             void setSeekTo(int64_t time_us, SeekMode mode = SEEK_CLOSEST_SYNC);
             void clearSeekTo();
-            bool getSeekTo(int64_t *time_us, SeekMode *mode) const;
+            bool getSeekTo(int64_t *time_us, SeekMode *mode) const
+            {
+                return false;
+            }
 
             void setLateBy(int64_t lateness_us);
             int64_t getLateBy() const;
@@ -1138,8 +1141,10 @@ namespace android_video_shim
         }*/
 
     protected:
-        virtual ~MediaSource();
+        virtual ~MediaSource()
+        {
 
+        }
 
     };
 
@@ -1640,12 +1645,35 @@ namespace android_video_shim
             return lfc(this, key, left, top, right, bottom);
         }
 
-        bool setCString(uint32_t key, const char *value);
-        bool setInt32(uint32_t key, int32_t value);
-        bool setInt64(uint32_t key, int64_t value);
-        bool setFloat(uint32_t key, float value);
-        bool setPointer(uint32_t key, void *value);
-        bool setData(uint32_t key, uint32_t type, const void *data, size_t size);
+        bool setCString(uint32_t key, const char *value)
+        {
+            return false;
+        }
+
+        bool setInt32(uint32_t key, int32_t value)
+        {
+            return false;
+        }
+
+        bool setInt64(uint32_t key, int64_t value)
+        {
+            return false;
+        }
+
+        bool setFloat(uint32_t key, float value)
+        {
+            return false;
+        }
+
+        bool setPointer(uint32_t key, void *value)
+        {
+            return false;
+        }
+
+        bool setData(uint32_t key, uint32_t type, const void *data, size_t size)
+        {
+            return false;
+        }
 
         void dumpToLog()
         {

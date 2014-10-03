@@ -83,10 +83,22 @@ enum {
     
 // return the system-time according to the specified clock
 #ifdef __cplusplus
-nsecs_t systemTime(int clock = SYSTEM_TIME_MONOTONIC);
+inline nsecs_t systemTime(int clock = SYSTEM_TIME_MONOTONIC)
 #else
-nsecs_t systemTime(int clock);
+inline nsecs_t systemTime(int clock)
 #endif // def __cplusplus
+{
+    static const clockid_t clocks[] = {
+            CLOCK_REALTIME,
+            CLOCK_MONOTONIC,
+            CLOCK_PROCESS_CPUTIME_ID,
+            CLOCK_THREAD_CPUTIME_ID
+    };
+    struct timespec t;
+    t.tv_sec = t.tv_nsec = 0;
+    clock_gettime(clocks[clock], &t);
+    return nsecs_t(t.tv_sec)*1000000000LL + t.tv_nsec;
+}
 
 // return the system-time according to the specified clock
 int sleepForInterval(long interval, struct timeval* pNextTick);
