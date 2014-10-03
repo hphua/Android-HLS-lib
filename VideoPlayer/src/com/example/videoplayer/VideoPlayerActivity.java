@@ -145,7 +145,6 @@ OnQualitySwitchingListener, OnQualityTracksListListener  {
         else if (id == R.id.abc_dvr_item)
         {
         	lastUrl = "http://abclive.abcnews.com/i/abc_live4@136330/master.m3u8";
-        	//lastUrl = "http://abclive.abcnews.com/i/abc_live4@136330/index_400noaud_av-p.m3u8?sd=10&rebase=on";
         	playerView.setVideoUrl(lastUrl);
         	return true;
         }
