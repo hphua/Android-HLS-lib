@@ -18,7 +18,8 @@
 
 #define BASE_64_H_
 
-#include <utils/RefBase.h>
+#include "../androidVideoShim.h"
+using namespace android_video_shim;
 
 namespace android {
 

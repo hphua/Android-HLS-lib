@@ -1460,6 +1460,7 @@ namespace android_video_shim
         kKeyBitRate           = 'brte',  // int32_t (bps)
         kKeyESDS              = 'esds',  // raw data
         kKeyAVCC              = 'avcc',  // raw data
+        kTypeAVCC             = 'avcc',
         kKeyD263              = 'd263',  // raw data
         kKeyVorbisInfo        = 'vinf',  // raw data
         kKeyVorbisBooks       = 'vboo',  // raw data
@@ -1523,6 +1524,11 @@ namespace android_video_shim
         // To store the timed text format data
         kKeyTextFormatData    = 'text',  // raw data
         kKeyRequiresSecureBuffers = 'secu',  // bool (int32_t)
+        kKeySARWidth = 'sarW',
+        kKeySARHeight = 'sarH',
+        kKeyIsADTS            = 'adts',  // bool (int32_t)
+        kTypeESDS        = 'esds',
+        kTypeD263        = 'd263',
     };
 
 
@@ -1634,10 +1640,12 @@ namespace android_video_shim
             return lfc(this, key, left, top, right, bottom);
         }
 
-        void setInt64(uint32_t key, int64_t value)
-        {
-            assert(false);
-        }
+        bool setCString(uint32_t key, const char *value);
+        bool setInt32(uint32_t key, int32_t value);
+        bool setInt64(uint32_t key, int64_t value);
+        bool setFloat(uint32_t key, float value);
+        bool setPointer(uint32_t key, void *value);
+        bool setData(uint32_t key, uint32_t type, const void *data, size_t size);
 
         void dumpToLog()
         {

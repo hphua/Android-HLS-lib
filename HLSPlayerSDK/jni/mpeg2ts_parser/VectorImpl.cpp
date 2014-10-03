@@ -544,5 +544,23 @@ ssize_t SortedVectorImpl::remove(const void* item)
     }
     return i;
 }
+
+void VectorImpl::reservedVectorImpl1() { }
+void VectorImpl::reservedVectorImpl2() { }
+void VectorImpl::reservedVectorImpl3() { }
+void VectorImpl::reservedVectorImpl4() { }
+void VectorImpl::reservedVectorImpl5() { }
+void VectorImpl::reservedVectorImpl6() { }
+void VectorImpl::reservedVectorImpl7() { }
+void VectorImpl::reservedVectorImpl8() { }
+
+void SortedVectorImpl::reservedSortedVectorImpl1() { };
+void SortedVectorImpl::reservedSortedVectorImpl2() { };
+void SortedVectorImpl::reservedSortedVectorImpl3() { };
+void SortedVectorImpl::reservedSortedVectorImpl4() { };
+void SortedVectorImpl::reservedSortedVectorImpl5() { };
+void SortedVectorImpl::reservedSortedVectorImpl6() { };
+void SortedVectorImpl::reservedSortedVectorImpl7() { };
+void SortedVectorImpl::reservedSortedVectorImpl8() { };
 /*****************************************************************************/
 }; // namespace android

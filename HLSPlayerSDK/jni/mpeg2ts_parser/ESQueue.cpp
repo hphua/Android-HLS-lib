@@ -31,9 +31,9 @@
 //#include <media/stagefright/MetaData.h>
 //#include <media/stagefright/Utils.h>
 
-//#include "include/avc_utils.h"
+#include "avc_utils.h"
 
-//#include <netinet/in.h>
+#include <netinet/in.h>
 
 namespace android {
 
@@ -42,7 +42,7 @@ ElementaryStreamQueue::ElementaryStreamQueue(Mode mode, uint32_t flags)
       mFlags(flags) {
 }
 
-sp<MetaData> ElementaryStreamQueue::getFormat() {
+sp<android_video_shim::MetaData> ElementaryStreamQueue::getFormat() {
     return mFormat;
 }
 
@@ -150,7 +150,7 @@ status_t ElementaryStreamQueue::appendData(
 
                 if (startOffset > 0) {
                     ALOGI("found something resembling an H.264/MPEG syncword "
-                          "at offset %d",
+                          "at offset %ld",
                           startOffset);
                 }
 
@@ -183,7 +183,7 @@ status_t ElementaryStreamQueue::appendData(
 
                 if (startOffset > 0) {
                     ALOGI("found something resembling an H.264/MPEG syncword "
-                          "at offset %d",
+                          "at offset %ld",
                           startOffset);
                 }
 
@@ -216,7 +216,7 @@ status_t ElementaryStreamQueue::appendData(
 
                 if (startOffset > 0) {
                     ALOGI("found something resembling an AAC syncword at "
-                          "offset %d",
+                          "offset %ld",
                           startOffset);
                 }
 
@@ -244,7 +244,7 @@ status_t ElementaryStreamQueue::appendData(
 
                 if (startOffset > 0) {
                     ALOGI("found something resembling an MPEG audio "
-                          "syncword at offset %d",
+                          "syncword at offset %ld",
                           startOffset);
                 }
 
@@ -359,7 +359,7 @@ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnitPCMAudio() {
     CHECK_EQ(num_channels, 1u);  // stereo!
 
     if (mFormat == NULL) {
-        mFormat = new MetaData;
+        mFormat = new android_video_shim::MetaData();
         mFormat->setCString(kKeyMIMEType, MEDIA_MIMETYPE_AUDIO_RAW);
         mFormat->setInt32(kKeyChannelCount, 2);
         mFormat->setInt32(kKeySampleRate, 48000);
@@ -679,7 +679,7 @@ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnitMPEGAudio() {
     accessUnit->meta()->setInt64("timeUs", timeUs);
 
     if (mFormat == NULL) {
-        mFormat = new MetaData;
+        mFormat = new android_video_shim::MetaData();
 
         switch (layer) {
             case 1:
@@ -786,7 +786,7 @@ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnitMPEGVideo() {
                 unsigned height =
                     ((data[5] & 0x0f) << 8) | data[6];
 
-                mFormat = new MetaData;
+                mFormat = new android_video_shim::MetaData;
                 mFormat->setCString(kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_MPEG2);
                 mFormat->setInt32(kKeyWidth, width);
                 mFormat->setInt32(kKeyHeight, height);
@@ -950,7 +950,7 @@ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnitMPEG4Video() {
                 if (chunkType == 0xb3 || chunkType == 0xb6) {
                     // group of VOP or VOP start.
 
-                    mFormat = new MetaData;
+                    mFormat = new android_video_shim::MetaData;
                     mFormat->setCString(
                             kKeyMIMEType, MEDIA_MIMETYPE_VIDEO_MPEG4);
 

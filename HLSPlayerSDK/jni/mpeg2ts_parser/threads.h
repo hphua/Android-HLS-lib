@@ -132,47 +132,6 @@ extern void androidSetCreateThreadFunc(android_create_thread_fn func);
 
 namespace android {
 
-typedef android_thread_id_t thread_id_t;
-
-typedef android_thread_func_t thread_func_t;
-
-enum {
-    PRIORITY_LOWEST         = ANDROID_PRIORITY_LOWEST,
-    PRIORITY_BACKGROUND     = ANDROID_PRIORITY_BACKGROUND,
-    PRIORITY_NORMAL         = ANDROID_PRIORITY_NORMAL,
-    PRIORITY_FOREGROUND     = ANDROID_PRIORITY_FOREGROUND,
-    PRIORITY_DISPLAY        = ANDROID_PRIORITY_DISPLAY,
-    PRIORITY_URGENT_DISPLAY = ANDROID_PRIORITY_URGENT_DISPLAY,
-    PRIORITY_AUDIO          = ANDROID_PRIORITY_AUDIO,
-    PRIORITY_URGENT_AUDIO   = ANDROID_PRIORITY_URGENT_AUDIO,
-    PRIORITY_HIGHEST        = ANDROID_PRIORITY_HIGHEST,
-    PRIORITY_DEFAULT        = ANDROID_PRIORITY_DEFAULT,
-    PRIORITY_MORE_FAVORABLE = ANDROID_PRIORITY_MORE_FAVORABLE,
-    PRIORITY_LESS_FAVORABLE = ANDROID_PRIORITY_LESS_FAVORABLE,
-};
-
-// Create and run a new thread.
-inline bool createThread(thread_func_t f, void *a) {
-    return androidCreateThread(f, a) ? true : false;
-}
-
-// Create thread with lots of parameters
-inline bool createThreadEtc(thread_func_t entryFunction,
-                            void *userData,
-                            const char* threadName = "android:unnamed_thread",
-                            int32_t threadPriority = PRIORITY_DEFAULT,
-                            size_t threadStackSize = 0,
-                            thread_id_t *threadId = 0)
-{
-    return androidCreateThreadEtc(entryFunction, userData, threadName,
-        threadPriority, threadStackSize, threadId) ? true : false;
-}
-
-// Get some sort of unique identifier for the current thread.
-inline thread_id_t getThreadId() {
-    return androidGetThreadId();
-}
-
 /*
  * Simple mutex class.  The implementation is system-dependent.
  *
@@ -181,39 +140,71 @@ inline thread_id_t getThreadId() {
  */
 class Mutex {
 public:
+    enum {
+        PRIVATE = 0,
+        SHARED = 1
+    };
+    
                 Mutex();
                 Mutex(const char* name);
+                Mutex(int type, const char* name = NULL);
                 ~Mutex();
-
     // lock or unlock the mutex
     status_t    lock();
     void        unlock();
-
     // lock if possible; returns 0 on success, error otherwise
     status_t    tryLock();
-
     // Manages the mutex automatically. It'll be locked when Autolock is
     // constructed and released when Autolock goes out of scope.
     class Autolock {
     public:
-        inline Autolock(Mutex& mutex) : mpMutex(&mutex) { mutex.lock(); }
-        inline Autolock(Mutex* mutex) : mpMutex(mutex) { mutex->lock(); }
-        inline ~Autolock() { mpMutex->unlock(); }
+        inline Autolock(Mutex& mutex) : mLock(mutex)  { mLock.lock(); }
+        inline Autolock(Mutex* mutex) : mLock(*mutex) { mLock.lock(); }
+        inline ~Autolock() { mLock.unlock(); }
     private:
-        Mutex*  mpMutex;
+        Mutex& mLock;
     };
-
 private:
     friend class Condition;
     
     // A mutex cannot be copied
                 Mutex(const Mutex&);
     Mutex&      operator = (const Mutex&);
-    void        _init();
     
-    void*   mState;
+    pthread_mutex_t mMutex;
 };
+// ---------------------------------------------------------------------------
+inline Mutex::Mutex() {
+    pthread_mutex_init(&mMutex, NULL);
+}
+inline Mutex::Mutex(const char* name) {
+    pthread_mutex_init(&mMutex, NULL);
+}
+inline Mutex::Mutex(int type, const char* name) {
+    if (type == SHARED) {
+        pthread_mutexattr_t attr;
+        pthread_mutexattr_init(&attr);
+        pthread_mutexattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
+        pthread_mutex_init(&mMutex, &attr);
+        pthread_mutexattr_destroy(&attr);
+    } else {
+        pthread_mutex_init(&mMutex, NULL);
+    }
+}
+inline Mutex::~Mutex() {
+    pthread_mutex_destroy(&mMutex);
+}
+inline status_t Mutex::lock() {
+    return -pthread_mutex_lock(&mMutex);
+}
+inline void Mutex::unlock() {
+    pthread_mutex_unlock(&mMutex);
+}
+inline status_t Mutex::tryLock() {
+    return -pthread_mutex_trylock(&mMutex);
+}
 
+// ---------------------------------------------------------------------------
 /*
  * Automatic mutex.  Declare one of these at the top of a function.
  * When the function returns, it will go out of scope, and release the
@@ -221,7 +212,6 @@ private:
  */
  
 typedef Mutex::Autolock AutoMutex;
-
 
 /*
  * Condition variable class.  The implementation is system-dependent.
@@ -233,81 +223,77 @@ typedef Mutex::Autolock AutoMutex;
  */
 class Condition {
 public:
+    enum {
+        PRIVATE = 0,
+        SHARED = 1
+    };
     Condition();
+    Condition(int type);
     ~Condition();
     // Wait on the condition variable.  Lock the mutex before calling.
     status_t wait(Mutex& mutex);
-    // Wait on the condition variable until the given time.  Lock the mutex
-    // before calling.
-    status_t wait(Mutex& mutex, nsecs_t abstime);
     // same with relative timeout
     status_t waitRelative(Mutex& mutex, nsecs_t reltime);
     // Signal the condition variable, allowing one thread to continue.
     void signal();
     // Signal the condition variable, allowing all threads to continue.
     void broadcast();
-
 private:
-    void*   mState;
+    pthread_cond_t mCond;
 };
 
-
-/*
- * This is our spiffy thread object!
- */
-
-class Thread : virtual public RefBase
-{
-public:
-    // Create a Thread object, but doesn't create or start the associated
-    // thread. See the run() method.
-                        Thread(bool canCallJava = true);
-    virtual             ~Thread();
-
-    // Start the thread in threadLoop() which needs to be implemented.
-    virtual status_t    run(    const char* name = 0,
-                                int32_t priority = PRIORITY_DEFAULT,
-                                size_t stack = 0);
-    
-    // Ask this object's thread to exit. This function is asynchronous, when the
-    // function returns the thread might still be running. Of course, this
-    // function can be called from a different thread.
-    virtual void        requestExit();
-
-    // Good place to do one-time initializations
-    virtual status_t    readyToRun();
-    
-    // Call requestExit() and wait until this object's thread exits.
-    // BE VERY CAREFUL of deadlocks. In particular, it would be silly to call
-    // this function from this object's thread. Will return WOULD_BLOCK in
-    // that case.
-            status_t    requestExitAndWait();
-
-protected:
-    // exitPending() returns true if requestExit() has been called.
-            bool        exitPending() const;
-    
-private:
-    // Derived class must implemtent threadLoop(). The thread starts its life
-    // here. There are two ways of using the Thread object:
-    // 1) loop: if threadLoop() returns true, it will be called again if
-    //          requestExit() wasn't called.
-    // 2) once: if threadLoop() returns false, the thread will exit upon return.
-    virtual bool        threadLoop() = 0;
-
-private:
-    Thread& operator=(const Thread&);
-    static  int             _threadLoop(void* user);
-    const   bool            mCanCallJava;
-            thread_id_t     mThread;
-            Mutex           mLock;
-            Condition       mThreadExitedCondition;
-            status_t        mStatus;
-    volatile bool           mExitPending;
-    volatile bool           mRunning;
-            sp<Thread>      mHoldSelf;
-};
-
+inline Condition::Condition() {
+    pthread_cond_init(&mCond, NULL);
+}
+inline Condition::Condition(int type) {
+    if (type == SHARED) {
+        pthread_condattr_t attr;
+        pthread_condattr_init(&attr);
+        pthread_condattr_setpshared(&attr, PTHREAD_PROCESS_SHARED);
+        pthread_cond_init(&mCond, &attr);
+        pthread_condattr_destroy(&attr);
+    } else {
+        pthread_cond_init(&mCond, NULL);
+    }
+}
+inline Condition::~Condition() {
+    pthread_cond_destroy(&mCond);
+}
+inline status_t Condition::wait(Mutex& mutex) {
+    return -pthread_cond_wait(&mCond, &mutex.mMutex);
+}
+inline status_t Condition::waitRelative(Mutex& mutex, nsecs_t reltime) {
+#if defined(HAVE_PTHREAD_COND_TIMEDWAIT_RELATIVE)
+    struct timespec ts;
+    ts.tv_sec  = reltime/1000000000;
+    ts.tv_nsec = reltime%1000000000;
+    return -pthread_cond_timedwait_relative_np(&mCond, &mutex.mMutex, &ts);
+#else // HAVE_PTHREAD_COND_TIMEDWAIT_RELATIVE
+    struct timespec ts;
+#if defined(HAVE_POSIX_CLOCKS)
+    clock_gettime(CLOCK_REALTIME, &ts);
+#else // HAVE_POSIX_CLOCKS
+    // we don't support the clocks here.
+    struct timeval t;
+    gettimeofday(&t, NULL);
+    ts.tv_sec = t.tv_sec;
+    ts.tv_nsec= t.tv_usec*1000;
+#endif // HAVE_POSIX_CLOCKS
+    ts.tv_sec += reltime/1000000000;
+    ts.tv_nsec+= reltime%1000000000;
+    if (ts.tv_nsec >= 1000000000) {
+        ts.tv_nsec -= 1000000000;
+        ts.tv_sec  += 1;
+    }
+    return -pthread_cond_timedwait(&mCond, &mutex.mMutex, &ts);
+#endif // HAVE_PTHREAD_COND_TIMEDWAIT_RELATIVE
+}
+inline void Condition::signal() {
+    pthread_cond_signal(&mCond);
+}
+inline void Condition::broadcast() {
+    pthread_cond_broadcast(&mCond);
+}
 
 }; // namespace android
 

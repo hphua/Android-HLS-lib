@@ -29,4 +29,8 @@ inline uint16_t U16_AT(const uint8_t *ptr) {
     return ptr[0] << 8 | ptr[1];
 }
 
+inline uint32_t U32_AT(const uint8_t *ptr) {
+    return ptr[0] << 24 | ptr[1] << 16 | ptr[2] << 8 | ptr[3];
+}
+
 #endif  // A_BASE_H_
