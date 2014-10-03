@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#define LOG_TAG "AString"
+
 #include <ctype.h>
 #include <stdarg.h>
 #include <stdio.h>
