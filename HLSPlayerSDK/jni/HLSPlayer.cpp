@@ -12,6 +12,8 @@
 #include <android/native_window_jni.h>
 #include <unistd.h>
 
+#include "mpeg2ts_parser/MPEG2TSExtractor.h"
+
 #include "stlhelpers.h"
 #include "HLSSegment.h"
 
@@ -478,6 +480,11 @@ bool HLSPlayer::InitTracks()
 	LOGI("Entered: mDataSource=%p", mDataSource.get());
 	if (!mDataSource.get()) return false;
 
+	LOGI("Creating our OWN media extractor");
+	mExtractor = new android::MPEG2TSExtractor(mDataSource);
+	LOGI("Saw %d tracks", mExtractor->countTracks());
+
+	LOGI("Going back to normal path.");
 	mExtractor = MediaExtractor::Create(mDataSource, "video/mp2ts");
 	if (mExtractor == NULL)
 	{

@@ -27,7 +27,7 @@ struct ATSParser;
 struct DataSource;
 struct MPEG2TSSource;
 struct String8;
-struct MPEG2TSExtractor : public RefBase  /*: public MediaExtractor*/ {
+struct MPEG2TSExtractor : public android_video_shim::MediaExtractor {
     MPEG2TSExtractor(const sp<HLSDataSource> &source);
     virtual size_t countTracks();
     virtual sp<MediaSource> getTrack(size_t index);
