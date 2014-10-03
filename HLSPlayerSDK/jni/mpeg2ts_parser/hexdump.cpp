@@ -16,7 +16,7 @@
 
 //#define LOG_NDEBUG 0
 #define LOG_TAG "hexdump"
-#include <utils/Log.h>
+//#include "Log.h"
 
 #include "hexdump.h"
 
@@ -83,7 +83,7 @@ void hexdump(const void *_data, size_t size, size_t indent, AString *appendTo) {
             appendTo->append(line);
             appendTo->append("\n");
         } else {
-            ALOGI("%s", line.c_str());
+            LOGI("%s", line.c_str());
         }
 
         offset += 16;

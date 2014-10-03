@@ -16,22 +16,24 @@
 
 //#define LOG_NDEBUG 0
 #define LOG_TAG "ESQueue"
-#include <media/stagefright/foundation/ADebug.h>
+#include "ADebug.h"
+ #define ALOGI LOGI
 
 #include "ESQueue.h"
 
-#include <media/stagefright/foundation/hexdump.h>
-#include <media/stagefright/foundation/ABitReader.h>
-#include <media/stagefright/foundation/ABuffer.h>
-#include <media/stagefright/foundation/AMessage.h>
-#include <media/stagefright/MediaErrors.h>
-#include <media/stagefright/MediaDefs.h>
-#include <media/stagefright/MetaData.h>
-#include <media/stagefright/Utils.h>
+#include "hexdump.h"
+#include "ABitReader.h"
+#include "ABuffer.h"
+#include "AMessage.h"
+#include "Vector.h"
+//#include <media/stagefright/MediaErrors.h>
+//#include <media/stagefright/MediaDefs.h>
+//#include <media/stagefright/MetaData.h>
+//#include <media/stagefright/Utils.h>
 
-#include "include/avc_utils.h"
+//#include "include/avc_utils.h"
 
-#include <netinet/in.h>
+//#include <netinet/in.h>
 
 namespace android {
 
