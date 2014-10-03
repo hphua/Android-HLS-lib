@@ -20,11 +20,11 @@
 
 #include <stdint.h>
 
-#include <media/stagefright/foundation/ABase.h>
-#include <media/stagefright/foundation/AString.h>
-#include <utils/List.h>
-#include <utils/Vector.h>
-#include <utils/threads.h>
+#include "ABase.h"
+#include "AString.h"
+#include "List.h"
+#include "Vector.h"
+#include "threads.h"
 
 namespace android {
 

@@ -17,6 +17,7 @@
 //#define LOG_NDEBUG 0
 #define LOG_TAG "ATSParser"
 //#include "Log.h"
+#include <sys/time.h>
 #include "ADebug.h"
 
 #include "ATSParser.h"
@@ -1279,7 +1280,7 @@ void ATSParser::updatePCR(
 
     mPCR[mNumPCRs] = PCR;
     mPCRBytes[mNumPCRs] = byteOffsetFromStart;
-    mSystemTimeUs[mNumPCRs] = ALooper::GetNowUs();
+    mSystemTimeUs[mNumPCRs] = systemTime(SYSTEM_TIME_MONOTONIC) / 1000ll /*ALooper::GetNowUs()*/;
 
     ++mNumPCRs;
 

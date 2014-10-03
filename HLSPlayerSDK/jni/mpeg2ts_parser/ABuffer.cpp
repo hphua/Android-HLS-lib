@@ -19,7 +19,7 @@
 #include "ABuffer.h"
 
 #include "ADebug.h"
-#include "ALooper.h"
+//#include "ALooper.h"
 #include "AMessage.h"
 
 namespace android {

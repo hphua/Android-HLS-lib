@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#define LOG_TAG AMessage
+
 #include "AMessage.h"
 
 #include <ctype.h>
@@ -21,19 +23,19 @@
 #include "AAtomizer.h"
 #include "ABuffer.h"
 #include "ADebug.h"
-#include "ALooperRoster.h"
+//#include "ALooperRoster.h"
 #include "AString.h"
 
-#include <binder/Parcel.h>
-#include <media/stagefright/foundation/hexdump.h>
+//#include <binder/Parcel.h>
+#include "hexdump.h"
 
 namespace android {
 
-extern ALooperRoster gLooperRoster;
+//extern ALooperRoster gLooperRoster;
 
-AMessage::AMessage(uint32_t what, ALooper::handler_id target)
+AMessage::AMessage(uint32_t what/*, ALooper::handler_id target*/)
     : mWhat(what),
-      mTarget(target),
+      //mTarget(target),
       mNumItems(0) {
 }
 
@@ -49,13 +51,13 @@ uint32_t AMessage::what() const {
     return mWhat;
 }
 
-void AMessage::setTarget(ALooper::handler_id handlerID) {
+/*void AMessage::setTarget(ALooper::handler_id handlerID) {
     mTarget = handlerID;
 }
 
 ALooper::handler_id AMessage::target() const {
     return mTarget;
-}
+}*/
 
 void AMessage::clear() {
     for (size_t i = 0; i < mNumItems; ++i) {
@@ -102,7 +104,7 @@ AMessage::Item *AMessage::allocateItem(const char *name) {
         item = &mItems[i];
         freeItem(item);
     } else {
-        CHECK(mNumItems < kMaxNumItems);
+        //CHECK(mNumItems < kMaxNumItems);
         i = mNumItems++;
         item = &mItems[i];
 
@@ -250,15 +252,15 @@ bool AMessage::findRect(
 }
 
 void AMessage::post(int64_t delayUs) {
-    gLooperRoster.postMessage(this, delayUs);
+    //gLooperRoster.postMessage(this, delayUs);
 }
 
 status_t AMessage::postAndAwaitResponse(sp<AMessage> *response) {
-    return gLooperRoster.postAndAwaitResponse(this, response);
+    return 0; // gLooperRoster.postAndAwaitResponse(this, response);
 }
 
 void AMessage::postReply(uint32_t replyID) {
-    gLooperRoster.postReply(replyID, this);
+//    gLooperRoster.postReply(replyID, this);
 }
 
 bool AMessage::senderAwaitsResponse(uint32_t *replyID) const {
@@ -275,7 +277,7 @@ bool AMessage::senderAwaitsResponse(uint32_t *replyID) const {
 }
 
 sp<AMessage> AMessage::dup() const {
-    sp<AMessage> msg = new AMessage(mWhat, mTarget);
+    sp<AMessage> msg = new AMessage(mWhat/*, mTarget*/);
     msg->mNumItems = mNumItems;
 
     for (size_t i = 0; i < mNumItems; ++i) {
@@ -327,7 +329,7 @@ static void appendIndent(AString *s, int32_t indent) {
         "                                        "
         "                                        ";
 
-    CHECK_LT((size_t)indent, sizeof(kWhitespace));
+    //CHECK_LT((size_t)indent, sizeof(kWhitespace));
 
     s->append(kWhitespace, indent);
 }
@@ -355,10 +357,10 @@ AString AMessage::debugString(int32_t indent) const {
     }
     s.append(tmp);
 
-    if (mTarget != 0) {
+/*    if (mTarget != 0) {
         tmp = StringPrintf(", target = %d", mTarget);
         s.append(tmp);
-    }
+    } */
     s.append(") = {\n");
 
     for (size_t i = 0; i < mNumItems; ++i) {
@@ -432,7 +434,8 @@ AString AMessage::debugString(int32_t indent) const {
                         item.u.rectValue.mBottom);
                 break;
             default:
-                TRESPASS();
+                //TRESPASS();
+            break;
         }
 
         appendIndent(&s, indent);
@@ -448,7 +451,7 @@ AString AMessage::debugString(int32_t indent) const {
 }
 
 // static
-sp<AMessage> AMessage::FromParcel(const Parcel &parcel) {
+/*sp<AMessage> AMessage::FromParcel(const Parcel &parcel) {
     int32_t what = parcel.readInt32();
     sp<AMessage> msg = new AMessage(what);
 
@@ -578,7 +581,7 @@ void AMessage::writeToParcel(Parcel *parcel) const {
         }
     }
 }
-
+*/
 size_t AMessage::countEntries() const {
     return mNumItems;
 }

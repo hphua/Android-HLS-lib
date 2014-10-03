@@ -14,9 +14,11 @@
  * limitations under the License.
  */
 
+#define LOG_TAG "ABitReader"
+
 #include "ABitReader.h"
 
-#include <media/stagefright/foundation/ADebug.h>
+#include "ADebug.h"
 
 namespace android {
 

@@ -19,7 +19,7 @@
 #define A_MESSAGE_H_
 
 #include "ABase.h"
-#include "ALooper.h"
+//#include "ALooper.h"
 //#include <utils/KeyedVector.h>
 //#include <utils/RefBase.h>
 
@@ -30,16 +30,16 @@ struct AString;
 struct Parcel;
 
 struct AMessage : public RefBase {
-    AMessage(uint32_t what = 0, ALooper::handler_id target = 0);
+    AMessage(uint32_t what = 0 /*, ALooper::handler_id target = 0*/);
 
-    static sp<AMessage> FromParcel(const Parcel &parcel);
-    void writeToParcel(Parcel *parcel) const;
+    /*static sp<AMessage> FromParcel(const Parcel &parcel);
+    void writeToParcel(Parcel *parcel) const;*/
 
     void setWhat(uint32_t what);
     uint32_t what() const;
 
-    void setTarget(ALooper::handler_id target);
-    ALooper::handler_id target() const;
+    //void setTarget(ALooper::handler_id target);
+    //ALooper::handler_id target() const;
 
     void clear();
 
@@ -115,7 +115,7 @@ protected:
 
 private:
     uint32_t mWhat;
-    ALooper::handler_id mTarget;
+    //ALooper::handler_id mTarget;
 
     struct Rect {
         int32_t mLeft, mTop, mRight, mBottom;
