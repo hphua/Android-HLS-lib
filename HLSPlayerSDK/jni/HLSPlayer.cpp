@@ -610,7 +610,7 @@ bool HLSPlayer::InitTracks()
 		}
 	}
 
-	if (!haveAudio && !haveVideo)
+	if (!haveVideo)
 	{
 		return UNKNOWN_ERROR;
 	}
@@ -640,8 +640,10 @@ bool HLSPlayer::CreateAudioPlayer()
 
 	if(mAudioSource.get())
 		mJAudioTrack->Set(mAudioSource);
-	else
+	else if (mAudioSource23.get())
 		mJAudioTrack->Set23(mAudioSource23);
+	else
+		mJAudioTrack->ClearAudioSource();
 
 	return true;
 }
@@ -657,12 +659,12 @@ bool HLSPlayer::InitSources()
 	
 	if(AVSHIM_USE_NEWMEDIASOURCE)
 	{
-		if (mVideoTrack == NULL || mAudioTrack == NULL)
+		if (mVideoTrack == NULL)
 			return false;
 	}
 	else
 	{
-		if (mVideoTrack23 == NULL || mAudioTrack23 == NULL)
+		if (mVideoTrack23 == NULL)
 			return false;		
 	}
 
@@ -773,45 +775,55 @@ bool HLSPlayer::InitSources()
 	// We will get called back later to finish initialization of our renderers.
 
 	// Audio
-	if(AVSHIM_USE_NEWMEDIASOURCE)
-		mOffloadAudio = canOffloadStream(mAudioTrack->getFormat(), (mVideoTrack != NULL), false /*streaming http */, AUDIO_STREAM_MUSIC);
-	else
-		mOffloadAudio = canOffloadStream(mAudioTrack23->getFormat(), (mVideoTrack23 != NULL), false /*streaming http */, AUDIO_STREAM_MUSIC);				
-
-	LOGI("mOffloadAudio == %s", mOffloadAudio ? "true" : "false");
-
-	sp<MetaData> audioFormat;
-	if(AVSHIM_USE_NEWMEDIASOURCE)
-		audioFormat = mAudioTrack->getFormat();
-	else
-		audioFormat = mAudioTrack23->getFormat();
-
-	// Fall back to the MediaExtractor value for 3.x devices..
-	if(audioFormat.get() == NULL)
-		audioFormat = mAudioTrack_md;
-
-	if(!audioFormat.get())
+	mOffloadAudio = false;
+	if (mAudioTrack.get() || mAudioTrack23.get())
 	{
-		LOGE("No format available from the audio track.");
-		return false;
-	}
-
-	RUNDEBUG(audioFormat->dumpToLog());
-
-	if(AVSHIM_USE_NEWMEDIASOURCE)
-		mAudioSource = OMXCodec::Create(iomx, audioFormat, false, mAudioTrack, NULL, 0);
-	else
-		mAudioSource23 = OMXCodec::Create23(iomx, audioFormat, false, mAudioTrack23, NULL, 0);
-
-	LOGI("OMXCodec::Create() (audio) returned %p %p", mAudioSource.get(), mAudioSource23.get());
-
-	if (mOffloadAudio)
-	{
-		LOGI("Bypass OMX (offload) Line: %d", __LINE__);
 		if(AVSHIM_USE_NEWMEDIASOURCE)
-			mAudioSource = mAudioTrack;
+			mOffloadAudio = canOffloadStream(mAudioTrack.get()?mAudioTrack->getFormat():NULL, (mVideoTrack != NULL), false /*streaming http */, AUDIO_STREAM_MUSIC);
 		else
-			mAudioSource23 = mAudioTrack23;
+			mOffloadAudio = canOffloadStream(mAudioTrack23.get()?mAudioTrack23->getFormat():NULL, (mVideoTrack23 != NULL), false /*streaming http */, AUDIO_STREAM_MUSIC);
+
+
+		LOGI("mOffloadAudio == %s", mOffloadAudio ? "true" : "false");
+
+		sp<MetaData> audioFormat;
+		if(AVSHIM_USE_NEWMEDIASOURCE)
+			audioFormat = mAudioTrack->getFormat();
+		else
+			audioFormat = mAudioTrack23->getFormat();
+
+		// Fall back to the MediaExtractor value for 3.x devices..
+		if(audioFormat.get() == NULL)
+			audioFormat = mAudioTrack_md;
+
+		if(!audioFormat.get())
+		{
+			LOGE("No format available from the audio track.");
+			return false;
+		}
+
+		RUNDEBUG(audioFormat->dumpToLog());
+
+		if(AVSHIM_USE_NEWMEDIASOURCE)
+			mAudioSource = OMXCodec::Create(iomx, audioFormat, false, mAudioTrack, NULL, 0);
+		else
+			mAudioSource23 = OMXCodec::Create23(iomx, audioFormat, false, mAudioTrack23, NULL, 0);
+
+		LOGI("OMXCodec::Create() (audio) returned %p %p", mAudioSource.get(), mAudioSource23.get());
+
+		if (mOffloadAudio)
+		{
+			LOGI("Bypass OMX (offload) Line: %d", __LINE__);
+			if(AVSHIM_USE_NEWMEDIASOURCE)
+				mAudioSource = mAudioTrack;
+			else
+				mAudioSource23 = mAudioTrack23;
+		}
+	}
+	else
+	{
+		mAudioSource.clear();
+		mAudioSource23.clear();
 	}
 
 	return true;
@@ -1415,8 +1427,13 @@ bool HLSPlayer::EnsureAudioPlayerCreatedAndSourcesSet()
 	{
 		if(mAudioSource.get())
 			return mJAudioTrack->Set(mAudioSource);
-		else
+		else if (mAudioSource23.get())
 			return mJAudioTrack->Set23(mAudioSource23);
+		else
+		{
+			mJAudioTrack->ClearAudioSource();
+			return true;
+		}
 	}
 	return false;
 }

@@ -121,6 +121,11 @@ bool AudioTrack::Init()
     return true;
 }
 
+void AudioTrack::ClearAudioSource()
+{
+	Set(NULL, true);
+	Set23(NULL, true);
+}
 
 bool AudioTrack::Set(sp<MediaSource> audioSource, bool alreadyStarted)
 {
@@ -132,7 +137,7 @@ bool AudioTrack::Set(sp<MediaSource> audioSource, bool alreadyStarted)
 
 	LOGI("Set with %p", audioSource.get());
 	mAudioSource = audioSource;
-	if (!alreadyStarted) mAudioSource->start(NULL);
+	if (!alreadyStarted && mAudioSource.get()) mAudioSource->start(NULL);
 
 	mWaiting = false;
 	return UpdateFormatInfo();
@@ -146,7 +151,7 @@ bool AudioTrack::Set23(sp<MediaSource23> audioSource, bool alreadyStarted)
 
 	LOGI("Set23 with %p", audioSource.get());
 	mAudioSource23 = audioSource;
-	if (!alreadyStarted) mAudioSource23->start(NULL);
+	if (!alreadyStarted && mAudioSource.get()) mAudioSource23->start(NULL);
 	mWaiting = false;
 	return UpdateFormatInfo();
 }
@@ -160,8 +165,11 @@ bool AudioTrack::UpdateFormatInfo()
 		format = mAudioSource23->getFormat();
 	else
 	{
-		LOGE("Couldn't find format!");
-		return false;
+		LOGE("We do not have an audio source. Setting a base format for feeding silence.");
+		mSampleRate=44100;
+		mNumChannels = 2;
+		mChannelMask = 0;
+		return true;
 	}
 
 	RUNDEBUG(format->dumpToLog());
@@ -412,9 +420,15 @@ bool AudioTrack::ReadUntilTime(double timeSecs)
 	{
 		if(mAudioSource.get())
 			res = mAudioSource->read(&mediaBuffer, NULL);
-
-		if(mAudioSource23.get())
+		else if(mAudioSource23.get())
 			res = mAudioSource23->read(&mediaBuffer, NULL);
+		else
+		{
+			// Set timeUs to our target, and let the loop fall out so that we can get the timestamp
+			// set properly.
+			timeUs = targetTimeUs;
+			continue;
+		}
 
 
 		if (res == OK)
@@ -495,18 +509,21 @@ int AudioTrack::Update()
 	MediaBuffer* mediaBuffer = NULL;
 
 	//LOGI("Reading to the media buffer");
-	status_t res;
+	status_t res = OK;
 
 	if(mAudioSource.get())
 		res = mAudioSource->read(&mediaBuffer, NULL);
-
-	if(mAudioSource23.get())
+	else if(mAudioSource23.get())
 		res = mAudioSource23->read(&mediaBuffer, NULL);
+	else
+	{
+		res = OK;
+	}
 
 	if (res == OK)
 	{
 		//LOGI("Finished reading from the media buffer");
-		RUNDEBUG(mediaBuffer->meta_data()->dumpToLog());
+		RUNDEBUG(if (mediaBuffer) { mediaBuffer->meta_data()->dumpToLog(); });
 		env->PushLocalFrame(2);
 
 		if(!buffer)
@@ -519,25 +536,36 @@ int AudioTrack::Update()
 
 		if (pBuffer)
 		{
-			size_t mbufSize = mediaBuffer->range_length();
-			//LOGI("MediaBufferSize = %d, mBufferSizeInBytes = %d", mbufSize, mBufferSizeInBytes );
-			if (mbufSize <= mBufferSizeInBytes)
+			if (mediaBuffer)
 			{
-				//LOGI("Writing data to jAudioTrack %d", mbufSize);
-				memcpy(pBuffer, mediaBuffer->data(), mbufSize);
-				unsigned short* pBShorts = (unsigned short*)pBuffer;
-				//LOGV("%hd %hd %hd %hd", pBShorts[0], pBShorts[1], pBShorts[2], pBShorts[3]);
-				int len = mbufSize / 2;
-				//LOGV("%hd %hd %hd %hd", pBShorts[len - 4], pBShorts[len - 3], pBShorts[len - 2], pBShorts[len - 1]);
+				size_t mbufSize = mediaBuffer->range_length();
+				//LOGI("MediaBufferSize = %d, mBufferSizeInBytes = %d", mbufSize, mBufferSizeInBytes );
+				if (mbufSize <= mBufferSizeInBytes)
+				{
+					//LOGI("Writing data to jAudioTrack %d", mbufSize);
+					memcpy(pBuffer, mediaBuffer->data(), mbufSize);
+					unsigned short* pBShorts = (unsigned short*)pBuffer;
+					//LOGV("%hd %hd %hd %hd", pBShorts[0], pBShorts[1], pBShorts[2], pBShorts[3]);
+					int len = mbufSize / 2;
+					//LOGV("%hd %hd %hd %hd", pBShorts[len - 4], pBShorts[len - 3], pBShorts[len - 2], pBShorts[len - 1]);
 
-				env->ReleasePrimitiveArrayCritical(buffer, pBuffer, 0);
-				//LOGI("Finished copying audio data to buffer");
-				samplesWritten += env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mWrite, buffer, 0, mbufSize  );
-				//LOGI("Finished Writing Data to jAudioTrack");
+					env->ReleasePrimitiveArrayCritical(buffer, pBuffer, 0);
+					//LOGI("Finished copying audio data to buffer");
+					samplesWritten += env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mWrite, buffer, 0, mbufSize  );
+					//LOGI("Finished Writing Data to jAudioTrack");
+				}
+				else
+				{
+					LOGI("MediaBufferSize > mBufferSizeInBytes");
+				}
 			}
 			else
 			{
-				LOGI("MediaBufferSize > mBufferSizeInBytes");
+				LOGV("Writing zeros to the audio buffer");
+				memset(pBuffer, 0, mBufferSizeInBytes);
+				int len = mBufferSizeInBytes / 2;
+				env->ReleasePrimitiveArrayCritical(buffer, pBuffer, 0);
+				samplesWritten += env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mWrite, buffer, 0, mBufferSizeInBytes  );
 			}
 		}
 

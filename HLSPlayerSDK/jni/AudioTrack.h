@@ -38,6 +38,7 @@ public:
 
 	bool Set(android_video_shim::sp<android_video_shim::MediaSource> audioSource, bool alreadyStarted = false);
 	bool Set23(android_video_shim::sp<android_video_shim::MediaSource23> audioSource, bool alreadyStarted = false);
+	void ClearAudioSource();
 
 	int Update();
 
