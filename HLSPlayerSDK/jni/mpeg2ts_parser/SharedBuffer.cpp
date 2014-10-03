@@ -15,8 +15,8 @@
  */
 #include <stdlib.h>
 #include <string.h>
-#include <utils/SharedBuffer.h>
-#include <utils/Atomic.h>
+#include "SharedBuffer.h"
+//#include <utils/Atomic.h>
 // ---------------------------------------------------------------------------
 namespace android {
 SharedBuffer* SharedBuffer::alloc(size_t size)
