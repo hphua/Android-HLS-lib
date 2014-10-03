@@ -290,7 +290,9 @@ public:
             /*! append/insert another vector */
             ssize_t         insertVectorAt(const VectorImpl& vector, size_t index);
             ssize_t         appendVector(const VectorImpl& vector);
-            
+            ssize_t         insertArrayAt(const void* array, size_t index, size_t length);
+            ssize_t         appendArray(const void* array, size_t length);
+
             /*! add/insert/replace items */
             ssize_t         insertAt(size_t where, size_t numItems = 1);
             ssize_t         insertAt(const void* item, size_t where, size_t numItems = 1);
@@ -313,7 +315,8 @@ public:
             typedef int (*compar_r_t)(const void* lhs, const void* rhs, void* state);
             status_t        sort(compar_t cmp);
             status_t        sort(compar_r_t cmp, void* state);
-
+            ssize_t resize(size_t size);
+            
 protected:
             size_t          itemSize() const;
             void            release_storage();
