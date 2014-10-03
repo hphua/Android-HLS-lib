@@ -121,6 +121,11 @@ bool AudioTrack::Init()
     return true;
 }
 
+void AudioTrack::ClearAudioSource()
+{
+	Set(NULL, true); // We're going to call Set23 here just to be sure we're ALL clear
+	Set23(NULL, true); // We're going to call Set23 here just to be sure we're ALL clear
+}
 
 bool AudioTrack::Set(sp<MediaSource> audioSource, bool alreadyStarted)
 {
@@ -504,7 +509,7 @@ int AudioTrack::Update()
 	MediaBuffer* mediaBuffer = NULL;
 
 	//LOGI("Reading to the media buffer");
-	status_t res;
+	status_t res = OK;
 
 	if(mAudioSource.get())
 		res = mAudioSource->read(&mediaBuffer, NULL);
@@ -512,7 +517,7 @@ int AudioTrack::Update()
 		res = mAudioSource23->read(&mediaBuffer, NULL);
 	else
 	{
-
+		res = OK;
 	}
 
 	if (res == OK)
@@ -556,6 +561,7 @@ int AudioTrack::Update()
 			}
 			else
 			{
+				LOGI("Writing zeros to the audio buffer");
 				memset(pBuffer, 0, mBufferSizeInBytes);
 				int len = mBufferSizeInBytes / 2;
 				env->ReleasePrimitiveArrayCritical(buffer, pBuffer, 0);
