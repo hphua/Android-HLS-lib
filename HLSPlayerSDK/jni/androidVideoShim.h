@@ -1647,32 +1647,50 @@ namespace android_video_shim
 
         bool setCString(uint32_t key, const char *value)
         {
-            return false;
+            typedef bool (*localFuncCast)(void *thiz, uint32_t key, const char *value);
+            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android8MetaData10setCStringEjPKc");
+            assert(lfc);
+            return lfc(this, key, value);
         }
 
         bool setInt32(uint32_t key, int32_t value)
         {
-            return false;
+            typedef bool (*localFuncCast)(void *thiz, uint32_t key, int32_t value);
+            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android8MetaData8setInt32Eji");
+            assert(lfc);
+            return lfc(this, key, value);
         }
 
         bool setInt64(uint32_t key, int64_t value)
         {
-            return false;
+            typedef bool (*localFuncCast)(void *thiz, uint32_t key, int64_t value);
+            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android8MetaData8setInt64Ejx");
+            assert(lfc);
+            return lfc(this, key, value);
         }
 
         bool setFloat(uint32_t key, float value)
         {
-            return false;
+            typedef bool (*localFuncCast)(void *thiz, uint32_t key, float value);
+            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android8MetaData8setFloatEjf");
+            assert(lfc);
+            return lfc(this, key, value);
         }
 
         bool setPointer(uint32_t key, void *value)
         {
-            return false;
+            typedef bool (*localFuncCast)(void *thiz, uint32_t key, void *value);
+            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android8MetaData10setPointerEjPv");
+            assert(lfc);
+            return lfc(this, key, value);
         }
 
         bool setData(uint32_t key, uint32_t type, const void *data, size_t size)
         {
-            return false;
+            typedef bool (*localFuncCast)(void *thiz, uint32_t key, uint32_t type, const void *data, size_t size);
+            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android8MetaData7setDataEjjPKvj");
+            assert(lfc);
+            return lfc(this, key, type, data, size);
         }
 
         void dumpToLog()
