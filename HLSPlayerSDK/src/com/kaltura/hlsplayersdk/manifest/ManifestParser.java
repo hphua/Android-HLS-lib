@@ -35,7 +35,10 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 	
 	public Vector<URLLoader> manifestLoaders = new Vector<URLLoader>();
 	public Vector<ManifestParser> manifestParsers = new Vector<ManifestParser>();
-	//private URLLoader manifestReloader = null;
+	public boolean goodManifest = true;
+	private int mReloadFailureCount = 0;
+	
+	
 	
 	public int continuityEra = 0;
 	private int _subtitlesLoading = 0;
@@ -121,6 +124,13 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 			
 			String curPrefix = curLine.substring(0, 1);
 			
+			if (i == 0 && !curLine.contains("#EXTM3U"))
+			{
+				Log.i(this.type + ".parse()", "Bad Stream! #EXTM3U is not contained within the first line");
+				goodManifest = false;
+				break;
+			}
+			
 			if (!curPrefix.endsWith("#") && curLine.length() > 0)
 			{
 				// Specifying a media file, note it
@@ -185,6 +195,10 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 				if (keys.size() > 0) keys.get(keys.size() - 1).endSegmentId = segments.size() - 1;
 				ManifestEncryptionKey key = ManifestEncryptionKey.fromParams(tagParams);
 				key.startSegmentId = segments.size();
+				if (!key.url.contains("://"))
+				{
+					key.url = getNormalizedUrl(baseUrl, key.url);
+				}
 				keys.add(key);
 			}
 			else if (tagType.equals("EXT-X-VERSION"))
@@ -312,14 +326,60 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 		// work through the streams and remove any broken ones
 		for (int i = streams.size() - 1; i >= 0; --i)
 		{
-			if (streams.get(i).manifest == null)
+			if (streams.get(i).manifest == null || streams.get(i).manifest.goodManifest == false)
 				streams.remove(i);
 		}
 		
+		// Make our streamEnds value match the value of the first stream
+		if (streams.size() > 0)
+			streamEnds = streams.get(0).manifest.streamEnds;
+		
+		// Work through the streams and set up the backup streams
+		int backupCount = 0;
+		for (int i = streams.size() - 1; i >= 0; --i)
+		{
+			// skip the last item in the list because we don't know yet if it's a backup
+			if (i == streams.size() - 1)
+				continue;
+			
+			if (streams.get(i).bandwidth == streams.get(i+1).bandwidth)
+			{
+				backupCount++;
+			}
+			else if (backupCount > 0)
+			{
+				// link the main stream with its backup stream(s)
+				linkBackupStreams(i+1, backupCount);
+				backupCount = 0;
+			}
+		}
+		
+		// Check for leftovers
+		if (backupCount > 0)
+			linkBackupStreams(0, backupCount);
+		
+		// Remove any dead manifests
 		for (int i = playLists.size() - 1; i >= 0; --i)
 		{
 			if (playLists.get(i).manifest == null)
 				playLists.remove(i);
+		}
+	}
+	
+	private void linkBackupStreams(int startIndex, int count)
+	{
+		// store the index of the last item so we don't have to do the math more than once
+		int lastIndex = startIndex + count;
+
+		// link the last stream to the first stream
+		streams.get(lastIndex).backupStream = streams.get(startIndex);
+		streams.get(startIndex).numBackups = count;
+		
+		for (int i = lastIndex; i > startIndex; --i)
+		{
+			streams.get(i - 1).backupStream = streams.get(i);
+			streams.get(i).numBackups = count;
+			streams.remove(i);
 		}
 	}
 	
@@ -403,7 +463,21 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 			if (mOnParseCompleteListener != null) mOnParseCompleteListener.onParserComplete(this);
 		}
 	}
+
+	public int getReloadFailureCount()
+	{
+		return mReloadFailureCount;
+	}
 	
+	public void incrementReloadFailureCount(int count)
+	{
+		++mReloadFailureCount;
+	}
+	
+	public void clearReloadFailureCount()
+	{
+		mReloadFailureCount = 0;
+	}
 	
 	public interface ReloadEventListener
 	{

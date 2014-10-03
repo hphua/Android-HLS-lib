@@ -1,6 +1,7 @@
 package com.kaltura.hlsplayersdk;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
@@ -30,14 +31,17 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 	public ManifestParser reloadingManifest = null;
 	public int reloadingQuality = 0;
 	public String baseUrl = null;
-	//public StreamingResource resource = null;
+	
 	
 	private Timer reloadTimer = null;
 	private int sequenceSkips = 0;
 	private boolean stalled = false;
+	private HashMap<String, Integer> badManifestMap = new HashMap<String, Integer>();
+	private static final int maxFailedManifestTries = 3; // The number of retries a manifest may occur before we give up on it and remove it from our manifest list.
+	private static final int isTooFarBehind = 5; // How far behind a stream can be before we log a message warning of significant delays
 	
 	private long mTimerDelay = 10000;
-	// private M2TSFileHandler fileHandler;
+	
 	
 	public StreamHandler(ManifestParser parser)
 	{
@@ -164,22 +168,6 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 		return tracks;
 	}
 	
-//	private Runnable reloadTimerComplete = new Runnable()
-//	{
-//		public void run()
-//		{
-//			Log.i("reloadTimerComplete.run", "Reload Timer Complete!");
-//			if (targetQuality != lastQuality)
-//				reload(targetQuality);
-//			else
-//				reload(lastQuality);
-////			postDelayed(runnable, frameDelay);
-//		}
-//	};
-	
-	
-	
-	
 	public void initialize()
 	{
 		postRatesReady();
@@ -194,18 +182,6 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 			reloadTimer.schedule(reloadTimerComplete, mTimerDelay);
 		}
 	}
-	
-//	private void onReloadTimer()
-//	{
-//		if (targetQuality != lastQuality)
-//		{
-//			reload(targetQuality);
-//		}
-//		else
-//		{
-//			reload(lastQuality);
-//		}
-//	}
 	
 	private void reload(int quality)
 	{
@@ -279,16 +255,191 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 	public void onReloadFailed(ManifestParser parser) {
 		if (reloadTimer != null)
 		{
-			// TODO: Restart the timer
+			mTimerDelay = (long)(getManifestForQuality(lastQuality).targetDuration * 1000  / 2);
+			startReloadTimer();
 		}
 		
+		// Keep track of how many times this particular manifest has failed to reload
+		if (!badManifestMap.containsKey(parser.fullUrl))
+		{
+			badManifestMap.put(parser.fullUrl, 1);
+		}
+		else
+		{
+			badManifestMap.put(parser.fullUrl, badManifestMap.get(parser.fullUrl) + 1);
+		}
+		
+		// Only continue on to removing the manifest if it has had an error enough times
+		if (badManifestMap.get(parser.fullUrl) < maxFailedManifestTries)
+			return;
+		
+		for (int i = 0; i < manifest.streams.size(); ++i)
+		{
+			ManifestStream curStream = manifest.streams.get(i);
+			
+			// We continue to th enext available stream if the url/uri doesn't match
+			if (!parser.fullUrl.equals(curStream.manifest.fullUrl))
+				continue;
+			
+			// We don't do anything if this is the lowest quality stream and there is no backup
+			if (i == 0 && curStream.backupStream == null)
+				break;
+			
+			// Replace the stream with its backup if possible
+			if (curStream.backupStream != null)
+			{
+				// Remove the bad stream from the linked list, preserving the list's circular behavior
+				while (curStream.backupStream != manifest.streams.get(i))
+				{
+					curStream = curStream.backupStream;
+				}
+				
+				curStream.backupStream = curStream.backupStream.backupStream;
+				
+				// Check if this stream only has one backup
+				if (curStream == curStream.backupStream)
+					curStream.backupStream = null;
+				
+				manifest.streams.set(i, curStream);
+			}
+			else
+			{
+				// If there is no backup available, simply remove the stream from our stream list
+				manifest.streams.remove(i);
+				break;
+				
+			}
+		}
+		
+		postRatesReady();
 	}
 	
 	private boolean updateManifestSegmentsQualityChange(ManifestParser newManifest, int quality)
 	{
 		if (newManifest == null || newManifest.segments.size() == 0) return true;
+		
 		ManifestParser lastQualityManifest = getManifestForQuality(lastQuality);
 		ManifestParser targetManifest = getManifestForQuality(quality);
+
+		if (newManifest.isDVR() != lastQualityManifest.isDVR())
+		{
+			// If the new manifest's DVR status does not match the current DVR status, don't switch qualities
+			targetQuality = lastQuality;
+			return false;
+		}
+
+		Vector<ManifestSegment> lastQualitySegments = lastQualityManifest.segments;
+		Vector<ManifestSegment> targetSegments = targetManifest.segments;
+		Vector<ManifestSegment> newSegments = newManifest.segments;
+
+		ManifestSegment matchSegment = lastQualitySegments.get(lastSegmentIndex);
+
+		// Add the new manifest segments to the targetManifest
+		// Tasks: (in order)
+		// 	1) Append the new segments to the target segment list and determine the new last known playlist start time
+		//	2) Determine the last segment index in the new segment list
+		
+		// Find the point where the new segments id matches the old segment id
+		int matchId = targetSegments.get(targetSegments.size() - 1).id;
+		int matchIndex = -1;
+		double matchStartTime = lastKnownPlaylistStartTime;
+		for (int i = newSegments.size() - 1; i >= 0; --i)
+		{
+			if (newSegments.get(i).id == matchId)
+			{
+				matchIndex = i;
+				break;
+			}
+		}
+		
+		// We only need to make additional calculations if we were able to find a point where the segments matched up
+		if (matchIndex >= 0 && matchIndex != newSegments.size() - 1)
+		{
+			// Fix the start times
+			double nextStartTime = targetSegments.get(targetSegments.size()-1).startTime;
+			for (int i = matchIndex; i < newSegments.size(); ++i)
+			{
+				newSegments.get(i).startTime = nextStartTime;
+				nextStartTime += newSegments.get(i).duration;
+			}
+			
+			// Append the new manifest segments to the targetManifest
+			for (int i = matchIndex + 1; i < newSegments.size(); ++i)
+			{
+				targetSegments.add(newSegments.get(i));
+			}
+			
+			// Now we need to calculate the last known playlist start time
+			int matchStartId = newSegments.get(0).id;
+			for (int i = 0; i < targetSegments.size(); ++i)
+			{
+				if (targetSegments.get(i).id == matchStartId)
+					matchStartTime = targetSegments.get(i).startTime;
+			}
+		}
+		else if (matchIndex < 0)
+		{
+			// The last playlist start time is at the start of the newest segment, the best we can do here is estimate
+			matchStartTime += targetSegments.get(targetSegments.size() - 1).duration;
+			
+			// No matches were foun so we add all the new segments to the playlist, also adjust their start times
+			double nextStartTime = matchStartTime;
+			for (int i = 0; i < newSegments.size(); ++i)
+			{
+				newSegments.get(i).startTime = nextStartTime;
+				nextStartTime += newSegments.get(i).duration;
+				targetSegments.add(newSegments.get(i));
+			}
+		}
+		else
+		{
+			// In this case, there are no new segments, and we don't acually need to do anything to the playlist
+		}
+		
+		// This is now where our new playlist starts
+		lastKnownPlaylistStartTime = matchStartTime;
+		
+		// Figure out what the new lastSegmentIndex is
+		boolean found = false;
+		double matchTime = lastQualitySegments.get(lastSegmentIndex).startTime;
+		for (int i = 0; i < targetSegments.size(); ++i)
+		{
+			if (targetSegments.get(i).startTime <= matchTime && targetSegments.get(i).startTime > matchTime - targetSegments.get(i).duration)
+			{
+				lastSegmentIndex = i;
+				found = true;
+				stalled = false;
+				break;
+			}
+		}
+		
+		if (!found && targetSegments.get(targetSegments.size() - 1).startTime < matchSegment.startTime)
+		{
+			Log.i("updateManifestSegmentsQualityChange()", "***STALL*** Target STart Time: " + targetSegments.get(targetSegments.size() - 1).startTime + " Match Start Time: " + matchSegment.startTime);
+			
+			stalled = true; // We want to stall because we don't know what the index should be as our new playlist is not quite caught up
+			return found; // returning early so that we don't hcange lastQuality (we still need that value around)
+		}
+		
+		// set lastQuality to targetQuality since we're finally all matched up
+		lastQuality = quality;
+		stalled = false;
+		return found;
+		
+	}
+	
+	private boolean old_updateManifestSegmentsQualityChange(ManifestParser newManifest, int quality)
+	{
+		if (newManifest == null || newManifest.segments.size() == 0) return true;
+		ManifestParser lastQualityManifest = getManifestForQuality(lastQuality);
+		ManifestParser targetManifest = getManifestForQuality(quality);
+		
+		if (newManifest.isDVR() != lastQualityManifest.isDVR())
+		{
+			// If the new manifest's DVR status does not match the current DVR status, don't switch qualities
+			targetQuality = lastQuality;
+			return false;
+		}
 		
 		Vector<ManifestSegment> lastQualitySegments = lastQualityManifest.segments;
 		Vector<ManifestSegment> targetSegments = targetManifest.segments;
@@ -465,6 +616,10 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 		{
 			segments.add(newManifest.segments.get(k));
 		}
+		
+		// Match the new manifest's and the old manifest's DVR status
+		getManifestForQuality(quality).streamEnds = newManifest.streamEnds;
+		manifest.streamEnds = newManifest.streamEnds;
 
 		updateTotalDuration();		
 	}
@@ -541,6 +696,9 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 		
 		lastSegmentIndex = i;
 		
+		if (!getManifestForQuality(quality).streamEnds)
+			stalled = true;
+		
 		return null;
 	}
 	
@@ -549,7 +707,8 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 	{
 		if (stalled)
 		{
-			// TODO: FIGURE OUT WHAT TO DO IF WE STALL
+			Log.i("getNextFile()", "---- Stalled -----");
+			return null;
 		}
 		
 		quality = getWorkingQuality(quality);
@@ -674,7 +833,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 		if (manifest == null) return new ManifestParser();
 		if (manifest.streams.size() < 1 || manifest.streams.get(0).manifest == null) return manifest;
 		else if ( quality >= manifest.streams.size() ) return manifest.streams.get(0).manifest;
-		else return manifest.streams.get(quality).manifest;
+		return manifest.streams.get(quality).manifest;
 	}
 
 
