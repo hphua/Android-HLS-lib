@@ -1634,6 +1634,11 @@ namespace android_video_shim
             return lfc(this, key, left, top, right, bottom);
         }
 
+        void setInt64(uint32_t key, int64_t value)
+        {
+            assert(false);
+        }
+
         void dumpToLog()
         {
             typedef void (*localFuncCast)(void *thiz);

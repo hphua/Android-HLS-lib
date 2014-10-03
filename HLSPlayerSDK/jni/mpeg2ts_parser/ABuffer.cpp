@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#define LOG_TAG "ABuffer"
+
 #include "ABuffer.h"
 
 #include "ADebug.h"

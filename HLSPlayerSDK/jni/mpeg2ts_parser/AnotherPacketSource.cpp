@@ -14,17 +14,19 @@
  * limitations under the License.
  */
 
+#define LOG_TAG "AnotherPacketSource"
+
 #include "AnotherPacketSource.h"
 
-#include <media/stagefright/foundation/ABuffer.h>
-#include <media/stagefright/foundation/ADebug.h>
-#include <media/stagefright/foundation/AMessage.h>
-#include <media/stagefright/foundation/AString.h>
-#include <media/stagefright/foundation/hexdump.h>
-#include <media/stagefright/MediaBuffer.h>
-#include <media/stagefright/MediaDefs.h>
-#include <media/stagefright/MetaData.h>
-#include <utils/Vector.h>
+#include "ABuffer.h"
+#include "ADebug.h"
+#include "AMessage.h"
+#include "AString.h"
+#include "hexdump.h"
+//#include <media/stagefright/MediaBuffer.h>
+//#include <media/stagefright/MediaDefs.h>
+//#include <media/stagefright/MetaData.h>
+#include "Vector.h"
 
 namespace android {
 
@@ -156,8 +158,8 @@ status_t AnotherPacketSource::read(
         int64_t timeUs;
         CHECK(buffer->meta()->findInt64("timeUs", &timeUs));
 
-        MediaBuffer *mediaBuffer = new MediaBuffer(buffer);
-
+        //MediaBuffer *mediaBuffer = new MediaBuffer(buffer);
+        MediaBuffer *mediaBuffer = NULL;
         mediaBuffer->meta_data()->setInt64(kKeyTime, timeUs);
 
         *out = mediaBuffer;
