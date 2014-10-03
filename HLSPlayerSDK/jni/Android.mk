@@ -8,7 +8,7 @@ LOCAL_SRC_FILES := HLSPlayerSDK.cpp HLSSegment.cpp HLSPlayer.cpp AudioTrack.cpp 
 LOCAL_SRC_FILES += androidVideoShim.cpp androidVideoShim_ColorConverter.cpp 
 LOCAL_SRC_FILES += aes.c
 LOCAL_SRC_FILES += HLSSegmentCache.cpp
-LOCAL_SRC_FILES += mpeg2ts_parser/MPEG2TSExtractor.cpp
+LOCAL_SRC_FILES += mpeg2ts_parser/MPEG2TSExtractor.cpp mpeg2ts_parser/ATSParser.cpp
 
 LOCAL_CFLAGS += -DHAVE_SYS_UIO_H -Wno-multichar -Wno-pmf-conversions -g
 LOCAL_C_INCLUDES += $(TOP)/system/core/include

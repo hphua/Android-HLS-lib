@@ -21,8 +21,8 @@
 #include <sys/types.h>
 #include <stdint.h>
 
-#include <media/stagefright/foundation/ABase.h>
-#include <utils/RefBase.h>
+#include "ABase.h"
+//#include <utils/RefBase.h>
 
 namespace android {
 

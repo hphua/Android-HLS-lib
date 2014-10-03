@@ -16,31 +16,37 @@
 
 //#define LOG_NDEBUG 0
 #define LOG_TAG "ATSParser"
-#include <utils/Log.h>
+//#include "Log.h"
+#include "ADebug.h"
 
 #include "ATSParser.h"
 
 #include "AnotherPacketSource.h"
 #include "ESQueue.h"
-#include "include/avc_utils.h"
+//#include "include/avc_utils.h"
 
-#include <media/stagefright/foundation/ABitReader.h>
-#include <media/stagefright/foundation/ABuffer.h>
-#include <media/stagefright/foundation/ADebug.h>
-#include <media/stagefright/foundation/AMessage.h>
-#include <media/stagefright/foundation/hexdump.h>
-#include <media/stagefright/MediaDefs.h>
-#include <media/stagefright/MediaErrors.h>
-#include <media/stagefright/MetaData.h>
-#include <media/stagefright/Utils.h>
-#include <media/IStreamSource.h>
-#include <utils/KeyedVector.h>
+#include "ABitReader.h"
+#include "ABuffer.h"
+#include "AMessage.h"
+#include "hexdump.h"
+//#include <media/stagefright/MediaDefs.h>
+//#include <media/stagefright/MediaErrors.h>
+//#include <media/stagefright/MetaData.h>
+//#include <media/stagefright/Utils.h>
+//#include <media/IStreamSource.h>
+#include "KeyedVector.h"
+
+//#define LOG_VERBOSE(...) ((void)ALOG(ANDROID_LOG_VERBOSE, LOG_TAG, __VA_ARGS__))
+//#define ALOG(...) ((void)ALOG(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__))
+#define ALOGI(...) ((void)ALOG(ANDROID_LOG_INFO, LOG_TAG, __VA_ARGS__))
+#define ALOGE(...) ((void)ALOG(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__))
 
 namespace android {
 
 // I want the expression "y" evaluated even if verbose logging is off.
 #define MY_LOGV(x, y) \
     do { unsigned tmp = y; ALOGV(x, tmp); } while (0)
+
 
 static const size_t kTSPacketSize = 188;
 
@@ -60,7 +66,7 @@ struct ATSParser::Program : public RefBase {
 
     void signalEOS(status_t finalResult);
 
-    sp<MediaSource> getSource(SourceType type);
+    sp<android_video_shim::MediaSource> getSource(SourceType type);
 
     int64_t convertPTSToTimestamp(uint64_t PTS);
 
@@ -115,7 +121,7 @@ struct ATSParser::Stream : public RefBase {
 
     void signalEOS(status_t finalResult);
 
-    sp<MediaSource> getSource(SourceType type);
+    sp<android_video_shim::MediaSource> getSource(SourceType type);
 
 protected:
     virtual ~Stream();
@@ -219,7 +225,7 @@ void ATSParser::Program::signalDiscontinuity(
     if ((type & DISCONTINUITY_TIME)
             && extra != NULL
             && extra->findInt64(
-                IStreamListener::kKeyMediaTimeUs, &mediaTimeUs)) {
+                "media-time-us" /*IStreamListener::kKeyMediaTimeUs*/, &mediaTimeUs)) {
         mFirstPTSValid = false;
     }
 
@@ -417,11 +423,11 @@ status_t ATSParser::Program::parseProgramMap(ABitReader *br) {
     return OK;
 }
 
-sp<MediaSource> ATSParser::Program::getSource(SourceType type) {
+sp<android_video_shim::MediaSource> ATSParser::Program::getSource(SourceType type) {
     size_t index = (type == AUDIO) ? 0 : 0;
 
     for (size_t i = 0; i < mStreams.size(); ++i) {
-        sp<MediaSource> source = mStreams.editValueAt(i)->getSource(type);
+        sp<android_video_shim::MediaSource> source = mStreams.editValueAt(i)->getSource(type);
         if (source != NULL) {
             if (index == 0) {
                 return source;
@@ -649,7 +655,7 @@ void ATSParser::Stream::signalDiscontinuity(
         uint64_t resumeAtPTS;
         if (extra != NULL
                 && extra->findInt64(
-                    IStreamListener::kKeyResumeAtPTS,
+                    "resume-at-PTS" /*IStreamListener::kKeyResumeAtPTS*/,
                     (int64_t *)&resumeAtPTS)) {
             int64_t resumeAtMediaTimeUs =
                 mProgram->convertPTSToTimestamp(resumeAtPTS);
@@ -882,7 +888,7 @@ void ATSParser::Stream::onPayloadData(
     sp<ABuffer> accessUnit;
     while ((accessUnit = mQueue->dequeueAccessUnit()) != NULL) {
         if (mSource == NULL) {
-            sp<MetaData> meta = mQueue->getFormat();
+            sp<android_video_shim::MetaData> meta = mQueue->getFormat();
 
             if (meta != NULL) {
                 ALOGV("Stream PID 0x%08x of type 0x%02x now has data.",
@@ -904,7 +910,7 @@ void ATSParser::Stream::onPayloadData(
     }
 }
 
-sp<MediaSource> ATSParser::Stream::getSource(SourceType type) {
+sp<android_video_shim::MediaSource> ATSParser::Stream::getSource(SourceType type) {
     switch (type) {
         case VIDEO:
         {
@@ -957,7 +963,7 @@ void ATSParser::signalDiscontinuity(
     if ((type & DISCONTINUITY_TIME)
             && extra != NULL
             && extra->findInt64(
-                IStreamListener::kKeyMediaTimeUs, &mediaTimeUs)) {
+                 "media-time-us" /*IStreamListener::kKeyMediaTimeUs*/, &mediaTimeUs)) {
         mAbsoluteTimeAnchorUs = mediaTimeUs;
     } else if (type == DISCONTINUITY_ABSOLUTE_TIME) {
         int64_t timeUs;
@@ -1068,7 +1074,7 @@ status_t ATSParser::parsePID(
             br->skipBits(skip * 8);
         }
 
-        CHECK((br->numBitsLeft() % 8) == 0);
+        CHECK(((br->numBitsLeft() % 8) == 0));
         status_t err = section->append(br->data(), br->numBitsLeft() / 8);
 
         if (err != OK) {
@@ -1232,7 +1238,7 @@ status_t ATSParser::parseTS(ABitReader *br) {
     return err;
 }
 
-sp<MediaSource> ATSParser::getSource(SourceType type) {
+sp<android_video_shim::MediaSource> ATSParser::getSource(SourceType type) {
     int which = -1;  // any
 
     for (size_t i = 0; i < mPrograms.size(); ++i) {
@@ -1242,7 +1248,7 @@ sp<MediaSource> ATSParser::getSource(SourceType type) {
             continue;
         }
 
-        sp<MediaSource> source = program->getSource(type);
+        sp<android_video_shim::MediaSource> source = program->getSource(type);
 
         if (source != NULL) {
             return source;

@@ -22,7 +22,7 @@
 
 #include "ABase.h"
 #include "AString.h"
-#include "android/log.h"
+#include <android/log.h>
 
 namespace android {
 
@@ -80,15 +80,19 @@ MAKE_COMPARATOR(GT,>)
             __FILE__ ":" LITERAL_TO_STRING(__LINE__)            \
                 " Should not be here.");
 
+#ifndef ALOG
+#define ALOG(...) __android_log_print(__VA_ARGS__)
+#endif
 
 /*
  * Simplified macro to send a verbose log message using the current LOG_TAG.
  */
 #ifndef ALOGV
+
 #if LOG_NDEBUG
 #define ALOGV(...)   ((void)0)
 #else
-#define ALOGV(...) ((void)ALOG(LOG_VERBOSE, LOG_TAG, __VA_ARGS__))
+#define ALOGV(...) ((void)ALOG(ANDROID_LOG_VERBOSE, LOG_TAG, __VA_ARGS__))
 #endif
 // Temporary measure for code still using old LOG macros.
 #ifndef LOGV
@@ -295,7 +299,7 @@ MAKE_COMPARATOR(GT,>)
 #ifndef LOG_ALWAYS_FATAL_IF
 #define LOG_ALWAYS_FATAL_IF(cond, ...) \
     ( (CONDITION(cond)) \
-    ? ((void)__android_log_print(ANDROID_LOG_ERROR, LOG_TAG, #cond " -- " __VA_ARGS__)) \
+    ? ((void)__android_log_print(ANDROID_LOG_ERROR, LOG_TAG, " -- " __VA_ARGS__)) \
     : (void)0 )
 #endif
 #ifndef LOG_ALWAYS_FATAL

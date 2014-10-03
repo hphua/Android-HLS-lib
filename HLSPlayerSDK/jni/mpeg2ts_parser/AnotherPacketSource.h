@@ -30,17 +30,17 @@ namespace android {
 
 struct ABuffer;
 
-struct AnotherPacketSource : public RefBase /*: public MediaSource*/ {
-    AnotherPacketSource(const sp<MetaData> &meta);
+struct AnotherPacketSource : public android_video_shim::MediaSource {
+    AnotherPacketSource(const sp<android_video_shim::MetaData> &meta);
 
-    void setFormat(const sp<MetaData> &meta);
+    void setFormat(const sp<android_video_shim::MetaData> &meta);
 
-    virtual status_t start(MetaData *params = NULL);
+    virtual status_t start(android_video_shim::MetaData *params = NULL);
     virtual status_t stop();
-    virtual sp<MetaData> getFormat();
+    virtual sp<android_video_shim::MetaData> getFormat();
 
     virtual status_t read(
-            MediaBuffer **buffer, const android_video_shim::MediaSource::ReadOptions *options = NULL);
+            android_video_shim::MediaBuffer **buffer, const android_video_shim::MediaSource::ReadOptions *options = NULL);
 
     void clear();
 

@@ -25,4 +25,8 @@ using namespace android_video_shim;
     name(const name &); \
     name &operator=(const name &)
 
+inline uint16_t U16_AT(const uint8_t *ptr) {
+    return ptr[0] << 8 | ptr[1];
+}
+
 #endif  // A_BASE_H_

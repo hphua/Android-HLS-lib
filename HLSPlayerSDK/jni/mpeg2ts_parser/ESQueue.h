@@ -18,10 +18,10 @@
 
 #define ES_QUEUE_H_
 
-#include <media/stagefright/foundation/ABase.h>
-#include <utils/Errors.h>
-#include <utils/List.h>
-#include <utils/RefBase.h>
+#include "ABase.h"
+//#include <utils/Errors.h>
+#include "List.h"
+//#include <utils/RefBase.h>
 
 namespace android {
 
@@ -49,7 +49,7 @@ struct ElementaryStreamQueue {
 
     sp<ABuffer> dequeueAccessUnit();
 
-    sp<MetaData> getFormat();
+    sp<android_video_shim::MetaData> getFormat();
 
 private:
     struct RangeInfo {
@@ -63,7 +63,7 @@ private:
     sp<ABuffer> mBuffer;
     List<RangeInfo> mRangeInfos;
 
-    sp<MetaData> mFormat;
+    sp<android_video_shim::MetaData> mFormat;
 
     sp<ABuffer> dequeueAccessUnitH264();
     sp<ABuffer> dequeueAccessUnitAAC();
