@@ -367,7 +367,7 @@ namespace android_video_shim
         RefBase()
         {
             // Call our c'tor.
-            LOGV2("RefBase - ctor %p", this);
+            LOGI("RefBase - ctor %p", this);
             typedef void (*localFuncCast)(void *thiz);
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android7RefBaseC2Ev");
             assert(lfc);
@@ -903,6 +903,20 @@ namespace android_video_shim
     {
     public:
 
+        MediaBuffer()
+        {
+            assert(0); // We don't want to make our own with this path.
+        }
+
+        MediaBuffer(size_t size)
+        {
+            typedef void (*localFuncCast)(void *thiz, unsigned int size);
+            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android11MediaBufferC1Ej");
+            assert(lfc);
+            LOGV2("MediaBuffer::ctor with size = %p", lfc);
+            lfc(this, size);
+        }
+
         // Decrements the reference count and returns the buffer to its
         // associated MediaBufferGroup if the reference count drops to 0.
         void release()
@@ -996,6 +1010,9 @@ namespace android_video_shim
         {
             assert(0);
         }
+
+        // Dummy memory to make sure we can hold everything.
+        char dummy[256];
 
     };
 

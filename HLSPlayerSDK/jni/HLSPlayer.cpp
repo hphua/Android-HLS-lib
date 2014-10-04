@@ -481,11 +481,15 @@ bool HLSPlayer::InitTracks()
 	if (!mDataSource.get()) return false;
 
 	LOGI("Creating our OWN media extractor");
+	android::MPEG2TSExtractor *extr;
 	mExtractor = new android::MPEG2TSExtractor(mDataSource);
+	extr = (android::MPEG2TSExtractor *)mExtractor.get();
 	LOGI("Saw %d tracks", mExtractor->countTracks());
 
-	LOGI("Going back to normal path.");
-	mExtractor = MediaExtractor::Create(mDataSource, "video/mp2ts");
+// Shh. There's no going back now.
+/*	LOGI("Going back to normal path.");
+	mExtractor = MediaExtractor::Create(mDataSource, "video/mp2ts"); */
+
 	if (mExtractor == NULL)
 	{
 		LOGE("Could not create MediaExtractor from DataSource @ %p", mDataSource.get());
@@ -528,7 +532,18 @@ bool HLSPlayer::InitTracks()
 			if (!haveVideo && !strncasecmp(cmime, "video/", 6))
 			{
 				if(AVSHIM_USE_NEWMEDIASOURCE)
-					mVideoTrack = mExtractor->getTrack(i);
+				{
+					LOGI("Attempting to get video track");
+					MediaSource *ms = extr->getTrackProxy(i);
+					LOGI("Saw %p for mVideoTrack", ms);
+					sp<MetaData> ms_md = ms->getFormat();
+					LOGI("Got %p from getFormat", ms_md.get());
+					LOGI("Got %x from start", ms->start());
+					MediaBuffer *outbuff = NULL;
+					LOGI("Got %x from read ", ms->read(&outbuff, NULL));
+					LOGI("outbuff Buffer was %p", outbuff);
+					LOGI("size = %d data = %p", outbuff->size(), outbuff->data());
+				}
 				else
 					mVideoTrack23 = mExtractor->getTrack23(i);
 
@@ -554,7 +569,7 @@ bool HLSPlayer::InitTracks()
 			else if (!haveAudio && !strncasecmp(cmime, "audio/", 6))
 			{
 				if(AVSHIM_USE_NEWMEDIASOURCE)
-					mAudioTrack = mExtractor->getTrack(i);
+					mAudioTrack = (android_video_shim::MediaSource*)extr->getTrackProxy(i);
 				else
 					mAudioTrack23 = mExtractor->getTrack23(i);
 				haveAudio = true;

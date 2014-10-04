@@ -27,10 +27,17 @@ struct ATSParser;
 struct DataSource;
 struct MPEG2TSSource;
 struct String8;
+
 struct MPEG2TSExtractor : public android_video_shim::MediaExtractor {
     MPEG2TSExtractor(const sp<HLSDataSource> &source);
     virtual size_t countTracks();
     virtual sp<MediaSource> getTrack(size_t index);
+
+    // For passing to Android internals; this is byte compatible so we'll
+    // just pretend it is a void*. You can cast to the normal shim classes
+    // and it will Just Work (tm).    
+    android_video_shim::MediaSource *getTrackProxy(size_t index);
+
     virtual sp<MetaData> getTrackMetaData(size_t index, uint32_t flags);
     virtual sp<MetaData> getMetaData();
     virtual uint32_t flags() const;

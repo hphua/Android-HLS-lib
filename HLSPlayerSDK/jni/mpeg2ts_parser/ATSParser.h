@@ -30,7 +30,7 @@ namespace android {
 
 struct ABitReader;
 struct ABuffer;
-struct MediaSource;
+//struct MediaSource;
 
 struct ATSParser : public RefBase {
     enum DiscontinuityType {

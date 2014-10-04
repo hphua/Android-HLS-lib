@@ -13,7 +13,9 @@ LOCAL_SRC_FILES += mpeg2ts_parser/AnotherPacketSource.cpp mpeg2ts_parser/AString
 LOCAL_SRC_FILES += mpeg2ts_parser/base64.cpp mpeg2ts_parser/ESQueue.cpp mpeg2ts_parser/hexdump.cpp mpeg2ts_parser/MPEG2TSExtractor.cpp 
 LOCAL_SRC_FILES += mpeg2ts_parser/SharedBuffer.cpp mpeg2ts_parser/VectorImpl.cpp
 
-LOCAL_CFLAGS += -DHAVE_SYS_UIO_H -Wno-multichar -Wno-pmf-conversions -g
+LOCAL_CFLAGS += -DHAVE_SYS_UIO_H -Wno-multichar -Wno-pmf-conversions -g 
+
+# -fdump-class-hierarchy
 LOCAL_C_INCLUDES += $(TOP)/system/core/include
 
 LOCAL_LDLIBS += -lz -lm -llog -landroid

@@ -158,8 +158,9 @@ status_t AnotherPacketSource::read(
         int64_t timeUs;
         CHECK(buffer->meta()->findInt64("timeUs", &timeUs));
 
-        //MediaBuffer *mediaBuffer = new MediaBuffer(buffer);
-        MediaBuffer *mediaBuffer = NULL;
+        // Copy data into a MediaBuffer.
+        MediaBuffer *mediaBuffer = new MediaBuffer(buffer->size());
+        memcpy(mediaBuffer->data(), buffer->data(), buffer->size());
         mediaBuffer->meta_data()->setInt64(kKeyTime, timeUs);
 
         *out = mediaBuffer;
