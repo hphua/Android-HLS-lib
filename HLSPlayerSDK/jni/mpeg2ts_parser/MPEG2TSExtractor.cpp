@@ -170,7 +170,7 @@ public:
         LOGI("__cxa_pure_virtual = %p", searchSymbol("__cxa_pure_virtual"));
 
         // Dump the vtable.
-        for(int i=-16; i<16; i++)
+        for(int i=-4; i<16; i++)
         {
           LOGI("vtable2[%d] = %p", i, fakeObj[0][i]);
         }
