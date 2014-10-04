@@ -481,9 +481,9 @@ bool HLSPlayer::InitTracks()
 	if (!mDataSource.get()) return false;
 
 	LOGI("Creating our OWN media extractor");
-	android::MPEG2TSExtractor *extr;
+	//android::MPEG2TSExtractor *extr;
 	mExtractor = new android::MPEG2TSExtractor(mDataSource);
-	extr = (android::MPEG2TSExtractor *)mExtractor.get();
+	//extr = (android::MPEG2TSExtractor *)mExtractor.get();
 	LOGI("Saw %d tracks", mExtractor->countTracks());
 
 // Shh. There's no going back now.
@@ -534,15 +534,17 @@ bool HLSPlayer::InitTracks()
 				if(AVSHIM_USE_NEWMEDIASOURCE)
 				{
 					LOGI("Attempting to get video track");
-					MediaSource *ms = extr->getTrackProxy(i);
-					LOGI("Saw %p for mVideoTrack", ms);
+					mVideoTrack = sp<android_video_shim::MediaSource>(mExtractor->getTrackProxy(i));
+					LOGI("GOT IT");
+
+/*					LOGI("Saw %p for mVideoTrack", ms);
 					sp<MetaData> ms_md = ms->getFormat();
 					LOGI("Got %p from getFormat", ms_md.get());
 					LOGI("Got %x from start", ms->start());
 					MediaBuffer *outbuff = NULL;
 					LOGI("Got %x from read ", ms->read(&outbuff, NULL));
 					LOGI("outbuff Buffer was %p", outbuff);
-					LOGI("size = %d data = %p", outbuff->size(), outbuff->data());
+					LOGI("size = %d data = %p", outbuff->size(), outbuff->data()); */
 				}
 				else
 					mVideoTrack23 = mExtractor->getTrack23(i);
@@ -569,7 +571,7 @@ bool HLSPlayer::InitTracks()
 			else if (!haveAudio && !strncasecmp(cmime, "audio/", 6))
 			{
 				if(AVSHIM_USE_NEWMEDIASOURCE)
-					mAudioTrack = (android_video_shim::MediaSource*)extr->getTrackProxy(i);
+					mAudioTrack = mExtractor->getTrackProxy(i);
 				else
 					mAudioTrack23 = mExtractor->getTrack23(i);
 				haveAudio = true;
@@ -590,7 +592,7 @@ bool HLSPlayer::InitTracks()
 	{
 		LOGI("Considering alternate audio source %p...", mAlternateAudioDataSource.get());
 
-		mAlternateAudioExtractor = MediaExtractor::Create(mAlternateAudioDataSource, "video/mp2ts");
+		mAlternateAudioExtractor = new android::MPEG2TSExtractor(mAlternateAudioDataSource); //MediaExtractor::Create(mAlternateAudioDataSource, "video/mp2ts");
 
 		if(mAlternateAudioExtractor.get())
 		{
@@ -613,7 +615,7 @@ bool HLSPlayer::InitTracks()
 
 				// Awesome, got one!
 				if(AVSHIM_USE_NEWMEDIASOURCE)
-					mAudioTrack = mAlternateAudioExtractor->getTrack(i);
+					mAudioTrack = mAlternateAudioExtractor->getTrackProxy(i);
 				else
 					mAudioTrack23 = mAlternateAudioExtractor->getTrack23(i);
 
@@ -634,6 +636,7 @@ bool HLSPlayer::InitTracks()
 
 	if (!haveVideo)
 	{
+		LOGE("Error initializing tracks!");
 		return UNKNOWN_ERROR;
 	}
 
@@ -675,7 +678,10 @@ bool HLSPlayer::InitSources()
 {
 	AutoLock locker(&lock);
 	if (!InitTracks())
+	{
+		LOGE("Aborting due to failure to init tracks.");
 		return false;
+	}
 	
 	LOGI("Entered");
 	

@@ -21,6 +21,11 @@
 #include <pthread.h>
 #include <list>
 
+namespace android
+{
+	class MPEG2TSExtractor;
+}
+
 class HLSSegment;
 
 class HLSPlayer
@@ -130,8 +135,8 @@ private:
 	android_video_shim::sp<android_video_shim::HLSDataSource> mAlternateAudioDataSource;
 
 	// The object that pulls the initial data stream apart into separate audio and video sources
-	android_video_shim::sp<android_video_shim::MediaExtractor> mExtractor;
-	android_video_shim::sp<android_video_shim::MediaExtractor> mAlternateAudioExtractor;
+	android_video_shim::sp<android::MPEG2TSExtractor> mExtractor;
+	android_video_shim::sp<android::MPEG2TSExtractor> mAlternateAudioExtractor;
 
 	// Read Options
 	android_video_shim::MediaSource::ReadOptions mOptions;
