@@ -67,7 +67,7 @@ struct ATSParser::Program : public RefBase {
 
     void signalEOS(status_t finalResult);
 
-    sp<android_video_shim::MediaSource> getSource(SourceType type);
+    sp<AnotherPacketSource> getSource(SourceType type);
 
     int64_t convertPTSToTimestamp(uint64_t PTS);
 
@@ -122,7 +122,7 @@ struct ATSParser::Stream : public RefBase {
 
     void signalEOS(status_t finalResult);
 
-    sp<android_video_shim::MediaSource> getSource(SourceType type);
+    sp<AnotherPacketSource> getSource(SourceType type);
 
 protected:
     virtual ~Stream();
@@ -424,11 +424,11 @@ status_t ATSParser::Program::parseProgramMap(ABitReader *br) {
     return OK;
 }
 
-sp<android_video_shim::MediaSource> ATSParser::Program::getSource(SourceType type) {
+sp<AnotherPacketSource> ATSParser::Program::getSource(SourceType type) {
     size_t index = (type == AUDIO) ? 0 : 0;
 
     for (size_t i = 0; i < mStreams.size(); ++i) {
-        sp<android_video_shim::MediaSource> source = mStreams.editValueAt(i)->getSource(type);
+        sp<AnotherPacketSource> source = mStreams.editValueAt(i)->getSource(type);
         if (source != NULL) {
             if (index == 0) {
                 return source;
@@ -911,7 +911,7 @@ void ATSParser::Stream::onPayloadData(
     }
 }
 
-sp<android_video_shim::MediaSource> ATSParser::Stream::getSource(SourceType type) {
+sp<AnotherPacketSource> ATSParser::Stream::getSource(SourceType type) {
     switch (type) {
         case VIDEO:
         {
@@ -1239,7 +1239,7 @@ status_t ATSParser::parseTS(ABitReader *br) {
     return err;
 }
 
-sp<android_video_shim::MediaSource> ATSParser::getSource(SourceType type) {
+sp<AnotherPacketSource> ATSParser::getSource(SourceType type) {
     int which = -1;  // any
 
     for (size_t i = 0; i < mPrograms.size(); ++i) {
@@ -1249,7 +1249,7 @@ sp<android_video_shim::MediaSource> ATSParser::getSource(SourceType type) {
             continue;
         }
 
-        sp<android_video_shim::MediaSource> source = program->getSource(type);
+        sp<AnotherPacketSource> source = program->getSource(type);
 
         if (source != NULL) {
             return source;

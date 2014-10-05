@@ -32,7 +32,7 @@ namespace android {
 
 static const size_t kTSPacketSize = 188;
 
-struct MPEG2TSSource : public android_video_shim::MediaSource {
+struct MPEG2TSSource : public RefBase {
     MPEG2TSSource(
             const sp<MPEG2TSExtractor> &extractor,
             const sp<AnotherPacketSource> &impl,
@@ -40,15 +40,10 @@ struct MPEG2TSSource : public android_video_shim::MediaSource {
 
     status_t start(MetaData *params = NULL);
     status_t stop();
-    sp<MetaData> getFormat();
+    sp<android_video_shim::MetaData> getFormat();
 
     status_t read(
             MediaBuffer **buffer, const android_video_shim::MediaSource::ReadOptions *options = NULL);
-
-    virtual ~MPEG2TSSource()
-    {
-        LOGE("DESTRUCTING !!!!!");
-    }
 
 private:
     sp<MPEG2TSExtractor> mExtractor;
@@ -67,9 +62,9 @@ MPEG2TSSource::MPEG2TSSource(
         bool seekable)
     : mExtractor(extractor),
       mImpl(impl),
-      mSeekable(seekable) {
-
-
+      mSeekable(seekable) 
+{
+    LOGI("ctor %p mImpl=%p", this, impl.get());
 }
 
 status_t MPEG2TSSource::start(MetaData *params) {
@@ -81,6 +76,7 @@ status_t MPEG2TSSource::stop() {
 }
 
 sp<MetaData> MPEG2TSSource::getFormat() {
+    LOGI("Getting format this=%p mImpl=%p", this, mImpl.get());
     return mImpl->getFormat();
 }
 
@@ -115,7 +111,6 @@ class MPEG2TSTrackProxy : public android_video_shim::MediaSource
 {
 public:
 
-    //char padding[16]; // Make sure we are clear of any important bits pointers.
     MPEG2TSSource *realSource;
 
     virtual void __start() { LOGI("Calling dummy."); }; // Make sure we have SOME virtual to avoid any issues.
@@ -125,20 +120,10 @@ public:
     virtual void __pause() { LOGI("Calling dummy."); }; // Make sure we have SOME virtual to avoid any issues.
     virtual void __setBuffer() { LOGI("Calling dummy."); }; // Make sure we have SOME virtual to avoid any issues.
 
-    MPEG2TSTrackProxy()
-    {
-        LOGE("CONSTRUCING IT!!!!");
-    }
-
-    virtual ~MPEG2TSTrackProxy()
-    {
-        LOGE("DESTRUCTING !!!!!");
-    }
-
     void patchTable()
     {
-        LOGI("this = %p", (void*)this);
-        LOGI("mRefs = %p", (void*)&this->mRefs);
+        LOGV2("this = %p", (void*)this);
+        LOGV2("mRefs = %p", (void*)&this->mRefs);
 
         // Fake up the right vtable.
 
@@ -156,23 +141,17 @@ public:
         // Take into account mandatory vtable offsets.
         fakeObj[0] = (void**)(((int*)newVtable) + 5);
 
-        // This offset takes us to the this ptr for the RefBase. It is required 
-        // for casting to work properly and for the RefBase to get inc'ed/dec'ed.
-        // You can derive it by calculating this - the this that the RefBase ctor
-        // sees.
-        fakeObj[0][-3] = (void*)8; 
+/*        LOGV2("dummy = %p", (void*)&MPEG2TSTrackProxy::__start);
+        LOGV2("dummy = %p", (void*)&MPEG2TSTrackProxy::__start);
+        LOGV2("dummy = %p", (void*)&MPEG2TSTrackProxy::__start);
+        LOGV2("dummy = %p", (void*)&MPEG2TSTrackProxy::__start); */
 
-/*        LOGI("dummy = %p", (void*)&MPEG2TSTrackProxy::__start);
-        LOGI("dummy = %p", (void*)&MPEG2TSTrackProxy::__start);
-        LOGI("dummy = %p", (void*)&MPEG2TSTrackProxy::__start);
-        LOGI("dummy = %p", (void*)&MPEG2TSTrackProxy::__start); */
-
-        LOGI("__cxa_pure_virtual = %p", searchSymbol("__cxa_pure_virtual"));
+        LOGV2("__cxa_pure_virtual = %p", searchSymbol("__cxa_pure_virtual"));
 
         // Dump the vtable.
         for(int i=-4; i<16; i++)
         {
-          LOGI("vtable2[%d] = %p", i, fakeObj[0][i]);
+          LOGV2("vtable2[%d] = %p", i, fakeObj[0][i]);
         }
 
         // The compiler may complain about these as we are getting into
@@ -180,72 +159,171 @@ public:
         // actually treating them as such here because there's no instance.
         // So we should be OK! But if the values here report as not code
         // segment values then you might need to revisit.
-        LOGI(" _start=%p", (void*)&MPEG2TSTrackProxy::_start);
-        LOGI(" _stop=%p", (void*)&MPEG2TSTrackProxy::_stop);
-        LOGI(" _getFormat=%p", (void*)&MPEG2TSTrackProxy::_getFormat);
-        LOGI(" _read=%p", (void*)&MPEG2TSTrackProxy::_read);
-        LOGI(" _pause=%p", (void*)&MPEG2TSTrackProxy::_pause);
-        LOGI(" _setBuffers=%p", (void*)&MPEG2TSTrackProxy::_setBuffers);
+        LOGV2(" _start=%p", (void*)&MPEG2TSTrackProxy::_start);
+        LOGV2(" _stop=%p", (void*)&MPEG2TSTrackProxy::_stop);
+        LOGV2(" _getFormat=%p", (void*)&MPEG2TSTrackProxy::_getFormat);
+        LOGV2(" _read=%p", (void*)&MPEG2TSTrackProxy::_read);
+        LOGV2(" _pause=%p", (void*)&MPEG2TSTrackProxy::_pause);
+        LOGV2(" _setBuffers=%p", (void*)&MPEG2TSTrackProxy::_setBuffers);
 
-        // And override the pointers as appropriate.
-        if(AVSHIM_USE_NEWMEDIASOURCEVTABLE)
-        {
-            // 4.x entry points
-            fakeObj[0][0] = (void*)&MPEG2TSTrackProxy::_start;
-            fakeObj[0][1] = (void*)&MPEG2TSTrackProxy::_stop;
-            fakeObj[0][2] = (void*)&MPEG2TSTrackProxy::_getFormat;
-            fakeObj[0][3] = (void*)&MPEG2TSTrackProxy::_read;
-            fakeObj[0][4] = (void*)&MPEG2TSTrackProxy::_pause;
-            fakeObj[0][5] = (void*)&MPEG2TSTrackProxy::_setBuffers;
-        }
-        else
-        {
-            assert(0); // Bad time in here son.
-            // Confirm what we can that we're doing this right...
-            //void *oldGetSize = searchSymbol("_ZN7android10DataSource7getSizeEPl");
-            //void *oldGetSize2 = searchSymbol("_ZN7android10DataSource7getSizeEPx");
-            //LOGI("  oldGetSize_l=%p oldGetSize_x=%p fakeObj[0][8]=%p", oldGetSize, oldGetSize2, fakeObj[0][8]);
+        // This offset takes us to the this ptr for the RefBase. It is required 
+        // for casting to work properly and for the RefBase to get inc'ed/dec'ed.
+        // You can derive it by calculating this - the this that the RefBase ctor
+        // sees.
+        fakeObj[0][-3] = (void*)8; 
 
-            // 2.3 entry points
-            //fakeObj[0][6] = (void*)&MPEG2TSTrackProxy::_initCheck;
-            //fakeObj[0][7] = (void*)&MPEG2TSTrackProxy::_readAt_23;
-            //fakeObj[0][8] = (void*)&MPEG2TSTrackProxy::_getSize_23;
-        }
+        // 4.x entry points
+        fakeObj[0][0] = (void*)&MPEG2TSTrackProxy::_start;
+        fakeObj[0][1] = (void*)&MPEG2TSTrackProxy::_stop;
+        fakeObj[0][2] = (void*)&MPEG2TSTrackProxy::_getFormat;
+        fakeObj[0][3] = (void*)&MPEG2TSTrackProxy::_read;
+        fakeObj[0][4] = (void*)&MPEG2TSTrackProxy::_pause;
+        fakeObj[0][5] = (void*)&MPEG2TSTrackProxy::_setBuffers;
     }
 
     status_t _start(MetaData *params)
     {
-        LOGI("start");
+        LOGV("start");
         return realSource->start(params);
     }
 
     status_t _stop()
     {
-        LOGI("stop");
+        LOGV("stop");
         return realSource->stop();
     }
 
     sp<MetaData> _getFormat()
     {
-        LOGI("getFormat");
+        LOGV("getFormat this=%p", this);
         return realSource->getFormat();
     }
 
     status_t _read(MediaBuffer **buffer, const android_video_shim::MediaSource::ReadOptions *options)
     {
-        LOGI("read");
+        LOGV("read");
         return realSource->read(buffer, options);
     }
 
     status_t _pause() 
     {
-        LOGI("_pause");
+        LOGV("_pause");
         return ERROR_UNSUPPORTED;
     }
 
     status_t _setBuffers(void *data)
     {
-        LOGI("_setBuffers");
+        LOGV("_setBuffers");
+        return ERROR_UNSUPPORTED;
+    }
+};
+
+
+class MPEG2TSTrackProxy23 : public android_video_shim::MediaSource23
+{
+public:
+
+    MPEG2TSSource *realSource;
+
+    virtual void __start() { LOGI("Calling dummy."); }; // Make sure we have SOME virtual to avoid any issues.
+    virtual void __stop() { LOGI("Calling dummy."); }; // Make sure we have SOME virtual to avoid any issues.
+    virtual void __getFormat() { LOGI("Calling dummy."); }; // Make sure we have SOME virtual to avoid any issues.
+    virtual void __read() { LOGI("Calling dummy."); }; // Make sure we have SOME virtual to avoid any issues.
+    virtual void __pause() { LOGI("Calling dummy."); }; // Make sure we have SOME virtual to avoid any issues.
+    virtual void __setBuffer() { LOGI("Calling dummy."); }; // Make sure we have SOME virtual to avoid any issues.
+
+    ~MPEG2TSTrackProxy23()
+    {
+        LOGI("Dtor of track proxy! %p", this);
+    }
+
+    void patchTable()
+    {
+        LOGV2("this = %p", (void*)this);
+        LOGV2("mRefs = %p", (void*)&this->mRefs);
+
+        // Fake up the right vtable.
+
+        // First look up and make a copy of the official vtable.
+        // This leaks a bit of RAM per source but we can deal with that later.
+        void *officialVtable = searchSymbol("_ZTVN7android11MediaSourceE");
+        assert(officialVtable); // Gotta have a vtable!
+        void *newVtable = malloc(1024); // Arbitrary size... As base class
+                                        // we always get ptr to start of vtable.
+        memcpy(newVtable, officialVtable, 1024);
+
+        // Now we can patch the vtable...
+        void ***fakeObj = (void***)this;
+
+        // Take into account mandatory vtable offsets.
+        fakeObj[0] = (void**)(((int*)newVtable) + 2);
+
+/*        LOGV2("dummy = %p", (void*)&MPEG2TSTrackProxy::__start);
+        LOGV2("dummy = %p", (void*)&MPEG2TSTrackProxy::__start);
+        LOGV2("dummy = %p", (void*)&MPEG2TSTrackProxy::__start);
+        LOGV2("dummy = %p", (void*)&MPEG2TSTrackProxy::__start); */
+
+        LOGV2("__cxa_pure_virtual = %p", searchSymbol("__cxa_pure_virtual"));
+
+        // Dump the vtable.
+        for(int i=-2; i<16; i++)
+        {
+          LOGV2("vtable2[%d] = %p", i, fakeObj[0][i]);
+        }
+
+        // The compiler may complain about these as we are getting into
+        // pointer-to-member-function (pmf) territory. However, we aren't
+        // actually treating them as such here because there's no instance.
+        // So we should be OK! But if the values here report as not code
+        // segment values then you might need to revisit.
+        LOGV2(" _start=%p", (void*)&MPEG2TSTrackProxy23::_start);
+        LOGV2(" _stop=%p", (void*)&MPEG2TSTrackProxy23::_stop);
+        LOGV2(" _getFormat=%p", (void*)&MPEG2TSTrackProxy23::_getFormat);
+        LOGV2(" _read=%p", (void*)&MPEG2TSTrackProxy23::_read);
+        LOGV2(" _pause=%p", (void*)&MPEG2TSTrackProxy23::_pause);
+        LOGV2(" _setBuffers=%p", (void*)&MPEG2TSTrackProxy23::_setBuffers);
+
+        // 2.x entry points
+        fakeObj[0][6] = (void*)&MPEG2TSTrackProxy23::_start;
+        fakeObj[0][7] = (void*)&MPEG2TSTrackProxy23::_stop;
+        fakeObj[0][8] = (void*)&MPEG2TSTrackProxy23::_getFormat;
+        fakeObj[0][9] = (void*)&MPEG2TSTrackProxy23::_read;
+        fakeObj[0][10] = (void*)&MPEG2TSTrackProxy23::_pause;
+    }
+
+    status_t _start(MetaData *params)
+    {
+        LOGV("start");
+        return realSource->start(params);
+    }
+
+    status_t _stop()
+    {
+        LOGV("stop");
+        return realSource->stop();
+    }
+
+    sp<MetaData> _getFormat()
+    {
+        LOGV("getFormat23 this=%p", this);
+        return realSource->getFormat();
+    }
+
+    status_t _read(MediaBuffer **buffer, const android_video_shim::MediaSource::ReadOptions *options)
+    {
+        LOGV("read");
+        return realSource->read(buffer, options);
+    }
+
+    status_t _pause() 
+    {
+        LOGV("_pause");
+        return ERROR_UNSUPPORTED;
+    }
+
+    status_t _setBuffers(void *data)
+    {
+        LOGV("_setBuffers");
         return ERROR_UNSUPPORTED;
     }
 };
@@ -272,10 +350,39 @@ android_video_shim::MediaSource *MPEG2TSExtractor::getTrackProxy(size_t index)
     MPEG2TSTrackProxy *proxy = new MPEG2TSTrackProxy();
     proxy->realSource = new MPEG2TSSource(this, mSourceImpls.editItemAt(index), seekable);
     proxy->patchTable();
-    //LOGI("Alloc'ed return=%p", (MPEG2TSTrackProxy *)((int*)&proxy->mRefs - 1));
-    //return (MPEG2TSTrackProxy *)((int*)&proxy->mRefs - 1);
-    LOGI("Alloc'ed return=%p", proxy);
-    LOGI("Alloc'ed RefBase=%p", dynamic_cast<RefBase*>(proxy));
+
+    // This is useful for confirming the cast gives the offset expected for the RefBase cast.
+    LOGV("Alloc'ed return=%p", proxy);
+    LOGV("Alloc'ed RefBase=%p", dynamic_cast<RefBase*>(proxy));
+    return proxy;
+}
+
+android_video_shim::MediaSource23 *MPEG2TSExtractor::getTrackProxy23(size_t index)
+{
+    if (index >= mSourceImpls.size()) {
+        return NULL;
+    }
+
+    bool seekable = true;
+    if (mSourceImpls.size() > 1) {
+        CHECK_EQ(mSourceImpls.size(), 2u);
+
+        sp<MetaData> meta = mSourceImpls.editItemAt(index)->getFormat();
+        const char *mime;
+        CHECK(meta->findCString(kKeyMIMEType, &mime));
+
+        if (!strncasecmp("audio/", mime, 6)) {
+            seekable = false;
+        }
+    }
+
+    MPEG2TSTrackProxy23 *proxy = new MPEG2TSTrackProxy23();
+    proxy->realSource = new MPEG2TSSource(this, mSourceImpls.editItemAt(index), seekable);
+    proxy->patchTable();
+
+    // This is useful for confirming the cast gives the offset expected for the RefBase cast.
+    LOGV("Alloc'ed 23 return=%p", proxy);
+    LOGV("Alloc'ed 23 RefBase=%p", dynamic_cast<RefBase*>(proxy));
     return proxy;
 }
 
@@ -292,7 +399,7 @@ size_t MPEG2TSExtractor::countTracks() {
     return mSourceImpls.size();
 }
 
-sp<android_video_shim::MediaSource> MPEG2TSExtractor::getTrack(size_t index) {
+/*sp<android_video_shim::MediaSource> MPEG2TSExtractor::getTrack(size_t index) {
     if (index >= mSourceImpls.size()) {
         return NULL;
     }
@@ -311,7 +418,7 @@ sp<android_video_shim::MediaSource> MPEG2TSExtractor::getTrack(size_t index) {
     }
 
     return new MPEG2TSSource(this, mSourceImpls.editItemAt(index), seekable);
-}
+}*/
 
 
 sp<MetaData> MPEG2TSExtractor::getTrackMetaData(
@@ -389,9 +496,8 @@ uint32_t MPEG2TSExtractor::flags() const {
 ////////////////////////////////////////////////////////////////////////////////
 
 bool SniffMPEG2TS(
-        const sp<HLSDataSource> &source, String8 *mimeType, float *confidence,
-        sp<AMessage> *) {
-/*    for (int i = 0; i < 5; ++i) {
+        const sp<HLSDataSource> &source) {
+    for (int i = 0; i < 5; ++i) {
         char header;
         if (source->readAt(kTSPacketSize * i, &header, 1) != 1
                 || header != 0x47) {
@@ -399,11 +505,7 @@ bool SniffMPEG2TS(
         }
     }
 
-    *confidence = 0.1f;
-    mimeType->setTo(MEDIA_MIMETYPE_CONTAINER_MPEG2TS);
-
-    return true; */
-    return true;
+    return true; 
 }
 
 }  // namespace android

@@ -78,10 +78,16 @@ mNotifyFormatChangeComplete(NULL), mNotifyAudioTrackChangeComplete(NULL)
 	int err = initRecursivePthreadMutex(&lock);
 	LOGI(" HLSPlayer mutex err = %d", err);
 
+	LOGI("Attempt allocate.");
+	sp<MetaData> m = new MetaData();
+	LOGI("Attempt free.");
+	m.clear();
+	LOGI("Attempt done.");
 }
 
 HLSPlayer::~HLSPlayer()
 {
+	LOGI("Freeing %p", this);
 }
 
 void HLSPlayer::Close(JNIEnv* env)
@@ -162,19 +168,24 @@ void HLSPlayer::Reset()
 void HLSPlayer::SetSurface(JNIEnv* env, jobject surface)
 {
 	AutoLock locker(&lock);
-	LOGI("Entered");
 
+	LOGI("Entered %p", this);
+
+	LOGI("A");
 	if (mWindow)
 	{
 		ANativeWindow_release(mWindow);
 		mWindow = NULL;
 	}
+
+	LOGI("B");
 	if (mSurface)
 	{
 		(*env).DeleteGlobalRef(mSurface);
 		mSurface = NULL;
 	}
 
+	LOGI("C");
 	if(!surface)
 	{
 		// Tear down renderers.
@@ -185,19 +196,24 @@ void HLSPlayer::SetSurface(JNIEnv* env, jobject surface)
 	}
 
 	// Note the surface.
+	LOGI("D");
 	mSurface = (jobject)env->NewGlobalRef(surface);
 
+	LOGI("E");
 	if (!mVideoSource.get() && !mVideoSource23.get())
 	{
 		LOGE("We don't have a valid video source");
 		return;
 	}
+
 	// Look up metadata.
+	LOGI("F");
 	sp<MetaData> meta;
 	if(AVSHIM_USE_NEWMEDIASOURCE)
 		meta = mVideoSource->getFormat();
 	else
 		meta = mVideoSource23->getFormat();
+	
 	if(!meta.get())
 	{
 		LOGE("No format available from the video source.");
@@ -205,6 +221,7 @@ void HLSPlayer::SetSurface(JNIEnv* env, jobject surface)
 	}
 
 	// Get state for HW renderer path.
+	LOGI("G");
 	const char *component = "";
 	bool hasDecoderComponent = meta->findCString(kKeyDecoderComponent, &component);
 
@@ -252,7 +269,8 @@ void HLSPlayer::SetSurface(JNIEnv* env, jobject surface)
 		if(!window)
 		{
 			LOGE("Failed to get ANativeWindow from mSurface %p", mSurface);
-			assert(window);
+			return;
+			//assert(window);
 		}
 
 		SetNativeWindow(window);
@@ -533,21 +551,16 @@ bool HLSPlayer::InitTracks()
 			{
 				if(AVSHIM_USE_NEWMEDIASOURCE)
 				{
-					LOGI("Attempting to get video track");
+					LOGV2("Attempting to get video track");
 					mVideoTrack = sp<android_video_shim::MediaSource>(mExtractor->getTrackProxy(i));
-					LOGI("GOT IT");
-
-/*					LOGI("Saw %p for mVideoTrack", ms);
-					sp<MetaData> ms_md = ms->getFormat();
-					LOGI("Got %p from getFormat", ms_md.get());
-					LOGI("Got %x from start", ms->start());
-					MediaBuffer *outbuff = NULL;
-					LOGI("Got %x from read ", ms->read(&outbuff, NULL));
-					LOGI("outbuff Buffer was %p", outbuff);
-					LOGI("size = %d data = %p", outbuff->size(), outbuff->data()); */
+					LOGV2("GOT IT");
 				}
 				else
-					mVideoTrack23 = mExtractor->getTrack23(i);
+				{
+					LOGV2("Attempting to get video track 23");
+					mVideoTrack23 = mExtractor->getTrackProxy23(i);
+					LOGV2("GOT IT");
+				}
 
 				haveVideo = true;
 
@@ -571,9 +584,17 @@ bool HLSPlayer::InitTracks()
 			else if (!haveAudio && !strncasecmp(cmime, "audio/", 6))
 			{
 				if(AVSHIM_USE_NEWMEDIASOURCE)
+				{
+					LOGV2("Attempting to get video track");
 					mAudioTrack = mExtractor->getTrackProxy(i);
+					LOGV2("done");
+				}
 				else
-					mAudioTrack23 = mExtractor->getTrack23(i);
+				{
+					LOGV2("Attempting to get video track 23");
+					mAudioTrack23 = mExtractor->getTrackProxy23(i);
+					LOGV2("done");
+				}
 				haveAudio = true;
 
 				mActiveAudioTrackIndex = i;
@@ -617,7 +638,7 @@ bool HLSPlayer::InitTracks()
 				if(AVSHIM_USE_NEWMEDIASOURCE)
 					mAudioTrack = mAlternateAudioExtractor->getTrackProxy(i);
 				else
-					mAudioTrack23 = mAlternateAudioExtractor->getTrack23(i);
+					mAudioTrack23 = mAlternateAudioExtractor->getTrackProxy23(i);
 
 				LOGI("Got alternate audio track %d", i);
 				haveAudio = true;
@@ -639,6 +660,8 @@ bool HLSPlayer::InitTracks()
 		LOGE("Error initializing tracks!");
 		return UNKNOWN_ERROR;
 	}
+
+	LOGI("Initialized tracks: mVideoTrack=%p mVideoTrack23=%p mAudioTrack=%p mAudioTrack23=%p", mVideoTrack.get(), mVideoTrack23.get(), mAudioTrack.get(), mAudioTrack23.get());
 
 	return true;
 }
@@ -677,6 +700,7 @@ bool HLSPlayer::CreateAudioPlayer()
 bool HLSPlayer::InitSources()
 {
 	AutoLock locker(&lock);
+
 	if (!InitTracks())
 	{
 		LOGE("Aborting due to failure to init tracks.");
@@ -792,17 +816,20 @@ bool HLSPlayer::InitSources()
 		LOGV("Trying OMXRenderer init path!");
 		mUseOMXRenderer = true;
 		NoteHWRendererMode(true, mWidth, mHeight, 4);
+		LOGV("Done");
 	}
 	else
 	{
 		LOGV("Trying normal renderer init path!");
 		mUseOMXRenderer = false;
 		NoteHWRendererMode(false, mWidth, mHeight, 4);		
+		LOGV("Done");
 	}
 
 	// We will get called back later to finish initialization of our renderers.
 
 	// Audio
+<<<<<<< HEAD
 	mOffloadAudio = false;
 	if (mAudioTrack.get() || mAudioTrack23.get())
 	{
@@ -810,7 +837,6 @@ bool HLSPlayer::InitSources()
 			mOffloadAudio = canOffloadStream(mAudioTrack.get()?mAudioTrack->getFormat():NULL, (mVideoTrack != NULL), false /*streaming http */, AUDIO_STREAM_MUSIC);
 		else
 			mOffloadAudio = canOffloadStream(mAudioTrack23.get()?mAudioTrack23->getFormat():NULL, (mVideoTrack23 != NULL), false /*streaming http */, AUDIO_STREAM_MUSIC);
-
 
 		LOGI("mOffloadAudio == %s", mOffloadAudio ? "true" : "false");
 
@@ -853,6 +879,15 @@ bool HLSPlayer::InitSources()
 		mAudioSource.clear();
 		mAudioSource23.clear();
 	}
+
+	LOGI("AA");
+	audioFormat.clear();
+	LOGI("AB");
+	meta.clear();
+	LOGI("AC");
+	vidFormat.clear();
+
+	LOGI("All done!");
 
 	return true;
 }

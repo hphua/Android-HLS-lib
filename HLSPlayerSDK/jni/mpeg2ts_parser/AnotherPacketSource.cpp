@@ -73,8 +73,10 @@ status_t AnotherPacketSource::stop() {
 }
 
 sp<MetaData> AnotherPacketSource::getFormat() {
+    LOGI("Entering %p", this);
     Mutex::Autolock autoLock(mLock);
     if (mFormat != NULL) {
+        LOGV2("Returning existing format %p", mFormat.get());
         return mFormat;
     }
 
@@ -88,6 +90,7 @@ sp<MetaData> AnotherPacketSource::getFormat() {
 
         sp<RefBase> object;
         if (buffer->meta()->findObject("format", &object)) {
+            LOGV2("Returning found format %p", (void*)buffer->meta()->findObject("format", &object));
             return static_cast<MetaData*>(object.get());
         }
 
@@ -129,7 +132,7 @@ status_t AnotherPacketSource::dequeueAccessUnit(sp<ABuffer> *buffer) {
 }
 
 status_t AnotherPacketSource::read(
-        MediaBuffer **out, const ReadOptions *) {
+        MediaBuffer **out, const android_video_shim::MediaSource::ReadOptions *) {
     *out = NULL;
 
     Mutex::Autolock autoLock(mLock);

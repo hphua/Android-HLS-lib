@@ -32,6 +32,8 @@ struct ABitReader;
 struct ABuffer;
 //struct MediaSource;
 
+class AnotherPacketSource;
+
 struct ATSParser : public RefBase {
     enum DiscontinuityType {
         DISCONTINUITY_NONE              = 0,
@@ -75,7 +77,7 @@ struct ATSParser : public RefBase {
         AUDIO = 1,
         NUM_SOURCE_TYPES = 2
     };
-    sp<android_video_shim::MediaSource> getSource(SourceType type);
+    sp<AnotherPacketSource> getSource(SourceType type);
 
     bool PTSTimeDeltaEstablished();
 

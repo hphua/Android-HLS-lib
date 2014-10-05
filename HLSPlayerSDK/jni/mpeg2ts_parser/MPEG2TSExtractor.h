@@ -33,6 +33,7 @@ struct MPEG2TSExtractor : public android_video_shim::MediaExtractor
     MPEG2TSExtractor(const sp<HLSDataSource> &source);
     
     android_video_shim::MediaSource *getTrackProxy(size_t index);
+    android_video_shim::MediaSource23 *getTrackProxy23(size_t index);
     virtual sp<MetaData> getTrackMetaData(size_t index, uint32_t flags = 0);
     virtual size_t countTracks();
 
@@ -40,13 +41,13 @@ struct MPEG2TSExtractor : public android_video_shim::MediaExtractor
     virtual uint32_t flags() const;
 private:
 
-    virtual sp<MediaSource> getTrack(size_t index);
+    //virtual sp<MediaSource> getTrack(size_t index);
 
     friend struct MPEG2TSSource;
     mutable Mutex mLock;
     sp<HLSDataSource> mDataSource;
     sp<ATSParser> mParser;
-    Vector<sp<AnotherPacketSource> > mSourceImpls;
+    Vector< sp<AnotherPacketSource> > mSourceImpls;
     off64_t mOffset;
     void init();
     status_t feedMore();

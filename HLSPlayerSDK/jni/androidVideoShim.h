@@ -30,11 +30,13 @@ public:
     AutoLock(pthread_mutex_t * lock)
     : lock(lock)
     {
+        //LOGV2("Locking mutex %p", lock);
         pthread_mutex_lock(lock);
     }
 
     ~AutoLock()
     {
+        //LOGV2("Unlocking mutex %p", lock);
         pthread_mutex_unlock(lock);
     }
 
@@ -376,6 +378,11 @@ namespace android_video_shim
 
         virtual ~RefBase()
         {
+            LOGI("RefBase - dtor %p mRefs=%p", this, mRefs);
+            typedef void (*localFuncCast)(void *thiz);
+            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android7RefBaseD2Ev");
+            assert(lfc);
+            lfc(this);
         }
 
         virtual void            onFirstRef() {};
@@ -1321,9 +1328,9 @@ namespace android_video_shim
         }*/
 
     protected:
-        virtual ~MediaSource23();
-
-
+        virtual ~MediaSource23()
+        {
+        }
     };
 
     // Do nothing stub for OMXClient.
@@ -1602,14 +1609,16 @@ namespace android_video_shim
     class MetaData : public RefBase
     {
     public:
-        char data[8192];
+        char data[1024]; // Padding to make sure we have enough RAM.
 
         MetaData()
         {
             typedef void (*localFuncCast)(void *thiz);
-            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android8MetaDataC2Ev");
+            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android8MetaDataC1Ev");
             assert(lfc);
             lfc(this);
+
+            LOGI("ctor=%p", this);
         }
 
         ~MetaData()
