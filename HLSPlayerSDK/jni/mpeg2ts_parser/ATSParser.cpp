@@ -17,6 +17,7 @@
 //#define LOG_NDEBUG 0
 #define LOG_TAG "ATSParser"
 //#include "Log.h"
+#include "../debug.h"
 #include <sys/time.h>
 #include "ADebug.h"
 
@@ -46,7 +47,7 @@ namespace android {
 
 // I want the expression "y" evaluated even if verbose logging is off.
 #define MY_LOGV(x, y) \
-    do { unsigned tmp = y; ALOGV(x, tmp); } while (0)
+    do { unsigned tmp = y; LOGATS(x, tmp); } while (0)
 
 
 static const size_t kTSPacketSize = 188;
@@ -187,7 +188,7 @@ ATSParser::Program::Program(
       mProgramMapPID(programMapPID),
       mFirstPTSValid(false),
       mFirstPTS(0) {
-    ALOGV("new program number %u", programNumber);
+    LOGATS("new program number %u", programNumber);
 }
 
 bool ATSParser::Program::parsePSISection(
@@ -248,18 +249,18 @@ struct StreamInfo {
 
 status_t ATSParser::Program::parseProgramMap(ABitReader *br) {
     unsigned table_id = br->getBits(8);
-    ALOGV("  table_id = %u", table_id);
+    LOGATS("  table_id = %u", table_id);
     CHECK_EQ(table_id, 0x02u);
 
     unsigned section_syntax_indicator = br->getBits(1);
-    ALOGV("  section_syntax_indicator = %u", section_syntax_indicator);
+    LOGATS("  section_syntax_indicator = %u", section_syntax_indicator);
     CHECK_EQ(section_syntax_indicator, 1u);
 
     CHECK_EQ(br->getBits(1), 0u);
     MY_LOGV("  reserved = %u", br->getBits(2));
 
     unsigned section_length = br->getBits(12);
-    ALOGV("  section_length = %u", section_length);
+    LOGATS("  section_length = %u", section_length);
     CHECK_EQ(section_length & 0xc00, 0u);
     CHECK_LE(section_length, 1021u);
 
@@ -272,12 +273,12 @@ status_t ATSParser::Program::parseProgramMap(ABitReader *br) {
     MY_LOGV("  reserved = %u", br->getBits(3));
 
     unsigned PCR_PID = br->getBits(13);
-    ALOGV("  PCR_PID = 0x%04x", PCR_PID);
+    LOGATS("  PCR_PID = 0x%04x", PCR_PID);
 
     MY_LOGV("  reserved = %u", br->getBits(4));
 
     unsigned program_info_length = br->getBits(12);
-    ALOGV("  program_info_length = %u", program_info_length);
+    LOGATS("  program_info_length = %u", program_info_length);
     CHECK_EQ(program_info_length & 0xc00, 0u);
 
     br->skipBits(program_info_length * 8);  // skip descriptors
@@ -293,17 +294,17 @@ status_t ATSParser::Program::parseProgramMap(ABitReader *br) {
         CHECK_GE(infoBytesRemaining, 5u);
 
         unsigned streamType = br->getBits(8);
-        ALOGV("    stream_type = 0x%02x", streamType);
+        LOGATS("    stream_type = 0x%02x", streamType);
 
         MY_LOGV("    reserved = %u", br->getBits(3));
 
         unsigned elementaryPID = br->getBits(13);
-        ALOGV("    elementary_PID = 0x%04x", elementaryPID);
+        LOGATS("    elementary_PID = 0x%04x", elementaryPID);
 
         MY_LOGV("    reserved = %u", br->getBits(4));
 
         unsigned ES_info_length = br->getBits(12);
-        ALOGV("    ES_info_length = %u", ES_info_length);
+        LOGATS("    ES_info_length = %u", ES_info_length);
         CHECK_EQ(ES_info_length & 0xc00, 0u);
 
         CHECK_GE(infoBytesRemaining - 5, ES_info_length);
@@ -316,7 +317,7 @@ status_t ATSParser::Program::parseProgramMap(ABitReader *br) {
             MY_LOGV("      tag = 0x%02x", br->getBits(8));
 
             unsigned descLength = br->getBits(8);
-            ALOGV("      len = %u", descLength);
+            LOGATS("      len = %u", descLength);
 
             CHECK_GE(info_bytes_remaining, 2 + descLength);
 
@@ -517,7 +518,7 @@ ATSParser::Stream::Stream(
             break;
     }
 
-    ALOGV("new stream PID 0x%02x, type 0x%02x", elementaryPID, streamType);
+    LOGATS("new stream PID 0x%02x, type 0x%02x", elementaryPID, streamType);
 
     if (mQueue != NULL) {
         mBuffer = new ABuffer(192 * 1024);
@@ -679,10 +680,10 @@ void ATSParser::Stream::signalEOS(status_t finalResult) {
 status_t ATSParser::Stream::parsePES(ABitReader *br) {
     unsigned packet_startcode_prefix = br->getBits(24);
 
-    ALOGV("packet_startcode_prefix = 0x%08x", packet_startcode_prefix);
+    LOGATS("packet_startcode_prefix = 0x%08x", packet_startcode_prefix);
 
     if (packet_startcode_prefix != 1) {
-        ALOGV("Supposedly payload_unit_start=1 unit does not start "
+        LOGATS("Supposedly payload_unit_start=1 unit does not start "
              "with startcode.");
 
         return ERROR_MALFORMED;
@@ -691,10 +692,10 @@ status_t ATSParser::Stream::parsePES(ABitReader *br) {
     CHECK_EQ(packet_startcode_prefix, 0x000001u);
 
     unsigned stream_id = br->getBits(8);
-    ALOGV("stream_id = 0x%02x", stream_id);
+    LOGATS("stream_id = 0x%02x", stream_id);
 
     unsigned PES_packet_length = br->getBits(16);
-    ALOGV("PES_packet_length = %u", PES_packet_length);
+    LOGATS("PES_packet_length = %u", PES_packet_length);
 
     if (stream_id != 0xbc  // program_stream_map
             && stream_id != 0xbe  // padding_stream
@@ -713,25 +714,25 @@ status_t ATSParser::Stream::parsePES(ABitReader *br) {
         MY_LOGV("original_or_copy = %u", br->getBits(1));
 
         unsigned PTS_DTS_flags = br->getBits(2);
-        ALOGV("PTS_DTS_flags = %u", PTS_DTS_flags);
+        LOGATS("PTS_DTS_flags = %u", PTS_DTS_flags);
 
         unsigned ESCR_flag = br->getBits(1);
-        ALOGV("ESCR_flag = %u", ESCR_flag);
+        LOGATS("ESCR_flag = %u", ESCR_flag);
 
         unsigned ES_rate_flag = br->getBits(1);
-        ALOGV("ES_rate_flag = %u", ES_rate_flag);
+        LOGATS("ES_rate_flag = %u", ES_rate_flag);
 
         unsigned DSM_trick_mode_flag = br->getBits(1);
-        ALOGV("DSM_trick_mode_flag = %u", DSM_trick_mode_flag);
+        LOGATS("DSM_trick_mode_flag = %u", DSM_trick_mode_flag);
 
         unsigned additional_copy_info_flag = br->getBits(1);
-        ALOGV("additional_copy_info_flag = %u", additional_copy_info_flag);
+        LOGATS("additional_copy_info_flag = %u", additional_copy_info_flag);
 
         MY_LOGV("PES_CRC_flag = %u", br->getBits(1));
         MY_LOGV("PES_extension_flag = %u", br->getBits(1));
 
         unsigned PES_header_data_length = br->getBits(8);
-        ALOGV("PES_header_data_length = %u", PES_header_data_length);
+        LOGATS("PES_header_data_length = %u", PES_header_data_length);
 
         unsigned optional_bytes_remaining = PES_header_data_length;
 
@@ -749,7 +750,7 @@ status_t ATSParser::Stream::parsePES(ABitReader *br) {
             PTS |= br->getBits(15);
             CHECK_EQ(br->getBits(1), 1u);
 
-            ALOGV("PTS = 0x%016llx (%.2f)", PTS, PTS / 90000.0);
+            LOGATS("PTS = 0x%016llx (%.2f)", PTS, PTS / 90000.0);
 
             optional_bytes_remaining -= 5;
 
@@ -765,7 +766,7 @@ status_t ATSParser::Stream::parsePES(ABitReader *br) {
                 DTS |= br->getBits(15);
                 CHECK_EQ(br->getBits(1), 1u);
 
-                ALOGV("DTS = %llu", DTS);
+                LOGATS("DTS = %llu", DTS);
 
                 optional_bytes_remaining -= 5;
             }
@@ -783,7 +784,7 @@ status_t ATSParser::Stream::parsePES(ABitReader *br) {
             ESCR |= br->getBits(15);
             CHECK_EQ(br->getBits(1), 1u);
 
-            ALOGV("ESCR = %llu", ESCR);
+            LOGATS("ESCR = %llu", ESCR);
             MY_LOGV("ESCR_extension = %u", br->getBits(9));
 
             CHECK_EQ(br->getBits(1), 1u);
@@ -833,7 +834,7 @@ status_t ATSParser::Stream::parsePES(ABitReader *br) {
             size_t payloadSizeBits = br->numBitsLeft();
             CHECK_EQ(payloadSizeBits % 8, 0u);
 
-            ALOGV("There's %d bytes of payload.", payloadSizeBits / 8);
+            LOGATS("There's %d bytes of payload.", payloadSizeBits / 8);
         }
     } else if (stream_id == 0xbe) {  // padding_stream
         CHECK_NE(PES_packet_length, 0u);
@@ -851,7 +852,7 @@ status_t ATSParser::Stream::flush() {
         return OK;
     }
 
-    ALOGV("flushing stream 0x%04x size = %d", mElementaryPID, mBuffer->size());
+    LOGATS("flushing stream 0x%04x size = %d", mElementaryPID, mBuffer->size());
 
     ABitReader br(mBuffer->data(), mBuffer->size());
 
@@ -873,7 +874,7 @@ void ATSParser::Stream::onPayloadData(
     mPrevPTS = PTS;
 #endif
 
-    ALOGV("onPayloadData mStreamType=0x%02x", mStreamType);
+    LOGATS("onPayloadData mStreamType=0x%02x", mStreamType);
 
     int64_t timeUs = 0ll;  // no presentation timestamp available.
     if (PTS_DTS_flags == 2 || PTS_DTS_flags == 3) {
@@ -892,7 +893,7 @@ void ATSParser::Stream::onPayloadData(
             sp<android_video_shim::MetaData> meta = mQueue->getFormat();
 
             if (meta != NULL) {
-                ALOGV("Stream PID 0x%08x of type 0x%02x now has data.",
+                LOGATS("Stream PID 0x%08x of type 0x%02x now has data.",
                      mElementaryPID, mStreamType);
 
                 mSource = new AnotherPacketSource(meta);
@@ -997,18 +998,18 @@ void ATSParser::signalEOS(status_t finalResult) {
 
 void ATSParser::parseProgramAssociationTable(ABitReader *br) {
     unsigned table_id = br->getBits(8);
-    ALOGV("  table_id = %u", table_id);
+    LOGATS("  table_id = %u", table_id);
     CHECK_EQ(table_id, 0x00u);
 
     unsigned section_syntax_indictor = br->getBits(1);
-    ALOGV("  section_syntax_indictor = %u", section_syntax_indictor);
+    LOGATS("  section_syntax_indictor = %u", section_syntax_indictor);
     CHECK_EQ(section_syntax_indictor, 1u);
 
     CHECK_EQ(br->getBits(1), 0u);
     MY_LOGV("  reserved = %u", br->getBits(2));
 
     unsigned section_length = br->getBits(12);
-    ALOGV("  section_length = %u", section_length);
+    LOGATS("  section_length = %u", section_length);
     CHECK_EQ(section_length & 0xc00, 0u);
 
     MY_LOGV("  transport_stream_id = %u", br->getBits(16));
@@ -1023,7 +1024,7 @@ void ATSParser::parseProgramAssociationTable(ABitReader *br) {
 
     for (size_t i = 0; i < numProgramBytes / 4; ++i) {
         unsigned program_number = br->getBits(16);
-        ALOGV("    program_number = %u", program_number);
+        LOGATS("    program_number = %u", program_number);
 
         MY_LOGV("    reserved = %u", br->getBits(3));
 
@@ -1032,7 +1033,7 @@ void ATSParser::parseProgramAssociationTable(ABitReader *br) {
         } else {
             unsigned programMapPID = br->getBits(13);
 
-            ALOGV("    program_map_PID = 0x%04x", programMapPID);
+            LOGATS("    program_map_PID = 0x%04x", programMapPID);
 
             bool found = false;
             for (size_t index = 0; index < mPrograms.size(); ++index) {
@@ -1136,7 +1137,7 @@ status_t ATSParser::parsePID(
     }
 
     if (!handled) {
-        ALOGV("PID 0x%04x not handled.", PID);
+        LOGATS("PID 0x%04x not handled.", PID);
     }
 
     return OK;
@@ -1149,7 +1150,7 @@ void ATSParser::parseAdaptationField(ABitReader *br, unsigned PID) {
         unsigned discontinuity_indicator = br->getBits(1);
 
         if (discontinuity_indicator) {
-            ALOGV("PID 0x%04x: discontinuity_indicator = 1 (!!!)", PID);
+            LOGATS("PID 0x%04x: discontinuity_indicator = 1 (!!!)", PID);
         }
 
         br->skipBits(2);
@@ -1173,7 +1174,7 @@ void ATSParser::parseAdaptationField(ABitReader *br, unsigned PID) {
 
             uint64_t PCR = PCR_base * 300 + PCR_ext;
 
-            ALOGV("PID 0x%04x: PCR = 0x%016llx (%.2f)",
+            LOGATS("PID 0x%04x: PCR = 0x%016llx (%.2f)",
                   PID, PCR, PCR / 27E6);
 
             // The number of bytes received by this parser up to and
@@ -1195,7 +1196,7 @@ void ATSParser::parseAdaptationField(ABitReader *br, unsigned PID) {
 }
 
 status_t ATSParser::parseTS(ABitReader *br) {
-    ALOGV("---");
+    LOGATS("---");
 
     unsigned sync_byte = br->getBits(8);
     CHECK_EQ(sync_byte, 0x47u);
@@ -1206,20 +1207,20 @@ status_t ATSParser::parseTS(ABitReader *br) {
     }
 
     unsigned payload_unit_start_indicator = br->getBits(1);
-    ALOGV("payload_unit_start_indicator = %u", payload_unit_start_indicator);
+    LOGATS("payload_unit_start_indicator = %u", payload_unit_start_indicator);
 
     MY_LOGV("transport_priority = %u", br->getBits(1));
 
     unsigned PID = br->getBits(13);
-    ALOGV("PID = 0x%04x", PID);
+    LOGATS("PID = 0x%04x", PID);
 
     MY_LOGV("transport_scrambling_control = %u", br->getBits(2));
 
     unsigned adaptation_field_control = br->getBits(2);
-    ALOGV("adaptation_field_control = %u", adaptation_field_control);
+    LOGATS("adaptation_field_control = %u", adaptation_field_control);
 
     unsigned continuity_counter = br->getBits(4);
-    ALOGV("PID = 0x%04x, continuity_counter = %u", PID, continuity_counter);
+    LOGATS("PID = 0x%04x, continuity_counter = %u", PID, continuity_counter);
 
     // ALOGI("PID = 0x%04x, continuity_counter = %u", PID, continuity_counter);
 
@@ -1269,7 +1270,7 @@ bool ATSParser::PTSTimeDeltaEstablished() {
 
 void ATSParser::updatePCR(
         unsigned PID, uint64_t PCR, size_t byteOffsetFromStart) {
-    ALOGV("PCR 0x%016llx @ %d", PCR, byteOffsetFromStart);
+    LOGATS("PCR 0x%016llx @ %d", PCR, byteOffsetFromStart);
 
     if (mNumPCRs == 2) {
         mPCR[0] = mPCR[1];
@@ -1288,7 +1289,7 @@ void ATSParser::updatePCR(
         double transportRate =
             (mPCRBytes[1] - mPCRBytes[0]) * 27E6 / (mPCR[1] - mPCR[0]);
 
-        ALOGV("transportRate = %.2f bytes/sec", transportRate);
+        LOGATS("transportRate = %.2f bytes/sec", transportRate);
     }
 }
 

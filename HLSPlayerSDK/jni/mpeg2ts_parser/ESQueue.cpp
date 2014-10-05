@@ -698,6 +698,7 @@ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnitMPEGAudio() {
                 TRESPASS();
         }
 
+        LOGI("Setting rate to %d", samplingRate);
         mFormat->setInt32(kKeySampleRate, samplingRate);
         mFormat->setInt32(kKeyChannelCount, numChannels);
     }

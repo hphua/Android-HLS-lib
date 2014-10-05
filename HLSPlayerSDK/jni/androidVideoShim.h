@@ -352,7 +352,7 @@ namespace android_video_shim
         {
             typedef void (*localFuncCast)(void *thiz, void *id);
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZNK7android7RefBase9incStrongEPKv");
-            LOGV2("RefBase - Inc'ing this=%p id=%p func=%p", (void*)this, id, lfc);
+            LOGREFBASE("RefBase - Inc'ing this=%p id=%p func=%p", (void*)this, id, lfc);
             assert(lfc);
             lfc(this, id);
         }
@@ -361,7 +361,7 @@ namespace android_video_shim
         {
             typedef void (*localFuncCast)(void *thiz, void *id);
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZNK7android7RefBase9decStrongEPKv");
-            LOGV2("RefBase - Dec'ing this=%p id=%p func=%p", (void*)this, id, lfc);
+            LOGREFBASE("RefBase - Dec'ing this=%p id=%p func=%p", (void*)this, id, lfc);
             assert(lfc);
             lfc(this, id);
         }
@@ -369,7 +369,7 @@ namespace android_video_shim
         RefBase()
         {
             // Call our c'tor.
-            LOGI("RefBase - ctor %p", this);
+            LOGREFBASE("RefBase - ctor %p", this);
             typedef void (*localFuncCast)(void *thiz);
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android7RefBaseC2Ev");
             assert(lfc);
@@ -378,7 +378,7 @@ namespace android_video_shim
 
         virtual ~RefBase()
         {
-            LOGI("RefBase - dtor %p mRefs=%p", this, mRefs);
+            LOGREFBASE("RefBase - dtor %p mRefs=%p", this, mRefs);
             typedef void (*localFuncCast)(void *thiz);
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android7RefBaseD2Ev");
             assert(lfc);

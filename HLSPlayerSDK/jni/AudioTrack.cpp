@@ -237,6 +237,12 @@ bool AudioTrack::Start()
 		return false;
 	}
 
+	if(mSampleRate == 0)
+	{
+		LOGE("Zero sample rate");
+		return false;
+	}
+
 	LOGI("Setting Channel Config");
 	int channelConfig = CHANNEL_CONFIGURATION_STEREO;
 	switch (mNumChannels)
@@ -262,9 +268,6 @@ bool AudioTrack::Start()
 	mBufferSizeInBytes = env->CallStaticIntMethod(mCAudioTrack, mGetMinBufferSize, mSampleRate, channelConfig,ENCODING_PCM_16BIT) * 4; 
 
 	LOGI("mBufferSizeInBytes=%d", mBufferSizeInBytes);
-
-
-
 
 	// Release our old track.
 	if(mTrack)
