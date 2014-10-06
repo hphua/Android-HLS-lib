@@ -77,12 +77,6 @@ mNotifyFormatChangeComplete(NULL), mNotifyAudioTrackChangeComplete(NULL)
 	
 	int err = initRecursivePthreadMutex(&lock);
 	LOGI(" HLSPlayer mutex err = %d", err);
-
-	LOGI("Attempt allocate.");
-	sp<MetaData> m = new MetaData();
-	LOGI("Attempt free.");
-	m.clear();
-	LOGI("Attempt done.");
 }
 
 HLSPlayer::~HLSPlayer()
@@ -171,21 +165,18 @@ void HLSPlayer::SetSurface(JNIEnv* env, jobject surface)
 
 	LOGI("Entered %p", this);
 
-	LOGI("A");
 	if (mWindow)
 	{
 		ANativeWindow_release(mWindow);
 		mWindow = NULL;
 	}
 
-	LOGI("B");
 	if (mSurface)
 	{
 		(*env).DeleteGlobalRef(mSurface);
 		mSurface = NULL;
 	}
 
-	LOGI("C");
 	if(!surface)
 	{
 		// Tear down renderers.
@@ -196,10 +187,8 @@ void HLSPlayer::SetSurface(JNIEnv* env, jobject surface)
 	}
 
 	// Note the surface.
-	LOGI("D");
 	mSurface = (jobject)env->NewGlobalRef(surface);
 
-	LOGI("E");
 	if (!mVideoSource.get() && !mVideoSource23.get())
 	{
 		LOGE("We don't have a valid video source");
@@ -207,7 +196,6 @@ void HLSPlayer::SetSurface(JNIEnv* env, jobject surface)
 	}
 
 	// Look up metadata.
-	LOGI("F");
 	sp<MetaData> meta;
 	if(AVSHIM_USE_NEWMEDIASOURCE)
 		meta = mVideoSource->getFormat();
@@ -221,7 +209,6 @@ void HLSPlayer::SetSurface(JNIEnv* env, jobject surface)
 	}
 
 	// Get state for HW renderer path.
-	LOGI("G");
 	const char *component = "";
 	bool hasDecoderComponent = meta->findCString(kKeyDecoderComponent, &component);
 
@@ -498,15 +485,9 @@ bool HLSPlayer::InitTracks()
 	LOGI("Entered: mDataSource=%p", mDataSource.get());
 	if (!mDataSource.get()) return false;
 
-	LOGI("Creating our OWN media extractor");
-	//android::MPEG2TSExtractor *extr;
+	LOGI("Creating internal MEPG2 TS media extractor");
 	mExtractor = new android::MPEG2TSExtractor(mDataSource);
-	//extr = (android::MPEG2TSExtractor *)mExtractor.get();
 	LOGI("Saw %d tracks", mExtractor->countTracks());
-
-// Shh. There's no going back now.
-/*	LOGI("Going back to normal path.");
-	mExtractor = MediaExtractor::Create(mDataSource, "video/mp2ts"); */
 
 	if (mExtractor == NULL)
 	{
@@ -552,7 +533,7 @@ bool HLSPlayer::InitTracks()
 				if(AVSHIM_USE_NEWMEDIASOURCE)
 				{
 					LOGV2("Attempting to get video track");
-					mVideoTrack = sp<android_video_shim::MediaSource>(mExtractor->getTrackProxy(i));
+					mVideoTrack = mExtractor->getTrackProxy(i);
 					LOGV2("GOT IT");
 				}
 				else
@@ -613,7 +594,8 @@ bool HLSPlayer::InitTracks()
 	{
 		LOGI("Considering alternate audio source %p...", mAlternateAudioDataSource.get());
 
-		mAlternateAudioExtractor = new android::MPEG2TSExtractor(mAlternateAudioDataSource); //MediaExtractor::Create(mAlternateAudioDataSource, "video/mp2ts");
+		// Create our own extractor again.
+		mAlternateAudioExtractor = new android::MPEG2TSExtractor(mAlternateAudioDataSource);
 
 		if(mAlternateAudioExtractor.get())
 		{
@@ -829,7 +811,6 @@ bool HLSPlayer::InitSources()
 	// We will get called back later to finish initialization of our renderers.
 
 	// Audio
-<<<<<<< HEAD
 	mOffloadAudio = false;
 	if (mAudioTrack.get() || mAudioTrack23.get())
 	{
@@ -880,11 +861,7 @@ bool HLSPlayer::InitSources()
 		mAudioSource23.clear();
 	}
 
-	LOGI("AA");
-	audioFormat.clear();
-	LOGI("AB");
 	meta.clear();
-	LOGI("AC");
 	vidFormat.clear();
 
 	LOGI("All done!");

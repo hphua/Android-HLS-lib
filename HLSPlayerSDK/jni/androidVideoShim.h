@@ -1265,7 +1265,7 @@ namespace android_video_shim
             typedef status_t (*localFuncCast)(void *thiz, MediaBuffer **buffer, const ReadOptions *options);
             localFuncCast **fakeObj = (localFuncCast **)this;
             localFuncCast lfc = fakeObj[0][vtableOffset];
-            //LOGV("virtual read=%p", lfc);
+            LOGV("virtual read=%p this=%p", lfc, this);
             return lfc(this, buffer, options);
         }
 

@@ -151,7 +151,7 @@ bool AudioTrack::Set23(sp<MediaSource23> audioSource, bool alreadyStarted)
 
 	LOGI("Set23 with %p", audioSource.get());
 	mAudioSource23 = audioSource;
-	if (!alreadyStarted && mAudioSource.get()) mAudioSource23->start(NULL);
+	if (!alreadyStarted && mAudioSource23.get()) mAudioSource23->start(NULL);
 	mWaiting = false;
 	return UpdateFormatInfo();
 }
