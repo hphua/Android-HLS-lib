@@ -24,6 +24,7 @@
 //#define _DATA_MINING
 //#define _DEBUG_SCREENINFO
 //#define _SYMBOL_ERRORS
+//#define _DEBUG_THREAD
 #define _TIMING
 
 
@@ -98,6 +99,12 @@
 #define LOGREFBASE(...)  __android_log_print(ANDROID_LOG_VERBOSE, __func__, __VA_ARGS__)
 #else
 #define LOGREFBASE(...)
+#endif
+
+#ifdef _DEBUG_THREAD
+#define LOGTHREAD(...)  __android_log_print(ANDROID_LOG_VERBOSE, __func__, __VA_ARGS__)
+#else
+#define LOGTHREAD(...)
 #endif
 
 #endif /* DEBUG_H_ */
