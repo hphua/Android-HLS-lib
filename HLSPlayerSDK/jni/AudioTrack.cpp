@@ -151,7 +151,7 @@ bool AudioTrack::Set23(sp<MediaSource23> audioSource, bool alreadyStarted)
 
 	LOGI("Set23 with %p", audioSource.get());
 	mAudioSource23 = audioSource;
-	if (!alreadyStarted && mAudioSource.get()) mAudioSource23->start(NULL);
+	if (!alreadyStarted && mAudioSource23.get()) mAudioSource23->start(NULL);
 	mWaiting = false;
 	return UpdateFormatInfo();
 }
@@ -186,6 +186,7 @@ bool AudioTrack::UpdateFormatInfo()
 		LOGE("Mime Type was not audio/raw. Was: %s", mime);
 		return false;
 	}
+
 	success = format->findInt32(kKeySampleRate, &mSampleRate);
 	if (!success)
 	{
@@ -237,6 +238,12 @@ bool AudioTrack::Start()
 		return false;
 	}
 
+	if(mSampleRate == 0)
+	{
+		LOGE("Zero sample rate");
+		return false;
+	}
+
 	LOGI("Setting Channel Config");
 	int channelConfig = CHANNEL_CONFIGURATION_STEREO;
 	switch (mNumChannels)
@@ -262,9 +269,6 @@ bool AudioTrack::Start()
 	mBufferSizeInBytes = env->CallStaticIntMethod(mCAudioTrack, mGetMinBufferSize, mSampleRate, channelConfig,ENCODING_PCM_16BIT) * 4; 
 
 	LOGI("mBufferSizeInBytes=%d", mBufferSizeInBytes);
-
-
-
 
 	// Release our old track.
 	if(mTrack)

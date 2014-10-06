@@ -30,11 +30,13 @@ public:
     AutoLock(pthread_mutex_t * lock)
     : lock(lock)
     {
+        LOGTHREAD("Locking mutex %p", lock);
         pthread_mutex_lock(lock);
     }
 
     ~AutoLock()
     {
+        LOGTHREAD("Unlocking mutex %p", lock);
         pthread_mutex_unlock(lock);
     }
 
@@ -350,7 +352,7 @@ namespace android_video_shim
         {
             typedef void (*localFuncCast)(void *thiz, void *id);
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZNK7android7RefBase9incStrongEPKv");
-            LOGV2("RefBase - Inc'ing this=%p id=%p func=%p", (void*)this, id, lfc);
+            LOGREFBASE("RefBase - Inc'ing this=%p id=%p func=%p", (void*)this, id, lfc);
             assert(lfc);
             lfc(this, id);
         }
@@ -359,7 +361,7 @@ namespace android_video_shim
         {
             typedef void (*localFuncCast)(void *thiz, void *id);
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZNK7android7RefBase9decStrongEPKv");
-            LOGV2("RefBase - Dec'ing this=%p id=%p func=%p", (void*)this, id, lfc);
+            LOGREFBASE("RefBase - Dec'ing this=%p id=%p func=%p", (void*)this, id, lfc);
             assert(lfc);
             lfc(this, id);
         }
@@ -367,7 +369,7 @@ namespace android_video_shim
         RefBase()
         {
             // Call our c'tor.
-            LOGV2("RefBase - ctor %p", this);
+            LOGREFBASE("RefBase - ctor %p", this);
             typedef void (*localFuncCast)(void *thiz);
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android7RefBaseC2Ev");
             assert(lfc);
@@ -376,6 +378,11 @@ namespace android_video_shim
 
         virtual ~RefBase()
         {
+            LOGREFBASE("RefBase - dtor %p mRefs=%p", this, mRefs);
+            typedef void (*localFuncCast)(void *thiz);
+            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android7RefBaseD2Ev");
+            assert(lfc);
+            lfc(this);
         }
 
         virtual void            onFirstRef() {};
@@ -903,6 +910,20 @@ namespace android_video_shim
     {
     public:
 
+        MediaBuffer()
+        {
+            assert(0); // We don't want to make our own with this path.
+        }
+
+        MediaBuffer(size_t size)
+        {
+            typedef void (*localFuncCast)(void *thiz, unsigned int size);
+            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android11MediaBufferC1Ej");
+            assert(lfc);
+            LOGV2("MediaBuffer::ctor with size = %p", lfc);
+            lfc(this, size);
+        }
+
         // Decrements the reference count and returns the buffer to its
         // associated MediaBufferGroup if the reference count drops to 0.
         void release()
@@ -996,6 +1017,9 @@ namespace android_video_shim
         {
             assert(0);
         }
+
+        // Dummy memory to make sure we can hold everything.
+        char dummy[256];
 
     };
 
@@ -1105,7 +1129,10 @@ namespace android_video_shim
 
             void setSeekTo(int64_t time_us, SeekMode mode = SEEK_CLOSEST_SYNC);
             void clearSeekTo();
-            bool getSeekTo(int64_t *time_us, SeekMode *mode) const;
+            bool getSeekTo(int64_t *time_us, SeekMode *mode) const
+            {
+                return false;
+            }
 
             void setLateBy(int64_t lateness_us);
             int64_t getLateBy() const;
@@ -1138,8 +1165,10 @@ namespace android_video_shim
         }*/
 
     protected:
-        virtual ~MediaSource();
+        virtual ~MediaSource()
+        {
 
+        }
 
     };
 
@@ -1236,7 +1265,7 @@ namespace android_video_shim
             typedef status_t (*localFuncCast)(void *thiz, MediaBuffer **buffer, const ReadOptions *options);
             localFuncCast **fakeObj = (localFuncCast **)this;
             localFuncCast lfc = fakeObj[0][vtableOffset];
-            //LOGV("virtual read=%p", lfc);
+            LOGV2("virtual read=%p this=%p", lfc, this);
             return lfc(this, buffer, options);
         }
 
@@ -1299,9 +1328,9 @@ namespace android_video_shim
         }*/
 
     protected:
-        virtual ~MediaSource23();
-
-
+        virtual ~MediaSource23()
+        {
+        }
     };
 
     // Do nothing stub for OMXClient.
@@ -1460,6 +1489,7 @@ namespace android_video_shim
         kKeyBitRate           = 'brte',  // int32_t (bps)
         kKeyESDS              = 'esds',  // raw data
         kKeyAVCC              = 'avcc',  // raw data
+        kTypeAVCC             = 'avcc',
         kKeyD263              = 'd263',  // raw data
         kKeyVorbisInfo        = 'vinf',  // raw data
         kKeyVorbisBooks       = 'vboo',  // raw data
@@ -1523,6 +1553,11 @@ namespace android_video_shim
         // To store the timed text format data
         kKeyTextFormatData    = 'text',  // raw data
         kKeyRequiresSecureBuffers = 'secu',  // bool (int32_t)
+        kKeySARWidth = 'sarW',
+        kKeySARHeight = 'sarH',
+        kKeyIsADTS            = 'adts',  // bool (int32_t)
+        kTypeESDS        = 'esds',
+        kTypeD263        = 'd263',
     };
 
 
@@ -1574,14 +1609,16 @@ namespace android_video_shim
     class MetaData : public RefBase
     {
     public:
-        char data[8192];
+        char data[1024]; // Padding to make sure we have enough RAM.
 
         MetaData()
         {
             typedef void (*localFuncCast)(void *thiz);
-            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android8MetaDataC2Ev");
+            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android8MetaDataC1Ev");
             assert(lfc);
             lfc(this);
+
+            LOGV2("ctor=%p", this);
         }
 
         ~MetaData()
@@ -1634,13 +1671,61 @@ namespace android_video_shim
             return lfc(this, key, left, top, right, bottom);
         }
 
+        bool setCString(uint32_t key, const char *value)
+        {
+            typedef bool (*localFuncCast)(void *thiz, uint32_t key, const char *value);
+            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android8MetaData10setCStringEjPKc");
+            assert(lfc);
+            return lfc(this, key, value);
+        }
+
+        bool setInt32(uint32_t key, int32_t value)
+        {
+            typedef bool (*localFuncCast)(void *thiz, uint32_t key, int32_t value);
+            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android8MetaData8setInt32Eji");
+            assert(lfc);
+            return lfc(this, key, value);
+        }
+
+        bool setInt64(uint32_t key, int64_t value)
+        {
+            typedef bool (*localFuncCast)(void *thiz, uint32_t key, int64_t value);
+            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android8MetaData8setInt64Ejx");
+            assert(lfc);
+            return lfc(this, key, value);
+        }
+
+        bool setFloat(uint32_t key, float value)
+        {
+            typedef bool (*localFuncCast)(void *thiz, uint32_t key, float value);
+            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android8MetaData8setFloatEjf");
+            assert(lfc);
+            return lfc(this, key, value);
+        }
+
+        bool setPointer(uint32_t key, void *value)
+        {
+            typedef bool (*localFuncCast)(void *thiz, uint32_t key, void *value);
+            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android8MetaData10setPointerEjPv");
+            assert(lfc);
+            return lfc(this, key, value);
+        }
+
+        bool setData(uint32_t key, uint32_t type, const void *data, size_t size)
+        {
+            typedef bool (*localFuncCast)(void *thiz, uint32_t key, uint32_t type, const void *data, size_t size);
+            localFuncCast lfc = (localFuncCast)searchSymbol("_ZN7android8MetaData7setDataEjjPKvj");
+            assert(lfc);
+            return lfc(this, key, type, data, size);
+        }
+
         void dumpToLog()
         {
             typedef void (*localFuncCast)(void *thiz);
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZNK7android8MetaData9dumpToLogEv");
             if(!lfc)
             {
-                LOGI("Failing to dumpToLog, symbol not found.");
+                LOGV("Failing to dumpToLog, symbol not found.");
                 return;
             }
             assert(lfc);

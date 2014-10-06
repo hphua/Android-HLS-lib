@@ -18,6 +18,8 @@
 //#define _DEBUG_V
 //#define _DEBUG_V2
 //#define _DEBUG_RUN
+//#define _DEBUG_ATS
+//#define _DEBUG_REFBASE
 
 //#define _DATA_MINING
 //#define _DEBUG_SCREENINFO
@@ -84,6 +86,18 @@
 #define RUNDEBUG(x)  (x)
 #else
 #define RUNDEBUG(x)
+#endif
+
+#ifdef _DEBUG_ATS
+#define LOGATS(...)  __android_log_print(ANDROID_LOG_VERBOSE, __func__, __VA_ARGS__)
+#else
+#define LOGATS(...)
+#endif
+
+#ifdef _DEBUG_REFBASE
+#define LOGREFBASE(...)  __android_log_print(ANDROID_LOG_VERBOSE, __func__, __VA_ARGS__)
+#else
+#define LOGREFBASE(...)
 #endif
 
 #endif /* DEBUG_H_ */

@@ -277,6 +277,8 @@ extern "C"
 			LOGI("HLSPlayerSDK is not null");
 
 			gHLSPlayerSDK->GetPlayer()->SetSurface(env, surface);
+
+			LOGI("Done");
 		}
 	}
 

@@ -12,6 +12,8 @@
 #include <android/native_window_jni.h>
 #include <unistd.h>
 
+#include "mpeg2ts_parser/MPEG2TSExtractor.h"
+
 #include "stlhelpers.h"
 #include "HLSSegment.h"
 
@@ -75,11 +77,11 @@ mNotifyFormatChangeComplete(NULL), mNotifyAudioTrackChangeComplete(NULL)
 	
 	int err = initRecursivePthreadMutex(&lock);
 	LOGI(" HLSPlayer mutex err = %d", err);
-
 }
 
 HLSPlayer::~HLSPlayer()
 {
+	LOGI("Freeing %p", this);
 }
 
 void HLSPlayer::Close(JNIEnv* env)
@@ -160,13 +162,15 @@ void HLSPlayer::Reset()
 void HLSPlayer::SetSurface(JNIEnv* env, jobject surface)
 {
 	AutoLock locker(&lock);
-	LOGI("Entered");
+
+	LOGI("Entered %p", this);
 
 	if (mWindow)
 	{
 		ANativeWindow_release(mWindow);
 		mWindow = NULL;
 	}
+
 	if (mSurface)
 	{
 		(*env).DeleteGlobalRef(mSurface);
@@ -190,12 +194,14 @@ void HLSPlayer::SetSurface(JNIEnv* env, jobject surface)
 		LOGE("We don't have a valid video source");
 		return;
 	}
+
 	// Look up metadata.
 	sp<MetaData> meta;
 	if(AVSHIM_USE_NEWMEDIASOURCE)
 		meta = mVideoSource->getFormat();
 	else
 		meta = mVideoSource23->getFormat();
+	
 	if(!meta.get())
 	{
 		LOGE("No format available from the video source.");
@@ -250,7 +256,8 @@ void HLSPlayer::SetSurface(JNIEnv* env, jobject surface)
 		if(!window)
 		{
 			LOGE("Failed to get ANativeWindow from mSurface %p", mSurface);
-			assert(window);
+			return;
+			//assert(window);
 		}
 
 		SetNativeWindow(window);
@@ -478,7 +485,10 @@ bool HLSPlayer::InitTracks()
 	LOGI("Entered: mDataSource=%p", mDataSource.get());
 	if (!mDataSource.get()) return false;
 
-	mExtractor = MediaExtractor::Create(mDataSource, "video/mp2ts");
+	LOGI("Creating internal MEPG2 TS media extractor");
+	mExtractor = new android::MPEG2TSExtractor(mDataSource);
+	LOGI("Saw %d tracks", mExtractor->countTracks());
+
 	if (mExtractor == NULL)
 	{
 		LOGE("Could not create MediaExtractor from DataSource @ %p", mDataSource.get());
@@ -521,9 +531,17 @@ bool HLSPlayer::InitTracks()
 			if (!haveVideo && !strncasecmp(cmime, "video/", 6))
 			{
 				if(AVSHIM_USE_NEWMEDIASOURCE)
-					mVideoTrack = mExtractor->getTrack(i);
+				{
+					LOGV2("Attempting to get video track");
+					mVideoTrack = mExtractor->getTrackProxy(i);
+					LOGV2("GOT IT");
+				}
 				else
-					mVideoTrack23 = mExtractor->getTrack23(i);
+				{
+					LOGV2("Attempting to get video track 23");
+					mVideoTrack23 = mExtractor->getTrackProxy23(i);
+					LOGV2("GOT IT");
+				}
 
 				haveVideo = true;
 
@@ -547,9 +565,17 @@ bool HLSPlayer::InitTracks()
 			else if (!haveAudio && !strncasecmp(cmime, "audio/", 6))
 			{
 				if(AVSHIM_USE_NEWMEDIASOURCE)
-					mAudioTrack = mExtractor->getTrack(i);
+				{
+					LOGV2("Attempting to get video track");
+					mAudioTrack = mExtractor->getTrackProxy(i);
+					LOGV2("done");
+				}
 				else
-					mAudioTrack23 = mExtractor->getTrack23(i);
+				{
+					LOGV2("Attempting to get video track 23");
+					mAudioTrack23 = mExtractor->getTrackProxy23(i);
+					LOGV2("done");
+				}
 				haveAudio = true;
 
 				mActiveAudioTrackIndex = i;
@@ -568,7 +594,8 @@ bool HLSPlayer::InitTracks()
 	{
 		LOGI("Considering alternate audio source %p...", mAlternateAudioDataSource.get());
 
-		mAlternateAudioExtractor = MediaExtractor::Create(mAlternateAudioDataSource, "video/mp2ts");
+		// Create our own extractor again.
+		mAlternateAudioExtractor = new android::MPEG2TSExtractor(mAlternateAudioDataSource);
 
 		if(mAlternateAudioExtractor.get())
 		{
@@ -591,9 +618,9 @@ bool HLSPlayer::InitTracks()
 
 				// Awesome, got one!
 				if(AVSHIM_USE_NEWMEDIASOURCE)
-					mAudioTrack = mAlternateAudioExtractor->getTrack(i);
+					mAudioTrack = mAlternateAudioExtractor->getTrackProxy(i);
 				else
-					mAudioTrack23 = mAlternateAudioExtractor->getTrack23(i);
+					mAudioTrack23 = mAlternateAudioExtractor->getTrackProxy23(i);
 
 				LOGI("Got alternate audio track %d", i);
 				haveAudio = true;
@@ -612,8 +639,11 @@ bool HLSPlayer::InitTracks()
 
 	if (!haveVideo)
 	{
+		LOGE("Error initializing tracks!");
 		return UNKNOWN_ERROR;
 	}
+
+	LOGI("Initialized tracks: mVideoTrack=%p mVideoTrack23=%p mAudioTrack=%p mAudioTrack23=%p", mVideoTrack.get(), mVideoTrack23.get(), mAudioTrack.get(), mAudioTrack23.get());
 
 	return true;
 }
@@ -652,8 +682,12 @@ bool HLSPlayer::CreateAudioPlayer()
 bool HLSPlayer::InitSources()
 {
 	AutoLock locker(&lock);
+
 	if (!InitTracks())
+	{
+		LOGE("Aborting due to failure to init tracks.");
 		return false;
+	}
 	
 	LOGI("Entered");
 	
@@ -720,7 +754,7 @@ bool HLSPlayer::InitSources()
 		LOGV("   - got %p back", mVideoSource23.get());
 	}
 	
-	LOGI("OMXCodec::Create() (video) returned %p", mVideoSource.get());
+	LOGI("OMXCodec::Create() (video) returned 4x=-%p 23=%p", mVideoSource.get(), mVideoSource23.get());
 
 	sp<MetaData> meta;
 	if(AVSHIM_USE_NEWMEDIASOURCE)
@@ -764,12 +798,14 @@ bool HLSPlayer::InitSources()
 		LOGV("Trying OMXRenderer init path!");
 		mUseOMXRenderer = true;
 		NoteHWRendererMode(true, mWidth, mHeight, 4);
+		LOGV("Done");
 	}
 	else
 	{
 		LOGV("Trying normal renderer init path!");
 		mUseOMXRenderer = false;
 		NoteHWRendererMode(false, mWidth, mHeight, 4);		
+		LOGV("Done");
 	}
 
 	// We will get called back later to finish initialization of our renderers.
@@ -782,7 +818,6 @@ bool HLSPlayer::InitSources()
 			mOffloadAudio = canOffloadStream(mAudioTrack.get()?mAudioTrack->getFormat():NULL, (mVideoTrack != NULL), false /*streaming http */, AUDIO_STREAM_MUSIC);
 		else
 			mOffloadAudio = canOffloadStream(mAudioTrack23.get()?mAudioTrack23->getFormat():NULL, (mVideoTrack23 != NULL), false /*streaming http */, AUDIO_STREAM_MUSIC);
-
 
 		LOGI("mOffloadAudio == %s", mOffloadAudio ? "true" : "false");
 
@@ -825,6 +860,11 @@ bool HLSPlayer::InitSources()
 		mAudioSource.clear();
 		mAudioSource23.clear();
 	}
+
+	meta.clear();
+	vidFormat.clear();
+
+	LOGI("All done!");
 
 	return true;
 }
@@ -953,7 +993,11 @@ int HLSPlayer::Update()
 	for (;;)
 	{
 		//LOGI("mVideoBuffer = %x", mVideoBuffer);
-		RUNDEBUG(mVideoSource->getFormat()->dumpToLog());
+		if(mVideoSource.get())
+		{
+			RUNDEBUG(mVideoSource->getFormat()->dumpToLog());
+		}
+
 		status_t err = OK;
 		if (mVideoBuffer == NULL)
 		{
@@ -1039,7 +1083,7 @@ int HLSPlayer::Update()
 			mLastVideoTimeUs = timeUs;
 			if (delta < -10000) // video is running ahead
 			{
-				LOGTIMING("Video is running ahead - waiting til next time : detla = %lld", delta);
+				LOGTIMING("Video is running ahead - waiting til next time : delta = %lld", delta);
 				//sched_yield();
 				usleep(-10000 - delta);
 				break; // skip out - don't render it yet
