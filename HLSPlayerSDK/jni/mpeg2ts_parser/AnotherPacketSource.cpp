@@ -73,7 +73,7 @@ status_t AnotherPacketSource::stop() {
 }
 
 sp<MetaData> AnotherPacketSource::getFormat() {
-    LOGI("Entering %p", this);
+    LOGV("Entering %p", this);
     Mutex::Autolock autoLock(mLock);
     if (mFormat != NULL) {
         LOGV2("Returning existing format %p", mFormat.get());

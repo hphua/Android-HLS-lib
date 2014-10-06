@@ -30,13 +30,13 @@ public:
     AutoLock(pthread_mutex_t * lock)
     : lock(lock)
     {
-        //LOGV2("Locking mutex %p", lock);
+        LOGTHREAD("Locking mutex %p", lock);
         pthread_mutex_lock(lock);
     }
 
     ~AutoLock()
     {
-        //LOGV2("Unlocking mutex %p", lock);
+        LOGTHREAD("Unlocking mutex %p", lock);
         pthread_mutex_unlock(lock);
     }
 
@@ -1265,7 +1265,7 @@ namespace android_video_shim
             typedef status_t (*localFuncCast)(void *thiz, MediaBuffer **buffer, const ReadOptions *options);
             localFuncCast **fakeObj = (localFuncCast **)this;
             localFuncCast lfc = fakeObj[0][vtableOffset];
-            LOGV("virtual read=%p this=%p", lfc, this);
+            LOGV2("virtual read=%p this=%p", lfc, this);
             return lfc(this, buffer, options);
         }
 
@@ -1618,7 +1618,7 @@ namespace android_video_shim
             assert(lfc);
             lfc(this);
 
-            LOGI("ctor=%p", this);
+            LOGV2("ctor=%p", this);
         }
 
         ~MetaData()
