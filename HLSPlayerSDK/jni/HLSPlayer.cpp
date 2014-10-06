@@ -772,7 +772,7 @@ bool HLSPlayer::InitSources()
 		LOGV("   - got %p back", mVideoSource23.get());
 	}
 	
-	LOGI("OMXCodec::Create() (video) returned %p", mVideoSource.get());
+	LOGI("OMXCodec::Create() (video) returned 4x=-%p 23=%p", mVideoSource.get(), mVideoSource23.get());
 
 	sp<MetaData> meta;
 	if(AVSHIM_USE_NEWMEDIASOURCE)

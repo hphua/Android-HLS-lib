@@ -346,7 +346,7 @@ sp<android_video_shim::MetaData> MakeAACCodecSpecificData(
         96000, 88200, 64000, 48000, 44100, 32000, 24000, 22050,
         16000, 12000, 11025, 8000
     };
-    LOGI("sampling_freq_index=%d", sampling_freq_index);
+
     meta->setInt32(kKeySampleRate, kSamplingFreq[sampling_freq_index]);
     meta->setInt32(kKeyChannelCount, channel_configuration);
     static const uint8_t kStaticESDS[] = {

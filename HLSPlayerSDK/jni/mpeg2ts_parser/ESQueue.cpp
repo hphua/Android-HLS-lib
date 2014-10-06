@@ -329,7 +329,13 @@ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnit() {
         case H264:
             return dequeueAccessUnitH264();
         case AAC:
-            return dequeueAccessUnitAAC();
+            if(AVSHIM_USE_NEWDATASOURCEVTABLE)
+                return dequeueAccessUnitAAC();
+            else
+            {
+                LOGI("Taking 2.3 path for AAC decoding.");
+                return dequeueAccessUnitAAC_23();
+            }
         case MPEG_VIDEO:
             return dequeueAccessUnitMPEGVideo();
         case MPEG4_VIDEO:
@@ -393,6 +399,83 @@ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnitPCMAudio() {
 
     mBuffer->setRange(0, mBuffer->size() - 4 - payloadSize);
 
+    return accessUnit;
+}
+
+sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnitAAC_23() {
+    Vector<size_t> frameOffsets;
+    Vector<size_t> frameSizes;
+    size_t auSize = 0;
+    size_t offset = 0;
+    while (offset + 7 <= mBuffer->size()) {
+        ABitReader bits(mBuffer->data() + offset, mBuffer->size() - offset);
+        // adts_fixed_header
+        CHECK_EQ(bits.getBits(12), 0xfffu);
+        bits.skipBits(3);  // ID, layer
+        bool protection_absent = bits.getBits(1) != 0;
+        if (mFormat == NULL) {
+            unsigned profile = bits.getBits(2);
+            CHECK_NE(profile, 3u);
+            unsigned sampling_freq_index = bits.getBits(4);
+            bits.getBits(1);  // private_bit
+            unsigned channel_configuration = bits.getBits(3);
+            CHECK_NE(channel_configuration, 0u);
+            bits.skipBits(2);  // original_copy, home
+            mFormat = MakeAACCodecSpecificData(
+                    profile, sampling_freq_index, channel_configuration);
+        } else {
+            // profile_ObjectType, sampling_frequency_index, private_bits,
+            // channel_configuration, original_copy, home
+            bits.skipBits(12);
+        }
+        // adts_variable_header
+        // copyright_identification_bit, copyright_identification_start
+        bits.skipBits(2);
+        unsigned aac_frame_length = bits.getBits(13);
+        bits.skipBits(11);  // adts_buffer_fullness
+        unsigned number_of_raw_data_blocks_in_frame = bits.getBits(2);
+        if (number_of_raw_data_blocks_in_frame != 0) {
+            // To be implemented.
+            TRESPASS();
+        }
+        if (offset + aac_frame_length > mBuffer->size()) {
+            break;
+        }
+        size_t headerSize = protection_absent ? 7 : 9;
+        frameOffsets.push(offset + headerSize);
+        frameSizes.push(aac_frame_length - headerSize);
+        auSize += aac_frame_length - headerSize;
+        offset += aac_frame_length;
+    }
+    if (offset == 0) {
+        return NULL;
+    }
+    sp<ABuffer> accessUnit = new ABuffer(auSize);
+    size_t dstOffset = 0;
+    for (size_t i = 0; i < frameOffsets.size(); ++i) {
+        memcpy(accessUnit->data() + dstOffset,
+               mBuffer->data() + frameOffsets.itemAt(i),
+               frameSizes.itemAt(i));
+        dstOffset += frameSizes.itemAt(i);
+    }
+    memmove(mBuffer->data(), mBuffer->data() + offset,
+            mBuffer->size() - offset);
+    mBuffer->setRange(0, mBuffer->size() - offset);
+
+    //int64_t timeUs = fetchTimestamp(offset);
+    RangeInfo *info = &*mRangeInfos.begin();
+
+    int64_t timeUs = info->mTimestampUs;
+
+    accessUnit->meta()->setInt64("time", timeUs);
+    accessUnit->meta()->setInt64("timeUs", timeUs);
+
+    mRangeInfos.erase(mRangeInfos.begin());
+
+//    CHECK_GT(mTimestamps.size(), 0u);
+//    int64_t timeUs = *mTimestamps.begin();
+//    mTimestamps.erase(mTimestamps.begin());
+//    accessUnit->meta()->setInt64("time", timeUs);
     return accessUnit;
 }
 

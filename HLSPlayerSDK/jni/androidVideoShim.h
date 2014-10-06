@@ -1725,7 +1725,7 @@ namespace android_video_shim
             localFuncCast lfc = (localFuncCast)searchSymbol("_ZNK7android8MetaData9dumpToLogEv");
             if(!lfc)
             {
-                LOGI("Failing to dumpToLog, symbol not found.");
+                LOGV("Failing to dumpToLog, symbol not found.");
                 return;
             }
             assert(lfc);
