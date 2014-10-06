@@ -1016,7 +1016,11 @@ int HLSPlayer::Update()
 	for (;;)
 	{
 		//LOGI("mVideoBuffer = %x", mVideoBuffer);
-		RUNDEBUG(mVideoSource->getFormat()->dumpToLog());
+		if(mVideoSource.get())
+		{
+			RUNDEBUG(mVideoSource->getFormat()->dumpToLog());
+		}
+
 		status_t err = OK;
 		if (mVideoBuffer == NULL)
 		{
@@ -1102,7 +1106,7 @@ int HLSPlayer::Update()
 			mLastVideoTimeUs = timeUs;
 			if (delta < -10000) // video is running ahead
 			{
-				LOGTIMING("Video is running ahead - waiting til next time : detla = %lld", delta);
+				LOGTIMING("Video is running ahead - waiting til next time : delta = %lld", delta);
 				//sched_yield();
 				usleep(-10000 - delta);
 				break; // skip out - don't render it yet

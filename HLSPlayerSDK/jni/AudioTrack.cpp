@@ -186,12 +186,16 @@ bool AudioTrack::UpdateFormatInfo()
 		LOGE("Mime Type was not audio/raw. Was: %s", mime);
 		return false;
 	}
-	success = format->findInt32(kKeySampleRate, &mSampleRate);
+	int tmpSampleRate = 0;
+	success = format->findInt32(kKeySampleRate, &tmpSampleRate);
 	if (!success)
 	{
 		LOGE("Could not find audio sample rate");
 		return false;
 	}
+
+	if(tmpSampleRate != 0)
+		mSampleRate = tmpSampleRate;
 
 	success = format->findInt32(kKeyChannelCount, &mNumChannels);
 	if (!success)
