@@ -27,21 +27,22 @@
 class AutoLock
 {
 public:
-    AutoLock(pthread_mutex_t * lock)
-    : lock(lock)
+    AutoLock(pthread_mutex_t * lock, const char* path="")
+    : lock(lock), mPath(path)
     {
-        LOGTHREAD("Locking mutex %p", lock);
+        LOGTHREAD("Locking mutex %p, %s", lock, path);
         pthread_mutex_lock(lock);
     }
 
     ~AutoLock()
     {
-        LOGTHREAD("Unlocking mutex %p", lock);
+        LOGTHREAD("Unlocking mutex %p, %s", lock, mPath);
         pthread_mutex_unlock(lock);
     }
 
 private:
     pthread_mutex_t * lock;
+    const char* mPath;
 };
 
 inline int initRecursivePthreadMutex(pthread_mutex_t *lock)
@@ -1919,7 +1920,7 @@ namespace android_video_shim
 
         void clearSources()
         {
-            AutoLock locker(&lock);
+            AutoLock locker(&lock, __func__);
         	mSources.clear();
         	mSourceIdx = 0;
         	mOffsetAdjustment = 0;
@@ -1932,7 +1933,7 @@ namespace android_video_shim
 
         status_t append(const char* uri, int quality, int continuityEra, double startTime, int cryptoId)
         {
-            AutoLock locker(&lock);
+            AutoLock locker(&lock, __func__);
 
             if (mSources.size() > 0 && (quality != mQuality || continuityEra != mContinuityEra))
             	return INFO_DISCONTINUITY;
@@ -1977,14 +1978,14 @@ namespace android_video_shim
 
         int getPreloadedSegmentCount()
         {
-            AutoLock locker(&lock);
+            AutoLock locker(&lock, __func__);
             int res = mSources.size() - mSourceIdx;
             return res;
         }
 
         status_t _initCheck()
         {
-            AutoLock locker(&lock);
+            AutoLock locker(&lock, __func__);
             LOGI("_initCheck!");
 
             // With the new segment cache, we cannot fail!
@@ -1994,7 +1995,7 @@ namespace android_video_shim
 
         ssize_t _readAt(off64_t offset, void* data, size_t size)
         {
-            AutoLock locker(&lock);
+            AutoLock locker(&lock, __func__);
 
             // Sanity check.
             if(mSources.size() == 0)
@@ -2084,7 +2085,7 @@ namespace android_video_shim
 
         status_t _getSize(off64_t* size)
         {
-            AutoLock locker(&lock);
+            AutoLock locker(&lock, __func__);
             LOGV("Attempting _getSize");
             //status_t rval = mSources[mSourceIdx]->getSize(size);
             *size = 0;

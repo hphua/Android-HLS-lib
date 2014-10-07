@@ -464,7 +464,7 @@ public class PlayerViewController extends RelativeLayout implements
 			// supply the event handler to the segment cache. In the case where the segment is already in the cache, the
 			// event handler can be called immediately.
 			FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.altAudioSegment.uri, seg.altAudioSegment.altAudioIndex, seg.startTime, seg.cryptoId, seg.altAudioSegment.cryptoId);
-			HLSSegmentCache.precache(seg.uri, seg.cryptoId, this);
+			HLSSegmentCache.precache(seg.uri, seg.cryptoId, this, GetInterfaceThread().getHandler());
 			if (mOnAudioTrackSwitchingListener != null)
 			{
 				mOnAudioTrackSwitchingListener.onAudioSwitchingStart(-1, seg.altAudioSegment.altAudioIndex);
@@ -477,7 +477,7 @@ public class PlayerViewController extends RelativeLayout implements
 			// supply the event handler to the segment cache. In the case where the segment is already in the cache, the
 			// event handler can be called immediately.
 			FeedSegment(seg.uri, seg.quality, seg.continuityEra, null, -1, seg.startTime, seg.cryptoId, -1);
-			HLSSegmentCache.precache(seg.uri, seg.cryptoId, this);
+			HLSSegmentCache.precache(seg.uri, seg.cryptoId, this, GetInterfaceThread().getHandler());
 		}
 
 
@@ -488,12 +488,11 @@ public class PlayerViewController extends RelativeLayout implements
 		HLSSegmentCache.cancelCacheEvent(uri);
 		
 		play();
-		
 		// Fire prepared event.
 		if(mPreparedListener != null)
 			mPreparedListener.onPrepared(null);		
-		
 	}
+
 	@Override
 	public void onSegmentFailed(String uri, IOException e) {
 

@@ -34,6 +34,8 @@ const int SEGMENTS_TO_BUFFER = 2;
 
 void* audio_thread_func(void* arg)
 {
+	LOGTRACE("%s", __func__);
+	LOGTHREAD("audio_thread_func STARTING");
 	AudioTrack* audioTrack = (AudioTrack*)arg;
 	int refCount = audioTrack->addRef();
 	LOGI("mJAudioTrack refCount = %d", refCount);
@@ -56,7 +58,7 @@ void* audio_thread_func(void* arg)
 	JavaVM* jvm = gHLSPlayerSDK->getJVM();
 	if (jvm) jvm->DetachCurrentThread();
 	LOGI("mJAudioTrack refCount = %d", refCount);
-	LOGI("audio_thread_func ending");
+	LOGTHREAD("audio_thread_func ENDING");
 	return NULL;
 }
 
@@ -72,6 +74,7 @@ mSegmentForTimeMethodID(NULL), mFrameCount(0), mDataSource(NULL), audioThread(0)
 mScreenHeight(0), mScreenWidth(0), mJAudioTrack(NULL), mStartTimeMS(0), mUseOMXRenderer(true),
 mNotifyFormatChangeComplete(NULL), mNotifyAudioTrackChangeComplete(NULL)
 {
+	LOGTRACE("%s", __func__);
 	status_t status = mClient.connect();
 	LOGI("OMXClient::Connect return %d", status);
 	
@@ -81,12 +84,14 @@ mNotifyFormatChangeComplete(NULL), mNotifyAudioTrackChangeComplete(NULL)
 
 HLSPlayer::~HLSPlayer()
 {
+	LOGTRACE("%s", __func__);
 	LOGI("Freeing %p", this);
 }
 
 void HLSPlayer::Close(JNIEnv* env)
 {
-	AutoLock locker(&lock);
+	LOGTRACE("%s", __func__);
+	AutoLock locker(&lock, __func__);
 
 	LOGI("Entered");
 	Reset();
@@ -109,7 +114,8 @@ void HLSPlayer::Close(JNIEnv* env)
 
 void HLSPlayer::Reset()
 {
-	AutoLock locker(&lock);
+	LOGTRACE("%s", __func__);
+	AutoLock locker(&lock, __func__);
 	LOGI("Entered");
 	mStatus = STOPPED;
 	LogState();
@@ -161,7 +167,8 @@ void HLSPlayer::Reset()
 ///
 void HLSPlayer::SetSurface(JNIEnv* env, jobject surface)
 {
-	AutoLock locker(&lock);
+	LOGTRACE("%s", __func__);
+	AutoLock locker(&lock, __func__);
 
 	LOGI("Entered %p", this);
 
@@ -267,6 +274,7 @@ void HLSPlayer::SetSurface(JNIEnv* env, jobject surface)
 
 bool HLSPlayer::EnsureJNI(JNIEnv** env)
 {
+	LOGTRACE("%s", __func__);
 	if (!gHLSPlayerSDK) return false;
 	if (!gHLSPlayerSDK->GetEnv(env)) return false;
 
@@ -357,7 +365,8 @@ bool HLSPlayer::EnsureJNI(JNIEnv** env)
 
 void HLSPlayer::SetNativeWindow(::ANativeWindow* window)
 {
-	AutoLock locker(&lock);
+	LOGTRACE("%s", __func__);
+	AutoLock locker(&lock, __func__);
 
 	LOGI("window = %p", window);
 	if (mWindow)
@@ -370,6 +379,7 @@ void HLSPlayer::SetNativeWindow(::ANativeWindow* window)
 
 sp<HLSDataSource> MakeHLSDataSource()
 {
+	LOGTRACE("%s", __func__);
 	sp<HLSDataSource> ds = new HLSDataSource();
 	if (ds.get())
 	{
@@ -380,7 +390,8 @@ sp<HLSDataSource> MakeHLSDataSource()
 
 status_t HLSPlayer::FeedSegment(const char* path, int32_t quality, int continuityEra, const char* altAudioPath, int audioIndex, double time, int cryptoId, int altAudioCryptoId )
 {
-	AutoLock locker(&lock);
+	LOGTRACE("%s", __func__);
+	AutoLock locker(&lock, __func__);
 	LOGI("Quality = %d | Continuity = %d | audioIndex = %d | path = %s | altAudioPath = %s | cryptoId = %d | altAudioCryptoId = %d", quality, continuityEra, audioIndex, path, altAudioPath == NULL ? "NULL" : altAudioPath, cryptoId, altAudioCryptoId);
 
 	bool sameEra = false;
@@ -471,6 +482,7 @@ status_t HLSPlayer::FeedSegment(const char* path, int32_t quality, int continuit
 
 bool HLSPlayer::DataSourceCacheObject::isSameEra(int32_t quality, int continuityEra, int audioIndex)
 {
+	LOGTRACE("%s", __func__);
 	bool sameEra = dataSource->isSameEra(quality, continuityEra);
 	if (sameEra && altAudioDataSource.get())
 	{
@@ -481,7 +493,8 @@ bool HLSPlayer::DataSourceCacheObject::isSameEra(int32_t quality, int continuity
 
 bool HLSPlayer::InitTracks()
 {
-	AutoLock locker(&lock);
+	LOGTRACE("%s", __func__);
+	AutoLock locker(&lock, __func__);
 	LOGI("Entered: mDataSource=%p", mDataSource.get());
 	if (!mDataSource.get()) return false;
 
@@ -650,7 +663,8 @@ bool HLSPlayer::InitTracks()
 
 bool HLSPlayer::CreateAudioPlayer()
 {
-	AutoLock locker(&lock);
+	LOGTRACE("%s", __func__);
+	AutoLock locker(&lock, __func__);
 	LOGI("Constructing JAudioTrack");
 	mJAudioTrack = new AudioTrack(mJvm);
 	if (!mJAudioTrack)
@@ -681,14 +695,16 @@ bool HLSPlayer::CreateAudioPlayer()
 
 bool HLSPlayer::InitSources()
 {
-	AutoLock locker(&lock);
+	LOGTRACE("%s", __func__);
 
 	if (!InitTracks())
 	{
 		LOGE("Aborting due to failure to init tracks.");
 		return false;
 	}
-	
+
+	AutoLock locker(&lock, __func__);
+
 	LOGI("Entered");
 	
 	if(AVSHIM_USE_NEWMEDIASOURCE)
@@ -877,10 +893,12 @@ bool HLSPlayer::InitSources()
 //
 bool HLSPlayer::Play()
 {
-	AutoLock locker(&lock);
+	LOGTRACE("%s", __func__);
 	LOGI("Entered");
 	
 	if (!InitSources()) return false;
+
+	AutoLock locker(&lock, __func__);
 
 	status_t err = OK;
 	
@@ -920,7 +938,8 @@ bool HLSPlayer::Play()
 
 int HLSPlayer::Update()
 {
-	AutoLock locker(&lock);
+	LOGTRACE("%s", __func__);
+	AutoLock locker(&lock, __func__);
 
 	LOGV2("Entered");
 
@@ -1132,6 +1151,7 @@ int HLSPlayer::Update()
 
 bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 {
+	LOGTRACE("%s", __func__);
 	if(mOMXRenderer.get())
 	{
         int fmt = -1;
@@ -1278,11 +1298,12 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 
 void HLSPlayer::SetState(int status)
 {
-	AutoLock locker(&lock);
+	LOGTRACE("%s", __func__);
+	AutoLock locker(&lock, __func__);
 
 	if (mStatus != status)
 	{
-		LOGI("Status Changing");
+		LOGI("State Changing");
 		LogState();
 		mStatus = status;
 		LogState();
@@ -1291,7 +1312,8 @@ void HLSPlayer::SetState(int status)
 
 void HLSPlayer::LogState()
 {
-	AutoLock locker(&lock);
+	LOGTRACE("%s", __func__);
+	AutoLock locker(&lock, __func__);
 
 	switch (mStatus)
 	{
@@ -1318,7 +1340,8 @@ void HLSPlayer::LogState()
 
 void HLSPlayer::RequestNextSegment()
 {
-	AutoLock locker(&lock);
+	LOGTRACE("%s", __func__);
+	AutoLock locker(&lock, __func__);
 
 	LOGI("Requesting new segment");
 	JNIEnv* env = NULL;
@@ -1334,7 +1357,8 @@ void HLSPlayer::RequestNextSegment()
 
 double HLSPlayer::RequestSegmentForTime(double time)
 {
-	AutoLock locker(&lock);
+	LOGTRACE("%s", __func__);
+	AutoLock locker(&lock, __func__);
 
 	LOGI("Requesting segment for time %lf", time);
 	JNIEnv* env = NULL;
@@ -1350,7 +1374,8 @@ double HLSPlayer::RequestSegmentForTime(double time)
 
 void HLSPlayer::NoteVideoDimensions()
 {
-	AutoLock locker(&lock);
+	LOGTRACE("%s", __func__);
+	AutoLock locker(&lock, __func__);
 
 	LOGI("Noting video dimensions.");
 	JNIEnv* env = NULL;
@@ -1367,7 +1392,8 @@ void HLSPlayer::NoteVideoDimensions()
 
 void HLSPlayer::NoteHWRendererMode(bool enabled, int w, int h, int colf)
 {
-	AutoLock locker(&lock);
+	LOGTRACE("%s", __func__);
+	AutoLock locker(&lock, __func__);
 
 	LOGI("Noting video dimensions.");
 	JNIEnv* env = NULL;
@@ -1383,12 +1409,14 @@ void HLSPlayer::NoteHWRendererMode(bool enabled, int w, int h, int colf)
 
 int HLSPlayer::GetState()
 {
-	AutoLock locker(&lock);
+	LOGTRACE("%s", __func__);
+	AutoLock locker(&lock, __func__);
 	return mStatus;
 }
 
 void HLSPlayer::TogglePause()
 {
+	LOGTRACE("%s", __func__);
 	AutoLock locker(&lock);
 
 	LogState();
@@ -1406,7 +1434,8 @@ void HLSPlayer::TogglePause()
 
 void HLSPlayer::Stop()
 {
-	AutoLock locker(&lock);
+	LOGTRACE("%s", __func__);
+	AutoLock locker(&lock, __func__);
 
 	LOGI("STOPPING!");
 	LogState();
@@ -1419,7 +1448,8 @@ void HLSPlayer::Stop()
 
 int32_t HLSPlayer::GetCurrentTimeMS()
 {
-	AutoLock locker(&lock);
+	LOGTRACE("%s", __func__);
+	AutoLock locker(&lock, __func__);
 
 	if (mJAudioTrack != NULL)
 	{
@@ -1431,7 +1461,8 @@ int32_t HLSPlayer::GetCurrentTimeMS()
 
 void HLSPlayer::StopEverything()
 {
-	AutoLock locker(&lock);
+	LOGTRACE("%s", __func__);
+	AutoLock locker(&lock, __func__);
 
 	if (mJAudioTrack) mJAudioTrack->Stop(true); // Passing true means we're seeking.
 
@@ -1463,6 +1494,7 @@ void HLSPlayer::StopEverything()
 
 bool HLSPlayer::EnsureAudioPlayerCreatedAndSourcesSet()
 {
+	LOGTRACE("%s", __func__);
 	if (!mJAudioTrack)
 	{
 		return CreateAudioPlayer(); // CreateAudioPlayer sets the sources internally
@@ -1484,7 +1516,8 @@ bool HLSPlayer::EnsureAudioPlayerCreatedAndSourcesSet()
 
 void HLSPlayer::ApplyFormatChange()
 {
-	AutoLock locker(&lock);
+	LOGTRACE("%s", __func__);
+	AutoLock locker(&lock, __func__);
 
 	SetState(FORMAT_CHANGING); // may need to add a different state, but for now...
 	StopEverything();
@@ -1548,9 +1581,10 @@ void HLSPlayer::ApplyFormatChange()
 
 void HLSPlayer::NotifyFormatChange(int curQuality, int newQuality, int curAudio, int newAudio)
 {
+	LOGTRACE("%s", __func__);
 	if (curQuality == newQuality && curAudio == newAudio) return; // Nothing to notify
 
-	AutoLock locker(&lock);
+	AutoLock locker(&lock, __func__);
 
 	JNIEnv* env = NULL;
 	if (!EnsureJNI(&env)) return;
@@ -1579,7 +1613,8 @@ void HLSPlayer::NotifyFormatChange(int curQuality, int newQuality, int curAudio,
 
 void HLSPlayer::Seek(double time)
 {
-	AutoLock locker(&lock);
+	LOGTRACE("%s", __func__);
+	AutoLock locker(&lock, __func__);
 
 	LOGI("Seeking To: %f", time);
 	if (time < 0) time = 0;
@@ -1670,6 +1705,7 @@ void HLSPlayer::Seek(double time)
 
 bool HLSPlayer::ReadUntilTime(double timeSecs)
 {
+	LOGTRACE("%s", __func__);
 	status_t res = ERROR_END_OF_STREAM;
 	MediaBuffer* mediaBuffer = NULL;
 

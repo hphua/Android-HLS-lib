@@ -2,6 +2,7 @@ package com.kaltura.hlsplayersdk.cache;
 
 import java.io.IOException;
 
+import android.os.Handler;
 import android.util.Log;
 
 import com.squareup.okhttp.Callback;
@@ -25,6 +26,8 @@ public class SegmentCacheEntry implements Callback {
 	public static native int allocAESCryptoState(byte[] key, byte[] iv);
 	public static native void freeCryptoState(int id);
 	public static native long decrypt(int cryptoHandle, byte[] data, long start, long length);
+	
+	private Handler mCallbackHandler = null;
 
 	public boolean hasCrypto()
 	{
@@ -57,19 +60,31 @@ public class SegmentCacheEntry implements Callback {
 	}
 	
 	private SegmentCachedListener mSegmentCachedListener = null;
-	public void registerSegmentCachedListener(SegmentCachedListener listener)
+	public void registerSegmentCachedListener(SegmentCachedListener listener, Handler callbackHandler)
 	{
 		if (mSegmentCachedListener != listener)
 		{
 			Log.i("SegmentCacheEntry", "Setting the SegmentCachedListener to a new value: " + listener);
 			mSegmentCachedListener = listener;
+			mCallbackHandler = callbackHandler;
 		}
 	}
 	
 	public void notifySegmentCached()
 	{
 		if (mSegmentCachedListener != null)
-			mSegmentCachedListener.onSegmentCompleted(uri);
+		{
+			if (mCallbackHandler != null)
+			{
+				mCallbackHandler.post(new Runnable() {
+					public void run()
+					{
+						mSegmentCachedListener.onSegmentCompleted(uri);
+					}
+				});
+					
+			}
+		}
 	}
 
 	@Override

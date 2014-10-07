@@ -6,6 +6,7 @@ import java.nio.charset.Charset;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import android.os.Handler;
 import android.util.Log;
 
 import com.squareup.okhttp.OkHttpClient;
@@ -112,17 +113,17 @@ public class HLSSegmentCache
 	 * @param cryptoId
 	 * @param SegmentCachedListener
 	 */
-	static public void precache(String segmentUri, int cryptoId, SegmentCachedListener segmentCachedListener )
+	static public void precache(final String segmentUri, int cryptoId, final SegmentCachedListener segmentCachedListener, Handler callbackHandler )
 	{
 		precache(segmentUri, cryptoId);
 		synchronized (segmentCache)
 		{
 			SegmentCacheEntry sce = segmentCache.get(segmentUri);
-			if (sce.running)
-				sce.registerSegmentCachedListener(segmentCachedListener);
-			else
-				segmentCachedListener.onSegmentCompleted(segmentUri);
+			sce.registerSegmentCachedListener(segmentCachedListener, callbackHandler);
 			
+			if (!sce.running)
+				sce.notifySegmentCached();
+				
 		}
 	}
 	
@@ -137,7 +138,7 @@ public class HLSSegmentCache
 		synchronized (segmentCache)
 		{
 			SegmentCacheEntry sce = segmentCache.get(segmentUri);
-			if (sce != null) sce.registerSegmentCachedListener(null);
+			if (sce != null) sce.registerSegmentCachedListener(null, null);
 		}
 	}
 	
@@ -150,7 +151,7 @@ public class HLSSegmentCache
 			Collection<SegmentCacheEntry> values = segmentCache.values();
 
 			for(SegmentCacheEntry v : values)
-				v.registerSegmentCachedListener(null);
+				v.registerSegmentCachedListener(null, null);
 		}
 	}
 	
