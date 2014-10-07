@@ -15,17 +15,18 @@
 #define _DEBUG_E
 #define _DEBUG_W
 #define _DEBUG_I
-//#define _DEBUG_V
+#define _DEBUG_V
 //#define _DEBUG_V2
 //#define _DEBUG_RUN
 //#define _DEBUG_ATS
 //#define _DEBUG_REFBASE
+//#define _DEBUG_TRACE
 
 //#define _DATA_MINING
 //#define _DEBUG_SCREENINFO
 //#define _SYMBOL_ERRORS
 //#define _DEBUG_THREAD
-#define _TIMING
+//#define _TIMING
 
 
 //#define _VERBOSE
@@ -105,6 +106,12 @@
 #define LOGTHREAD(...)  __android_log_print(ANDROID_LOG_VERBOSE, __func__, __VA_ARGS__)
 #else
 #define LOGTHREAD(...)
+#endif
+
+#ifdef _DEBUG_TRACE
+#define LOGTRACE(...)  __android_log_print(ANDROID_LOG_VERBOSE, __func__, __VA_ARGS__)
+#else
+#define LOGTRACE(...)
 #endif
 
 #endif /* DEBUG_H_ */
