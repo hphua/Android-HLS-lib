@@ -420,10 +420,11 @@ void HLSPlayerSDK::PlayFile()
 
 	if (mPlayer->Play())
 	{
-		while (mPlayer->Update() == 0)
-		{
-			LOGI("Decoded a frame!");
-		}
+//	Not sure what the point of this was... commenting out for testing purposes
+//		while (mPlayer->Update() == 0)
+//		{
+//			LOGI("Decoded a frame!");
+//		}
 	}
 }
 

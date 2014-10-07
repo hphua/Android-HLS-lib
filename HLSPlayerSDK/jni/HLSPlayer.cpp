@@ -146,6 +146,7 @@ void HLSPlayer::Reset()
 	}
 	if (mVideoSource.get()) mVideoSource->stop();
 	if (mVideoSource23.get()) mVideoSource23->stop();
+	mOMXRenderer.clear();
 	mVideoSource.clear();
 	mVideoSource23.clear();
 
@@ -1175,7 +1176,8 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 	if (!mWindow) { LOGI("mWindow is NULL"); return true; }
 	if (!buffer) { LOGI("the MediaBuffer is NULL"); return true; }
 
-	RUNDEBUG(buffer->meta_data()->dumpToLog());
+	//RUNDEBUG(buffer->meta_data()->dumpToLog());
+	buffer->meta_data()->dumpToLog();
 
 	// Get the frame's width and height.
 	int videoBufferWidth = 0, videoBufferHeight = 0, vbCropTop = 0, vbCropLeft = 0, vbCropBottom = 0, vbCropRight = 0;

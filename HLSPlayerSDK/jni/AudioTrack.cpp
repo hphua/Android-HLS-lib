@@ -479,7 +479,7 @@ bool AudioTrack::ReadUntilTime(double timeSecs)
 int AudioTrack::Update()
 {
 	LOGTRACE("%s", __func__);
-	LOGV("Audio Update Thread Running");
+	LOGTHREAD("Audio Update Thread Running");
 	if (mWaiting) return AUDIOTHREAD_WAIT;
 	if (mPlayState != PLAYING)
 	{
@@ -536,7 +536,7 @@ int AudioTrack::Update()
 	if (res == OK)
 	{
 		//LOGI("Finished reading from the media buffer");
-		RUNDEBUG(if (mediaBuffer) { mediaBuffer->meta_data()->dumpToLog(); });
+		RUNDEBUG( {if (mediaBuffer) mediaBuffer->meta_data()->dumpToLog();} );
 		env->PushLocalFrame(2);
 
 		if(!buffer)
