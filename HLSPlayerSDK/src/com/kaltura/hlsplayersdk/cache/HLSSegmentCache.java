@@ -119,18 +119,11 @@ public class HLSSegmentCache
 		synchronized (segmentCache)
 		{
 			SegmentCacheEntry sce = segmentCache.get(segmentUri);
-			if (sce.running)
-				sce.registerSegmentCachedListener(segmentCachedListener, callbackHandler);
-			else
-			{
-				callbackHandler.post(new Runnable() {
-					public void run()
-					{
-						segmentCachedListener.onSegmentCompleted(segmentUri);
-					}
-				});
-						
-			}
+			sce.registerSegmentCachedListener(segmentCachedListener, callbackHandler);
+			
+			if (!sce.running)
+				sce.notifySegmentCached();
+				
 		}
 	}
 	
