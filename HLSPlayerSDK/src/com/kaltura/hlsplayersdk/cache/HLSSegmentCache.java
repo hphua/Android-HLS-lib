@@ -120,7 +120,7 @@ public class HLSSegmentCache
 		{
 			SegmentCacheEntry sce = segmentCache.get(segmentUri);
 			if (sce.running)
-				sce.registerSegmentCachedListener(segmentCachedListener);
+				sce.registerSegmentCachedListener(segmentCachedListener, callbackHandler);
 			else
 			{
 				callbackHandler.post(new Runnable() {
@@ -145,7 +145,7 @@ public class HLSSegmentCache
 		synchronized (segmentCache)
 		{
 			SegmentCacheEntry sce = segmentCache.get(segmentUri);
-			if (sce != null) sce.registerSegmentCachedListener(null);
+			if (sce != null) sce.registerSegmentCachedListener(null, null);
 		}
 	}
 	
@@ -158,7 +158,7 @@ public class HLSSegmentCache
 			Collection<SegmentCacheEntry> values = segmentCache.values();
 
 			for(SegmentCacheEntry v : values)
-				v.registerSegmentCachedListener(null);
+				v.registerSegmentCachedListener(null, null);
 		}
 	}
 	
