@@ -1439,7 +1439,7 @@ void HLSPlayer::Stop()
 
 	LOGI("STOPPING!");
 	LogState();
-	if (GetState() == PLAYING)
+	if (GetState() != STOPPED)
 	{
 		SetState(STOPPED);
 		mJAudioTrack->Stop();
