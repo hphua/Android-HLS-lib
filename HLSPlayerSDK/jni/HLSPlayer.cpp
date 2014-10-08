@@ -1758,6 +1758,7 @@ bool HLSPlayer::ReadUntilTime(double timeSecs)
 			mediaBuffer->release();
 			mediaBuffer = NULL;
 		}
+		sched_yield();
 	}
 
 	mLastVideoTimeUs = timeUs;

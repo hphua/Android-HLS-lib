@@ -23,6 +23,11 @@ public class SegmentCacheEntry implements Callback {
 	// encrypted. This allows us to avoid duplicating every segment.
 	protected long decryptHighWaterMark = 0;
 	
+	// We will retry 3 times before giving up
+	private static final int maxRetries = 3;
+	private int curRetries = 0;
+	
+	
 	public static native int allocAESCryptoState(byte[] key, byte[] iv);
 	public static native void freeCryptoState(int id);
 	public static native long decrypt(int cryptoHandle, byte[] data, long start, long length);
@@ -85,6 +90,13 @@ public class SegmentCacheEntry implements Callback {
 					
 			}
 		}
+	}
+	
+	private boolean retry()
+	{
+		++curRetries;
+		if (curRetries >= maxRetries) return false;
+		return true;
 	}
 
 	@Override

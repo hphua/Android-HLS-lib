@@ -470,6 +470,8 @@ bool AudioTrack::ReadUntilTime(double timeSecs)
 			mediaBuffer->release();
 			mediaBuffer = NULL;
 		}
+
+		sched_yield();
 	}
 
 	mTimeStampOffset = ((double)timeUs / 1000000.0f);
