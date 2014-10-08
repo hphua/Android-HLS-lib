@@ -146,6 +146,7 @@ void HLSPlayer::Reset()
 	}
 	if (mVideoSource.get()) mVideoSource->stop();
 	if (mVideoSource23.get()) mVideoSource23->stop();
+	mOMXRenderer.clear();
 	mVideoSource.clear();
 	mVideoSource23.clear();
 
@@ -1171,11 +1172,12 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 	}
 
 	//LOGI("Entered");
-	//LOGI("Rendering Buffer size=%d", buffer->size());
 	if (!mWindow) { LOGI("mWindow is NULL"); return true; }
 	if (!buffer) { LOGI("the MediaBuffer is NULL"); return true; }
 
-	RUNDEBUG(buffer->meta_data()->dumpToLog());
+	//RUNDEBUG(buffer->meta_data()->dumpToLog());
+	buffer->meta_data()->dumpToLog();
+	LOGI("Buffer size=%d | range_length=%d", buffer->size(), buffer->range_length());
 
 	// Get the frame's width and height.
 	int videoBufferWidth = 0, videoBufferHeight = 0, vbCropTop = 0, vbCropLeft = 0, vbCropBottom = 0, vbCropRight = 0;
@@ -1193,7 +1195,8 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 			// I hope we're right!
 			LOGV("Setting best guess width/height %dx%d", mWidth, mHeight);
 			videoBufferWidth = mWidth;
-			videoBufferHeight = mHeight;			
+			videoBufferHeight = mHeight;
+			//return true;
 		}
 	}
 
@@ -1262,9 +1265,13 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 
 			// Clear to black.
 			unsigned short *pixels = (unsigned short *)windowBuffer.bits;
-			memset(pixels, 0, windowBuffer.stride * windowBuffer.height * 2);
+
+#ifdef _BLITTEST
+			memset(pixels, rand(), windowBuffer.stride * windowBuffer.height * 2);
+#endif
 
 			unsigned char *videoBits = (unsigned char*)buffer->data() + buffer->range_offset();
+			LOGI("Saw some source pixels: %x", *(int*)videoBits);
 
 			LOGV("mWidth=%d | mHeight=%d | mCropWidth=%d | mCropHeight=%d | buffer.width=%d | buffer.height=%d videoBits=%p",
 							mWidth, mHeight, mCropWidth, mCropHeight, windowBuffer.width, windowBuffer.height, videoBits);
@@ -1276,13 +1283,15 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 			LOGV("converting source coords, %d, %d, %d, %d, %d, %d", videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom);
 			LOGV("converting target coords, %d, %d, %d, %d, %d, %d", targetWidth, targetHeight, vbCropLeft + offsetx, vbCropTop + offsety, vbCropRight + offsetx, vbCropBottom + offsety);
 			status_t ccres = OK;
+
+#ifndef _BLITTEST
 			if (useLocalCC)
 				lcc.convert(videoBits, videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom,
 						windowBuffer.bits, targetWidth, targetHeight, vbCropLeft + offsetx, vbCropTop + offsety, vbCropRight + offsetx, vbCropBottom + offsety);
 			else
 				cc.convert(videoBits, videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom,
 						windowBuffer.bits, targetWidth, targetHeight, vbCropLeft + offsetx, vbCropTop + offsety, vbCropRight + offsetx, vbCropBottom + offsety);
-
+#endif
 			//if (ccres != OK) LOGE("ColorConversion error: %s (%d)", strerror(-ccres), -ccres);
 
 			ANativeWindow_unlockAndPost(mWindow);
@@ -1409,7 +1418,7 @@ void HLSPlayer::NoteHWRendererMode(bool enabled, int w, int h, int colf)
 
 int HLSPlayer::GetState()
 {
-	LOGTRACE("%s", __func__);
+	//LOGTRACE("%s", __func__);
 	AutoLock locker(&lock, __func__);
 	return mStatus;
 }
@@ -1439,7 +1448,7 @@ void HLSPlayer::Stop()
 
 	LOGI("STOPPING!");
 	LogState();
-	if (GetState() == PLAYING)
+	if (GetState() != STOPPED)
 	{
 		SetState(STOPPED);
 		mJAudioTrack->Stop();

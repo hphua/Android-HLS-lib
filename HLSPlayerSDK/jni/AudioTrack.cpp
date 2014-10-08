@@ -223,6 +223,7 @@ bool AudioTrack::UpdateFormatInfo()
 
 bool AudioTrack::Start()
 {
+	LOGTRACE("%s", __func__);
 	LOGI("Setting buffer = NULL");
 	buffer = NULL;
 
@@ -300,6 +301,7 @@ bool AudioTrack::Start()
 
 void AudioTrack::Play()
 {
+	LOGTRACE("%s", __func__);
 	LOGI("Trying to play: state = %d", mPlayState);
 	mWaiting = false;
 	if (mPlayState == PLAYING) return;
@@ -325,6 +327,7 @@ void AudioTrack::Play()
 
 bool AudioTrack::Stop(bool seeking)
 {
+	LOGTRACE("%s", __func__);
 	if (mPlayState == STOPPED) return true;
 
 	int lastPlayState = mPlayState;
@@ -375,6 +378,7 @@ bool AudioTrack::Stop(bool seeking)
 
 void AudioTrack::Pause()
 {
+	LOGTRACE("%s", __func__);
 	if (mPlayState == PAUSED) return;
 	mPlayState = PAUSED;
 	JNIEnv* env;
@@ -384,6 +388,7 @@ void AudioTrack::Pause()
 
 void AudioTrack::Flush()
 {
+	LOGTRACE("%s", __func__);
 	if (mPlayState == PLAYING) return;
 	JNIEnv* env;
 	if (gHLSPlayerSDK->GetEnv(&env))
@@ -397,12 +402,14 @@ void AudioTrack::Flush()
 
 void AudioTrack::SetTimeStampOffset(double offsetSecs)
 {
+	LOGTRACE("%s", __func__);
 	mTimeStampOffset = offsetSecs;
 }
 
 
 int64_t AudioTrack::GetTimeStamp()
 {
+	LOGTRACE("%s", __func__);
 	JNIEnv* env;
 	if (!gHLSPlayerSDK->GetEnv(&env)) return 0;
 	double frames = env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mGetPlaybackHeadPosition);
@@ -413,6 +420,7 @@ int64_t AudioTrack::GetTimeStamp()
 
 bool AudioTrack::ReadUntilTime(double timeSecs)
 {
+	LOGTRACE("%s", __func__);
 	status_t res = ERROR_END_OF_STREAM;
 	MediaBuffer* mediaBuffer = NULL;
 
@@ -470,7 +478,8 @@ bool AudioTrack::ReadUntilTime(double timeSecs)
 
 int AudioTrack::Update()
 {
-	LOGV("Audio Update Thread Running");
+	LOGTRACE("%s", __func__);
+	LOGTHREAD("Audio Update Thread Running");
 	if (mWaiting) return AUDIOTHREAD_WAIT;
 	if (mPlayState != PLAYING)
 	{
@@ -527,7 +536,7 @@ int AudioTrack::Update()
 	if (res == OK)
 	{
 		//LOGI("Finished reading from the media buffer");
-		RUNDEBUG(if (mediaBuffer) { mediaBuffer->meta_data()->dumpToLog(); });
+		RUNDEBUG( {if (mediaBuffer) mediaBuffer->meta_data()->dumpToLog();} );
 		env->PushLocalFrame(2);
 
 		if(!buffer)
@@ -613,6 +622,7 @@ int AudioTrack::Update()
 
 void AudioTrack::shutdown()
 {
+	LOGTRACE("%s", __func__);
 	JNIEnv* env;
 	if (gHLSPlayerSDK->GetEnv(&env))
 		env->DeleteGlobalRef(buffer);
@@ -620,6 +630,7 @@ void AudioTrack::shutdown()
 
 int AudioTrack::getBufferSize()
 {
+	LOGTRACE("%s", __func__);
 	JNIEnv* env;
 	if (!gHLSPlayerSDK->GetEnv(&env)) return 0;
 
