@@ -137,48 +137,56 @@ OnQualitySwitchingListener, OnQualityTracksListListener  {
         int id = item.getItemId();
         if (id == R.id.kaltura_vod) {
         	lastUrl = "http://www.kaltura.com/p/0/playManifest/entryId/1_0i2t7w0i/format/applehttp";
-        	playerView.setVideoUrl(lastUrl);
+        	Log.i("VideoPlayer UI", " -----> Play " + lastUrl);
+            playerView.setVideoUrl(lastUrl);
         	//playerView.setVideoUrl("http://kalturavod-vh.akamaihd.net/i/p/1281471/sp/128147100/serveFlavor/entryId/1_0i2t7w0i/v/1/flavorId/1_rncam6d3/index_0_av.m3u8");
         	//playerView.play();
-            return true;
+        	return true;
         }
         else if (id == R.id.abc_dvr_item)
         {
         	lastUrl = "http://abclive.abcnews.com/i/abc_live4@136330/master.m3u8";
-        	playerView.setVideoUrl(lastUrl);
+        	Log.i("VideoPlayer UI", " -----> Play " + lastUrl);
+            playerView.setVideoUrl(lastUrl);
         	return true;
         }
         else if (id == R.id.folgers)
         {
         	lastUrl = "http://cdnbakmi.kaltura.com/p/243342/sp/24334200/playManifest/entryId/0_uka1msg4/flavorIds/1_vqhfu6uy,1_80sohj7p/format/applehttp/protocol/http/a.m3u8";
-        	playerView.setVideoUrl(lastUrl);
+        	Log.i("VideoPlayer UI", " -----> Play " + lastUrl);
+            playerView.setVideoUrl(lastUrl);
         	return true;
         }
         else if (id == R.id.vod_alt_audio)
         {
         	lastUrl = "http://pa-www.kaltura.com/content/shared/erank/multi_audio.m3u8";
-        	playerView.setVideoUrl(lastUrl);
+        	Log.i("VideoPlayer UI", " -----> Play " + lastUrl);
+            playerView.setVideoUrl(lastUrl);
         	return true;
         }
         else if (id == R.id.bipbop)
         {
         	lastUrl = "http://devimages.apple.com/iphone/samples/bipbop/bipbopall.m3u8";
-        	playerView.setVideoUrl(lastUrl);
+        	Log.i("VideoPlayer UI", " -----> Play " + lastUrl);
+            playerView.setVideoUrl(lastUrl);
         	return true;
         }
         else if (id == R.id.aes_vod)
         {
         	lastUrl = "http://live.cdn.antel.net.uy/test/hls/teststream1.m3u8";
-        	playerView.setVideoUrl(lastUrl);
+        	Log.i("VideoPlayer UI", " -----> Play " + lastUrl);
+            playerView.setVideoUrl(lastUrl);
         	return true;
         }
         else if (id == R.id.seekFwd)
         {
-        	playerView.seek(15000);
+        	Log.i("VideoPlayer UI", " -----> Seek Fwd");
+            playerView.seek(15000);
         	return true;
         }
         else if (id == R.id.seekBwd)
         {
+        	Log.i("VideoPlayer UI", " -----> Seek Bwd");
         	playerView.seek(-15000);
         	return true;
         }
@@ -186,27 +194,33 @@ OnQualitySwitchingListener, OnQualityTracksListListener  {
         {
         	//playerView.setVideoUrl("https://dl.dropboxusercontent.com/u/41430608/TestStream/index_500_av-p.m3u8");
         	lastUrl = "http://www.djing.com/tv/live.m3u8";
+        	Log.i("VideoPlayer UI", " -----> Play " + lastUrl);
         	playerView.setVideoUrl(lastUrl);
         	return true;
         }
         else if (id == R.id.play_pause)
         {
+        	Log.i("VideoPlayer UI", " -----> Pause");
         	playerView.pause();
         }
         else if (id == R.id.quality_up)
         {
+        	Log.i("VideoPlayer UI", " -----> Quality Up");
         	playerView.incrementQuality();
         }
         else if (id == R.id.quality_down)
         {
+        	Log.i("VideoPlayer UI", " -----> Quality Down");
         	playerView.decrementQuality();
         }
         else if (id == R.id.audio_up)
         {
+        	Log.i("VideoPlayer UI", " -----> Audio Track Up");
         	playerView.softSwitchAudioTrack(curAltAudioTrack + 1);
         }
         else if (id == R.id.audio_down)
         {
+        	Log.i("VideoPlayer UI", " -----> Audio Track Down");
         	playerView.softSwitchAudioTrack(curAltAudioTrack - 1);
         }
         else if (id == R.id.openUrl)
@@ -230,6 +244,7 @@ OnQualitySwitchingListener, OnQualityTracksListListener  {
 					public void onClick(DialogInterface dialog, int id) {
 						// get user input and set it to result
 						lastUrl = input.getText().toString();
+						Log.i("VideoPlayer UI", " -----> Play (from input dialog) " + lastUrl);
 						playerView.setVideoUrl(lastUrl);
 					}
 				})

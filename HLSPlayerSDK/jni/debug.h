@@ -15,12 +15,12 @@
 #define _DEBUG_E
 #define _DEBUG_W
 #define _DEBUG_I
-#define _DEBUG_V
+//#define _DEBUG_V
 //#define _DEBUG_V2
 //#define _DEBUG_RUN
 //#define _DEBUG_ATS
 //#define _DEBUG_REFBASE
-#define _DEBUG_TRACE
+//#define _DEBUG_TRACE
 
 //#define _DATA_MINING
 //#define _DEBUG_SCREENINFO
@@ -28,6 +28,7 @@
 //#define _DEBUG_THREAD
 //#define _TIMING
 
+//#define _BLITTEST
 
 //#define _VERBOSE
 #ifdef _DEBUG_E
