@@ -1,9 +1,12 @@
-package com.kaltura.hlsplayersdk;
+package com.kaltura.playersdk;
 
 
 import android.media.MediaPlayer;
 
 import com.kaltura.hlsplayersdk.events.*;
+import com.kaltura.playersdk.events.OnPlayerStateChangeListener;
+import com.kaltura.playersdk.events.OnPlayheadUpdateListener;
+import com.kaltura.playersdk.events.OnProgressListener;
 
 public interface VideoPlayerInterface {
     public String getVideoUrl();

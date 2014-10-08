@@ -1,4 +1,4 @@
-package com.kaltura.hlsplayersdk.events;
+package com.kaltura.playersdk.events;
 
 import com.kaltura.hlsplayersdk.types.PlayerStates;
 

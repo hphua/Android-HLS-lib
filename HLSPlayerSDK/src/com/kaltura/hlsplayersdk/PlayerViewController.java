@@ -23,9 +23,6 @@ import android.widget.Toast;
 
 import com.kaltura.hlsplayersdk.cache.HLSSegmentCache;
 import com.kaltura.hlsplayersdk.cache.SegmentCachedListener;
-import com.kaltura.hlsplayersdk.events.OnPlayerStateChangeListener;
-import com.kaltura.hlsplayersdk.events.OnPlayheadUpdateListener;
-import com.kaltura.hlsplayersdk.events.OnProgressListener;
 import com.kaltura.hlsplayersdk.events.OnToggleFullScreenListener;
 import com.kaltura.hlsplayersdk.manifest.ManifestParser;
 import com.kaltura.hlsplayersdk.manifest.ManifestSegment;
@@ -35,8 +32,12 @@ import com.kaltura.hlsplayersdk.subtitles.TextTrackCue;
 import com.kaltura.playersdk.AlternateAudioTracksInterface;
 import com.kaltura.playersdk.QualityTracksInterface;
 import com.kaltura.playersdk.TextTracksInterface;
+import com.kaltura.playersdk.VideoPlayerInterface;
 import com.kaltura.playersdk.events.OnAudioTrackSwitchingListener;
 import com.kaltura.playersdk.events.OnAudioTracksListListener;
+import com.kaltura.playersdk.events.OnPlayerStateChangeListener;
+import com.kaltura.playersdk.events.OnPlayheadUpdateListener;
+import com.kaltura.playersdk.events.OnProgressListener;
 import com.kaltura.playersdk.events.OnQualitySwitchingListener;
 import com.kaltura.playersdk.events.OnQualityTracksListListener;
 import com.kaltura.playersdk.events.OnTextTrackChangeListener;
@@ -595,10 +596,15 @@ public class PlayerViewController extends RelativeLayout implements
 		return mTimeMS;
 	}
 
-	public void seek(int msec) {
+	public void seek(final int msec) {
 		HLSSegmentCache.cancelAllCacheEvents();
-		int curPos = getCurrentPosition();
-		SeekTo((curPos + msec) / 1000);
+		final int curPos = getCurrentPosition();
+		GetInterfaceThread().getHandler().post( new Runnable() {
+			public void run()
+			{
+				SeekTo(((double)msec) / 1000.0f);
+			}
+		});
 	}
 
 	// Helper to check network status.

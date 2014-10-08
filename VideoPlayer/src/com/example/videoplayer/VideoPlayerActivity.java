@@ -21,7 +21,7 @@ import com.kaltura.playersdk.events.*;
 
 public class VideoPlayerActivity extends ActionBarActivity implements OnTextTracksListListener, OnTextTrackChangeListener, 
 OnTextTrackTextListener, OnAudioTracksListListener, OnAudioTrackSwitchingListener, 
-OnQualitySwitchingListener, OnQualityTracksListListener  {
+OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListener  {
 
 	PlayerViewController playerView = null;
 	final Context context = this;
@@ -32,6 +32,8 @@ OnQualitySwitchingListener, OnQualityTracksListListener  {
 	
 	int numQualityLevels = 0;
 	int curQualityLevel = 0;
+	
+	int mLastTimeMS = 0;
 
     @SuppressWarnings("unused")
 	@Override
@@ -89,6 +91,7 @@ OnQualitySwitchingListener, OnQualityTracksListListener  {
         	playerView.registerAudioSwitchingChange(this);
         	playerView.registerQualityTracksList(this);
         	playerView.registerQualitySwitchingChange(this);
+        	playerView.registerPlayheadUpdate(this);
         }
         catch (Exception e)
         {
@@ -181,13 +184,13 @@ OnQualitySwitchingListener, OnQualityTracksListListener  {
         else if (id == R.id.seekFwd)
         {
         	Log.i("VideoPlayer UI", " -----> Seek Fwd");
-            playerView.seek(15000);
+            playerView.seek(mLastTimeMS + 15000);
         	return true;
         }
         else if (id == R.id.seekBwd)
         {
         	Log.i("VideoPlayer UI", " -----> Seek Bwd");
-        	playerView.seek(-15000);
+        	playerView.seek(mLastTimeMS -15000);
         	return true;
         }
         else if (id == R.id.testUrl)
@@ -333,5 +336,11 @@ OnQualitySwitchingListener, OnQualityTracksListListener  {
 		curQualityLevel = newTrackIndex;
 		Log.i("VideoPlayer.onQualitySwitchingEnd", "Quaity Changed to " + newTrackIndex);
 		
+	}
+
+	@Override
+	public void onPlayheadUpdated(int msec) {
+		mLastTimeMS = msec;
+		if (msec % 1000 == 0) Log.i("OnPlayheadUpdated", "Time = " + msec);
 	}
 }
