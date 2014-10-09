@@ -29,6 +29,7 @@ import com.kaltura.hlsplayersdk.manifest.ManifestSegment;
 import com.kaltura.hlsplayersdk.manifest.events.OnParseCompleteListener;
 import com.kaltura.hlsplayersdk.subtitles.SubtitleHandler;
 import com.kaltura.hlsplayersdk.subtitles.TextTrackCue;
+import com.kaltura.hlsplayersdk.types.PlayerStates;
 import com.kaltura.playersdk.AlternateAudioTracksInterface;
 import com.kaltura.playersdk.QualityTracksInterface;
 import com.kaltura.playersdk.TextTracksInterface;
@@ -576,6 +577,7 @@ public class PlayerViewController extends RelativeLayout implements
 
 	public void play() {
 		PlayFile();
+		postPlayerStateChange(PlayerStates.PLAY);
 	}
 
 	public void pause() {
@@ -583,6 +585,9 @@ public class PlayerViewController extends RelativeLayout implements
 			public void run()
 			{
 				TogglePause();
+				int state = GetState();
+				if (state == STATE_PAUSED) postPlayerStateChange(PlayerStates.PAUSE);
+				else if (state == STATE_PLAYING) postPlayerStateChange(PlayerStates.PLAY);
 			}
 		});
 	}
@@ -595,6 +600,7 @@ public class PlayerViewController extends RelativeLayout implements
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		postPlayerStateChange(PlayerStates.END);
 	}
 
 	public int getCurrentPosition() {
@@ -618,9 +624,11 @@ public class PlayerViewController extends RelativeLayout implements
 				int state = GetState();
 				if (tss && state != STATE_STOPPED)
 				{
+					postPlayerStateChange(PlayerStates.SEEKING);
 					targetSeekSet = false;
 					targetSeekMS = 0;
 					SeekTo(((double)tsms) / 1000.0f);
+					postPlayerStateChange(PlayerStates.SEEKED);
 				}
 				else if (state == STATE_STOPPED)
 				{
@@ -660,20 +668,43 @@ public class PlayerViewController extends RelativeLayout implements
 		ResetPlayer();
 		reset();
 
+		postPlayerStateChange(PlayerStates.START);
+
 		// Confirm network is ready to go.
 		if(!isOnline())
 		{
 			Toast.makeText(getContext(), "Not connnected to network; video may not play.", Toast.LENGTH_LONG).show();
 		}
+		
+
+		postPlayerStateChange(PlayerStates.LOAD);
 
 		// Init loading.
 		manifestLoader = new URLLoader(this, null);
 		manifestLoader.get(url);
 	}
 
+	private void postPlayerStateChange(final PlayerStates state)
+	{
+		if (mPlayerStateChangeListener != null)
+		{
+			mActivity.runOnUiThread(new Runnable()
+			{
+
+				@Override
+				public void run() {
+					mPlayerStateChangeListener.onStateChanged(state);					
+				}
+				
+			});
+		}
+	}
+	
+	OnPlayerStateChangeListener mPlayerStateChangeListener = null;
+	
 	@Override
 	public void registerPlayerStateChange(OnPlayerStateChangeListener listener) {
-		// TODO Auto-generated method stub
+		mPlayerStateChangeListener = listener;
 
 	}
 

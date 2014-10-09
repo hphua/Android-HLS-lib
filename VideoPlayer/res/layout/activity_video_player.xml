@@ -6,8 +6,11 @@
     tools:context="com.example.videoplayer.VideoPlayerActivity"
     tools:ignore="MergeRootFrame" >
 
-   <com.kaltura.hlsplayersdk.PlayerViewController xmlns:android="http://schemas.android.com/apk/res/android"
-	    android:layout_width="fill_parent"
-	    android:layout_height="fill_parent"
-	   	android:id="@+id/custom_player"/>
+   <com.kaltura.hlsplayersdk.PlayerViewController
+       xmlns:android="http://schemas.android.com/apk/res/android"
+       android:id="@+id/custom_player"
+       android:layout_width="fill_parent"
+       android:layout_height="fill_parent"
+       android:visibility="invisible" />
+
 </FrameLayout>
