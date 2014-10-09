@@ -78,6 +78,7 @@ private:
 	void NoteVideoDimensions();
 	void NoteHWRendererMode(bool enabled, int w, int h, int colf);
 	void NotifyFormatChange(int curQuality, int newQuality, int curAudio, int newAudio);
+	void ClearScreen();
 
 
 
