@@ -136,9 +136,7 @@ OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListene
     
     void setVideoUrl(String url)
     {
-    	
     	playerView.setVideoUrl(url);
-    	//playerView.setVisibility(View.VISIBLE);
     }
 
     @Override
@@ -361,7 +359,11 @@ OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListene
 		if (state == PlayerStates.END)
 			playerView.setVisibility(View.INVISIBLE);
 		else if (state == PlayerStates.PLAY)
+		{
+			// NOTE: This is where you want to set the visibility of the component (if you are modifying the visibility). Doing
+			// it any earlier will result in the last frame of the previous video showing until the new video is loaded.
 			playerView.setVisibility(View.VISIBLE);
+		}
 		
 		return true;
 	}
