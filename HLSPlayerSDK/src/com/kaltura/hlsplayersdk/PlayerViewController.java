@@ -29,6 +29,7 @@ import com.kaltura.hlsplayersdk.manifest.ManifestSegment;
 import com.kaltura.hlsplayersdk.manifest.events.OnParseCompleteListener;
 import com.kaltura.hlsplayersdk.subtitles.SubtitleHandler;
 import com.kaltura.hlsplayersdk.subtitles.TextTrackCue;
+import com.kaltura.hlsplayersdk.types.PlayerStates;
 import com.kaltura.playersdk.AlternateAudioTracksInterface;
 import com.kaltura.playersdk.QualityTracksInterface;
 import com.kaltura.playersdk.TextTracksInterface;
@@ -576,6 +577,8 @@ public class PlayerViewController extends RelativeLayout implements
 
 	public void play() {
 		PlayFile();
+		if (mPlayerStateChangeListener != null)
+			mPlayerStateChangeListener.onStateChanged(PlayerStates.PLAY);
 	}
 
 	public void pause() {
@@ -583,6 +586,13 @@ public class PlayerViewController extends RelativeLayout implements
 			public void run()
 			{
 				TogglePause();
+				if (mPlayerStateChangeListener != null)
+				{
+					int state = GetState();
+					if (state == STATE_PAUSED) mPlayerStateChangeListener.onStateChanged(PlayerStates.PAUSE);
+					else if (state == STATE_PLAYING) mPlayerStateChangeListener.onStateChanged(PlayerStates.PLAY);
+				}
+					
 			}
 		});
 	}
@@ -595,6 +605,8 @@ public class PlayerViewController extends RelativeLayout implements
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
+		if (mPlayerStateChangeListener != null)
+			mPlayerStateChangeListener.onStateChanged(PlayerStates.END);
 	}
 
 	public int getCurrentPosition() {
@@ -618,9 +630,13 @@ public class PlayerViewController extends RelativeLayout implements
 				int state = GetState();
 				if (tss && state != STATE_STOPPED)
 				{
+					if (mPlayerStateChangeListener != null)
+						mPlayerStateChangeListener.onStateChanged(PlayerStates.SEEKING);
 					targetSeekSet = false;
 					targetSeekMS = 0;
 					SeekTo(((double)tsms) / 1000.0f);
+					if (mPlayerStateChangeListener != null)
+						mPlayerStateChangeListener.onStateChanged(PlayerStates.SEEKED);
 				}
 				else if (state == STATE_STOPPED)
 				{
@@ -660,20 +676,29 @@ public class PlayerViewController extends RelativeLayout implements
 		ResetPlayer();
 		reset();
 
+		if (mPlayerStateChangeListener != null)
+			mPlayerStateChangeListener.onStateChanged(PlayerStates.START);
+
 		// Confirm network is ready to go.
 		if(!isOnline())
 		{
 			Toast.makeText(getContext(), "Not connnected to network; video may not play.", Toast.LENGTH_LONG).show();
 		}
+		
+
+		if (mPlayerStateChangeListener != null)
+			mPlayerStateChangeListener.onStateChanged(PlayerStates.LOAD);
 
 		// Init loading.
 		manifestLoader = new URLLoader(this, null);
 		manifestLoader.get(url);
 	}
 
+	OnPlayerStateChangeListener mPlayerStateChangeListener = null;
+	
 	@Override
 	public void registerPlayerStateChange(OnPlayerStateChangeListener listener) {
-		// TODO Auto-generated method stub
+		mPlayerStateChangeListener = listener;
 
 	}
 

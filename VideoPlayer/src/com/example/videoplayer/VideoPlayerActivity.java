@@ -16,12 +16,13 @@ import android.view.View;
 import android.widget.EditText;
 
 import com.kaltura.hlsplayersdk.PlayerViewController;
+import com.kaltura.hlsplayersdk.types.PlayerStates;
 import com.kaltura.playersdk.QualityTrack;
 import com.kaltura.playersdk.events.*;
 
 public class VideoPlayerActivity extends ActionBarActivity implements OnTextTracksListListener, OnTextTrackChangeListener, 
 OnTextTrackTextListener, OnAudioTracksListListener, OnAudioTrackSwitchingListener, 
-OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListener  {
+OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListener, OnPlayerStateChangeListener  {
 
 	PlayerViewController playerView = null;
 	final Context context = this;
@@ -92,6 +93,7 @@ OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListene
         	playerView.registerQualityTracksList(this);
         	playerView.registerQualitySwitchingChange(this);
         	playerView.registerPlayheadUpdate(this);
+        	playerView.registerPlayerStateChange(this);
         }
         catch (Exception e)
         {
@@ -342,5 +344,12 @@ OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListene
 	public void onPlayheadUpdated(int msec) {
 		mLastTimeMS = msec;
 		if (msec % 1000 == 0) Log.i("OnPlayheadUpdated", "Time = " + msec);
+	}
+
+	@Override
+	public boolean onStateChanged(PlayerStates state) {
+		Log.i("VideoPlayer.onStateChanged", "Player State changed to " + state.toString());
+
+		return true;
 	}
 }
