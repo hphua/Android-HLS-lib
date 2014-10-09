@@ -615,11 +615,16 @@ public class PlayerViewController extends RelativeLayout implements
 			{
 				boolean tss = targetSeekSet;
 				int tsms = targetSeekMS;
-				if (tss)
+				int state = GetState();
+				if (tss && state != STATE_STOPPED)
 				{
 					targetSeekSet = false;
 					targetSeekMS = 0;
 					SeekTo(((double)tsms) / 1000.0f);
+				}
+				else if (state == STATE_STOPPED)
+				{
+					Log.i("PlayerViewController.Seek().Runnable()", "Seek halted - player is stopped.");
 				}
 				else
 				{
@@ -739,7 +744,8 @@ public class PlayerViewController extends RelativeLayout implements
 	
 	@Override
 	public void softSwitchAudioTrack(int newAudioIndex) {
-		
+		if (getStreamHandler() == null) return; // We haven't started anything yet.
+
 		if (mOnAudioTrackSwitchingListener != null)
 			mOnAudioTrackSwitchingListener.onAudioSwitchingStart( getStreamHandler().getAltAudioCurrentIndex(), newAudioIndex);
 		
