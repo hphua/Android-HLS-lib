@@ -116,9 +116,12 @@ void HLSPlayer::Reset()
 {
 	LOGTRACE("%s", __func__);
 	AutoLock locker(&lock, __func__);
+
 	LOGI("Entered");
 	mStatus = STOPPED;
 	LogState();
+
+	ClearScreen();
 
 	mDataSource.clear();
 	mAlternateAudioDataSource.clear();
@@ -932,6 +935,28 @@ bool HLSPlayer::Play()
 	SetState(PLAYING);
 
 	return true;
+}
+
+void HLSPlayer::ClearScreen()
+{
+	if (!mWindow) return;
+	ANativeWindow_Buffer windowBuffer;
+	if (ANativeWindow_lock(mWindow, &windowBuffer, NULL) == 0)
+	{
+		LOGV("buffer locked (%d x %d stride=%d, format=%d)", windowBuffer.width, windowBuffer.height, windowBuffer.stride, windowBuffer.format);
+
+		int32_t targetWidth = windowBuffer.stride;
+		int32_t targetHeight = windowBuffer.height;
+
+		// Clear to black.
+		unsigned short *pixels = (unsigned short *)windowBuffer.bits;
+
+		memset(pixels, 0, windowBuffer.stride * windowBuffer.height * 2);
+
+		ANativeWindow_unlockAndPost(mWindow);
+
+		sched_yield();
+	}
 }
 
 
