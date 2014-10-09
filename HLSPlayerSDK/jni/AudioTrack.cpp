@@ -10,6 +10,7 @@
 #include <AudioTrack.h>
 #include "HLSPlayerSDK.h"
 #include "HLSPlayer.h"
+#include <unistd.h>
 
 extern HLSPlayerSDK* gHLSPlayerSDK;
 

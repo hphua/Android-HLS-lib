@@ -596,13 +596,30 @@ public class PlayerViewController extends RelativeLayout implements
 		return mTimeMS;
 	}
 
+	private int targetSeekMS = 0;
+	private boolean targetSeekSet = false;
+	
 	public void seek(final int msec) {
 		HLSSegmentCache.cancelAllCacheEvents();
-		final int curPos = getCurrentPosition();
+		
+		targetSeekSet = true;
+		targetSeekMS = msec;	
+				
 		GetInterfaceThread().getHandler().post( new Runnable() {
 			public void run()
 			{
-				SeekTo(((double)msec) / 1000.0f);
+				boolean tss = targetSeekSet;
+				int tsms = targetSeekMS;
+				if (tss)
+				{
+					targetSeekSet = false;
+					targetSeekMS = 0;
+					SeekTo(((double)tsms) / 1000.0f);
+				}
+				else
+				{
+					Log.i("PlayerViewController.Seek().Runnable()", "No More Seeks Queued");
+				}
 			}
 		});
 	}
@@ -627,6 +644,8 @@ public class PlayerViewController extends RelativeLayout implements
 	public void setVideoUrl(String url) {
 		Log.i("PlayerView.setVideoUrl", url);
 		HLSSegmentCache.cancelAllCacheEvents();
+		targetSeekMS = 0;
+		targetSeekSet = false;
 		StopPlayer();
 		ResetPlayer();
 		reset();

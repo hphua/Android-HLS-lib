@@ -814,16 +814,14 @@ bool HLSPlayer::InitSources()
 		// Set things up w/ OMX.
 		LOGV("Trying OMXRenderer init path!");
 		mUseOMXRenderer = true;
-		NoteHWRendererMode(true, mWidth, mHeight, 4);
-		LOGV("Done");
 	}
 	else
 	{
 		LOGV("Trying normal renderer init path!");
 		mUseOMXRenderer = false;
-		NoteHWRendererMode(false, mWidth, mHeight, 4);		
-		LOGV("Done");
 	}
+	if (GetState() != SEEKING) NoteHWRendererMode(mUseOMXRenderer, mWidth, mHeight, 4);
+	LOGV("Done");
 
 	// We will get called back later to finish initialization of our renderers.
 
@@ -1694,6 +1692,7 @@ void HLSPlayer::Seek(double time)
 		doFormatChange = (!mJAudioTrack->ReadUntilTime(time - segTime));
 	}
 
+
 	if (doFormatChange)
 	{
 		ApplyFormatChange();
@@ -1710,6 +1709,8 @@ void HLSPlayer::Seek(double time)
 
 		NotifyFormatChange(curQuality, newQuality, curAudioTrack, newAudioTrack);
 	}
+
+	NoteHWRendererMode(mUseOMXRenderer, mWidth, mHeight, 4);
 }
 
 bool HLSPlayer::ReadUntilTime(double timeSecs)
