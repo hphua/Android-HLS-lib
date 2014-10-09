@@ -796,6 +796,31 @@ public class PlayerViewController extends RelativeLayout implements
 	public void registerQualitySwitchingChange( OnQualitySwitchingListener listener) {
 		mOnQualitySwitchingListener = listener;		
 	}
+	@Override
+	public void setBufferTime(int newTime) {
+		// TODO Auto-generated method stub
+		
+	}
+	@Override
+	public float getLastDownloadTransferRate() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+	@Override
+	public float getDroppedFramesPerSecond() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+	@Override
+	public float getBufferPercentage() {
+		// TODO Auto-generated method stub
+		return 0;
+	}
+	@Override
+	public int getCurrentQualityIndex() {
+		if (mStreamHandler != null) return mStreamHandler.lastQuality;
+		return 0;
+	}
 
 
 
