@@ -577,8 +577,7 @@ public class PlayerViewController extends RelativeLayout implements
 
 	public void play() {
 		PlayFile();
-		if (mPlayerStateChangeListener != null)
-			mPlayerStateChangeListener.onStateChanged(PlayerStates.PLAY);
+		postPlayerStateChange(PlayerStates.PLAY);
 	}
 
 	public void pause() {
@@ -586,13 +585,9 @@ public class PlayerViewController extends RelativeLayout implements
 			public void run()
 			{
 				TogglePause();
-				if (mPlayerStateChangeListener != null)
-				{
-					int state = GetState();
-					if (state == STATE_PAUSED) mPlayerStateChangeListener.onStateChanged(PlayerStates.PAUSE);
-					else if (state == STATE_PLAYING) mPlayerStateChangeListener.onStateChanged(PlayerStates.PLAY);
-				}
-					
+				int state = GetState();
+				if (state == STATE_PAUSED) postPlayerStateChange(PlayerStates.PAUSE);
+				else if (state == STATE_PLAYING) postPlayerStateChange(PlayerStates.PLAY);
 			}
 		});
 	}
@@ -605,8 +600,7 @@ public class PlayerViewController extends RelativeLayout implements
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		if (mPlayerStateChangeListener != null)
-			mPlayerStateChangeListener.onStateChanged(PlayerStates.END);
+		postPlayerStateChange(PlayerStates.END);
 	}
 
 	public int getCurrentPosition() {
@@ -630,13 +624,11 @@ public class PlayerViewController extends RelativeLayout implements
 				int state = GetState();
 				if (tss && state != STATE_STOPPED)
 				{
-					if (mPlayerStateChangeListener != null)
-						mPlayerStateChangeListener.onStateChanged(PlayerStates.SEEKING);
+					postPlayerStateChange(PlayerStates.SEEKING);
 					targetSeekSet = false;
 					targetSeekMS = 0;
 					SeekTo(((double)tsms) / 1000.0f);
-					if (mPlayerStateChangeListener != null)
-						mPlayerStateChangeListener.onStateChanged(PlayerStates.SEEKED);
+					postPlayerStateChange(PlayerStates.SEEKED);
 				}
 				else if (state == STATE_STOPPED)
 				{
@@ -676,8 +668,7 @@ public class PlayerViewController extends RelativeLayout implements
 		ResetPlayer();
 		reset();
 
-		if (mPlayerStateChangeListener != null)
-			mPlayerStateChangeListener.onStateChanged(PlayerStates.START);
+		postPlayerStateChange(PlayerStates.START);
 
 		// Confirm network is ready to go.
 		if(!isOnline())
@@ -686,14 +677,29 @@ public class PlayerViewController extends RelativeLayout implements
 		}
 		
 
-		if (mPlayerStateChangeListener != null)
-			mPlayerStateChangeListener.onStateChanged(PlayerStates.LOAD);
+		postPlayerStateChange(PlayerStates.LOAD);
 
 		// Init loading.
 		manifestLoader = new URLLoader(this, null);
 		manifestLoader.get(url);
 	}
 
+	private void postPlayerStateChange(final PlayerStates state)
+	{
+		if (mPlayerStateChangeListener != null)
+		{
+			mActivity.runOnUiThread(new Runnable()
+			{
+
+				@Override
+				public void run() {
+					mPlayerStateChangeListener.onStateChanged(state);					
+				}
+				
+			});
+		}
+	}
+	
 	OnPlayerStateChangeListener mPlayerStateChangeListener = null;
 	
 	@Override

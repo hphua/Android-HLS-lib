@@ -133,6 +133,13 @@ OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListene
     {
 		return super.onMenuOpened(featureId, menu);
     }
+    
+    void setVideoUrl(String url)
+    {
+    	
+    	playerView.setVideoUrl(url);
+    	//playerView.setVisibility(View.VISIBLE);
+    }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
@@ -143,7 +150,7 @@ OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListene
         if (id == R.id.kaltura_vod) {
         	lastUrl = "http://www.kaltura.com/p/0/playManifest/entryId/1_0i2t7w0i/format/applehttp";
         	Log.i("VideoPlayer UI", " -----> Play " + lastUrl);
-            playerView.setVideoUrl(lastUrl);
+            setVideoUrl(lastUrl);
         	//playerView.setVideoUrl("http://kalturavod-vh.akamaihd.net/i/p/1281471/sp/128147100/serveFlavor/entryId/1_0i2t7w0i/v/1/flavorId/1_rncam6d3/index_0_av.m3u8");
         	//playerView.play();
         	return true;
@@ -152,35 +159,35 @@ OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListene
         {
         	lastUrl = "http://abclive.abcnews.com/i/abc_live4@136330/master.m3u8";
         	Log.i("VideoPlayer UI", " -----> Play " + lastUrl);
-            playerView.setVideoUrl(lastUrl);
+            setVideoUrl(lastUrl);
         	return true;
         }
         else if (id == R.id.folgers)
         {
         	lastUrl = "http://cdnbakmi.kaltura.com/p/243342/sp/24334200/playManifest/entryId/0_uka1msg4/flavorIds/1_vqhfu6uy,1_80sohj7p/format/applehttp/protocol/http/a.m3u8";
         	Log.i("VideoPlayer UI", " -----> Play " + lastUrl);
-            playerView.setVideoUrl(lastUrl);
+            setVideoUrl(lastUrl);
         	return true;
         }
         else if (id == R.id.vod_alt_audio)
         {
         	lastUrl = "http://pa-www.kaltura.com/content/shared/erank/multi_audio.m3u8";
         	Log.i("VideoPlayer UI", " -----> Play " + lastUrl);
-            playerView.setVideoUrl(lastUrl);
+            setVideoUrl(lastUrl);
         	return true;
         }
         else if (id == R.id.bipbop)
         {
         	lastUrl = "http://devimages.apple.com/iphone/samples/bipbop/bipbopall.m3u8";
         	Log.i("VideoPlayer UI", " -----> Play " + lastUrl);
-            playerView.setVideoUrl(lastUrl);
+            setVideoUrl(lastUrl);
         	return true;
         }
         else if (id == R.id.aes_vod)
         {
         	lastUrl = "http://live.cdn.antel.net.uy/test/hls/teststream1.m3u8";
         	Log.i("VideoPlayer UI", " -----> Play " + lastUrl);
-            playerView.setVideoUrl(lastUrl);
+            setVideoUrl(lastUrl);
         	return true;
         }
         else if (id == R.id.seekFwd)
@@ -200,7 +207,7 @@ OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListene
         	//playerView.setVideoUrl("https://dl.dropboxusercontent.com/u/41430608/TestStream/index_500_av-p.m3u8");
         	lastUrl = "http://www.djing.com/tv/live.m3u8";
         	Log.i("VideoPlayer UI", " -----> Play " + lastUrl);
-        	playerView.setVideoUrl(lastUrl);
+        	setVideoUrl(lastUrl);
         	return true;
         }
         else if (id == R.id.play_pause)
@@ -250,7 +257,7 @@ OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListene
 						// get user input and set it to result
 						lastUrl = input.getText().toString();
 						Log.i("VideoPlayer UI", " -----> Play (from input dialog) " + lastUrl);
-						playerView.setVideoUrl(lastUrl);
+						setVideoUrl(lastUrl);
 					}
 				})
 				.setNegativeButton("Cancel",
@@ -350,6 +357,12 @@ OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListene
 	public boolean onStateChanged(PlayerStates state) {
 		Log.i("VideoPlayer.onStateChanged", "Player State changed to " + state.toString());
 
+		
+		if (state == PlayerStates.END)
+			playerView.setVisibility(View.INVISIBLE);
+		else if (state == PlayerStates.PLAY)
+			playerView.setVisibility(View.VISIBLE);
+		
 		return true;
 	}
 }
