@@ -579,7 +579,12 @@ public class PlayerViewController extends RelativeLayout implements
 	}
 
 	public void pause() {
-		TogglePause();
+		GetInterfaceThread().getHandler().post(new Runnable() {
+			public void run()
+			{
+				TogglePause();
+			}
+		});
 	}
 
 	public void stop() {
