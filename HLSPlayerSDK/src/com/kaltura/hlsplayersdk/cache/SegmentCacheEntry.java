@@ -77,18 +77,14 @@ public class SegmentCacheEntry implements Callback {
 	
 	public void notifySegmentCached()
 	{
-		if (mSegmentCachedListener != null)
+		if (mSegmentCachedListener != null && mCallbackHandler != null)
 		{
-			if (mCallbackHandler != null)
-			{
-				mCallbackHandler.post(new Runnable() {
-					public void run()
-					{
-						mSegmentCachedListener.onSegmentCompleted(uri);
-					}
-				});
-					
-			}
+			mCallbackHandler.post(new Runnable() {
+				public void run()
+				{
+					mSegmentCachedListener.onSegmentCompleted(uri);
+				}
+			});
 		}
 	}
 	

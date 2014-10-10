@@ -413,6 +413,12 @@ int64_t AudioTrack::GetTimeStamp()
 	LOGTRACE("%s", __func__);
 	JNIEnv* env;
 	if (!gHLSPlayerSDK->GetEnv(&env)) return 0;
+	if(!mTrack)
+	{
+		LOGE("No track! aborting...");
+		return mTimeStampOffset;
+	}
+
 	double frames = env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mGetPlaybackHeadPosition);
 	double secs = frames / (double)mSampleRate;
 	LOGTIMING("TIMESTAMP: secs = %f | mTimeStampOffset = %f", secs, mTimeStampOffset);
@@ -636,6 +642,12 @@ int AudioTrack::getBufferSize()
 	LOGTRACE("%s", __func__);
 	JNIEnv* env;
 	if (!gHLSPlayerSDK->GetEnv(&env)) return 0;
+
+	if(!mTrack)
+	{
+		LOGE("No track! aborting...");
+		return 0;
+	}
 
 	long long frames = env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mGetPlaybackHeadPosition);
 
