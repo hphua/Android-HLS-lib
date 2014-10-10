@@ -262,7 +262,7 @@ void HLSPlayer::SetSurface(JNIEnv* env, jobject surface)
 
 	if(!mOMXRenderer.get())
 	{
-		LOGI("Initializing SW renderer path.");
+		LOGI("Initializing SW renderer path %dx%d.", mWidth, mHeight);
 
 		::ANativeWindow *window = ANativeWindow_fromSurface(env, mSurface);
 		if(!window)
@@ -1272,6 +1272,119 @@ static void convert_64x32_to_NV12(const uint8_t *src, uint8_t *dstPixels, const 
 #undef TILE_GROUP_SIZE_BYTES
 }
 
+struct I420ConverterFuncMap
+{
+ 		/*
+	     * getDecoderOutputFormat
+	     * Returns the color format (OMX_COLOR_FORMATTYPE) of the decoder output.
+	     * If it is I420 (OMX_COLOR_FormatYUV420Planar), no conversion is needed,
+	     * and convertDecoderOutputToI420() can be a no-op.
+	     */
+	    int (*getDecoderOutputFormat)();
+	
+	    /*
+	     * convertDecoderOutputToI420
+	     * @Desc     Converts from the decoder output format to I420 format.
+	     * @note     Caller (e.g. VideoEditor) owns the buffers
+	     * @param    decoderBits   (IN) Pointer to the buffer contains decoder output
+	     * @param    decoderWidth  (IN) Buffer width, as reported by the decoder
+	     *                              metadata (kKeyWidth)
+	     * @param    decoderHeight (IN) Buffer height, as reported by the decoder
+	     *                              metadata (kKeyHeight)
+	     * @param    decoderRect   (IN) The rectangle of the actual frame, as
+	     *                              reported by decoder metadata (kKeyCropRect)
+	     * @param    dstBits      (OUT) Pointer to the output I420 buffer
+	     * @return   -1 Any error
+	     * @return   0  No Error
+	     */
+	    int (*convertDecoderOutputToI420)(
+	        void* decoderBits, int decoderWidth, int decoderHeight,
+	        ARect decoderRect, void* dstBits);
+	
+	    /*
+	     * getEncoderIntputFormat
+	     * Returns the color format (OMX_COLOR_FORMATTYPE) of the encoder input.
+	     * If it is I420 (OMX_COLOR_FormatYUV420Planar), no conversion is needed,
+	     * and convertI420ToEncoderInput() and getEncoderInputBufferInfo() can
+	     * be no-ops.
+	     */
+	    int (*getEncoderInputFormat)();
+	
+	    /* convertI420ToEncoderInput
+	     * @Desc     This function converts from I420 to the encoder input format
+	     * @note     Caller (e.g. VideoEditor) owns the buffers
+	     * @param    srcBits       (IN) Pointer to the input I420 buffer
+	     * @param    srcWidth      (IN) Width of the I420 frame
+	     * @param    srcHeight     (IN) Height of the I420 frame
+	     * @param    encoderWidth  (IN) Encoder buffer width, as calculated by
+	     *                              getEncoderBufferInfo()
+	     * @param    encoderHeight (IN) Encoder buffer height, as calculated by
+	     *                              getEncoderBufferInfo()
+	     * @param    encoderRect   (IN) Rect coordinates of the actual frame inside
+	     *                              the encoder buffer, as calculated by
+	     *                              getEncoderBufferInfo().
+	     * @param    encoderBits  (OUT) Pointer to the output buffer. The size of
+	     *                              this buffer is calculated by
+	     *                              getEncoderBufferInfo()
+	     * @return   -1 Any error
+	     * @return   0  No Error
+	     */
+	    int (*convertI420ToEncoderInput)(
+	        void* srcBits, int srcWidth, int srcHeight,
+	        int encoderWidth, int encoderHeight, ARect encoderRect,
+	        void* encoderBits);
+	
+	    /* getEncoderInputBufferInfo
+	     * @Desc     This function returns metadata for the encoder input buffer
+	     *           based on the actual I420 frame width and height.
+	     * @note     This API should be be used to obtain the necessary information
+	     *           before calling convertI420ToEncoderInput().
+	     *           VideoEditor knows only the width and height of the I420 buffer,
+	     *           but it also needs know the width, height, and size of the
+	     *           encoder input buffer. The encoder input buffer width and height
+	     *           are used to set the metadata for the encoder.
+	     * @param    srcWidth      (IN) Width of the I420 frame
+	     * @param    srcHeight     (IN) Height of the I420 frame
+	     * @param    encoderWidth  (OUT) Encoder buffer width needed
+	     * @param    encoderHeight (OUT) Encoder buffer height needed
+	     * @param    encoderRect   (OUT) Rect coordinates of the actual frame inside
+	     *                               the encoder buffer
+	     * @param    encoderBufferSize  (OUT) The size of the buffer that need to be
+	     *                              allocated by the caller before invoking
+	     *                              convertI420ToEncoderInput().
+	     * @return   -1 Any error
+	     * @return   0  No Error
+	     */
+	    int (*getEncoderInputBufferInfo)(
+	        int srcWidth, int srcHeight,
+	        int* encoderWidth, int* encoderHeight,
+	        ARect* encoderRect, int* encoderBufferSize);
+};
+
+I420ConverterFuncMap *gICFM = NULL;
+
+bool checkI420Converter()
+{
+	if(gICFM)
+		return true;
+
+    // Find the entry point
+    void (*getI420ColorConverter)(I420ConverterFuncMap *converter) =
+        (void (*)(I420ConverterFuncMap*)) searchSymbol("getI420ColorConverter");
+    
+    if (getI420ColorConverter == NULL) {
+        LOGW("I420ColorConverter: cannot load getI420ColorConverter");
+        return false;
+    }
+
+    // Fill the function pointers.
+    gICFM = new I420ConverterFuncMap();
+    getI420ColorConverter(gICFM);
+
+    LOGI("I420ColorConverter: libI420colorconvert.so loaded");
+    return true;
+}
+
 bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 {
 	LOGTRACE("%s", __func__);
@@ -1324,20 +1437,32 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 	int stride = -1;
 	if(!buffer->meta_data()->findInt32(kKeyStride, &stride))
 	{
-		LOGV("Trying source stride");
+		LOGV("Trying source stride fallback");
 		if(!vidFormat->findInt32(kKeyStride, &stride))
 		{
-			LOGV("Got no source");
+			LOGV("Got no source stride");
 		}
 	}
-
-	int x = -1;
-	buffer->meta_data()->findInt32(kKeyDisplayWidth, &x);
-	LOGV("dwidth = %d", x);
 
 	if(stride != -1)
 	{
 		LOGV("Got stride %d", stride);
+	}
+
+	int x = -1;
+	buffer->meta_data()->findInt32(kKeyDisplayWidth, &x);
+	if(x != -1)
+	{
+		LOGV("got dwidth = %d", x);
+	}
+
+	int sliceHeight = -1;
+	if(!buffer->meta_data()->findInt32(kKeySliceHeight, &sliceHeight))
+	{
+		if(!vidFormat->findInt32(kKeySliceHeight, &sliceHeight))	
+		{
+			LOGV2("Failed to get vidFormat slice height.");
+		}
 	}
 
 	if(!vidFormat->findRect(kKeyCropRect, &vbCropLeft, &vbCropTop, &vbCropRight, &vbCropBottom))
@@ -1352,12 +1477,20 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 	}
 	LOGV("vbw=%d vbh=%d vbcl=%d vbct=%d vbcr=%d vbcb=%d", videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom);
 
+	if(sliceHeight != -1)
+	{
+		LOGV("Setting buffer slice height %d", sliceHeight);
+		videoBufferHeight = sliceHeight;
+	}
+	
 	int colf = 0, internalColf = 0;
 	bool res = vidFormat->findInt32(kKeyColorFormat, &colf);
 
 	// We need to unswizzle certain formats for maximum proper behavior.
 	if(colf == QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka)
 		internalColf = OMX_COLOR_FormatYUV420SemiPlanar;
+	else if(colf == OMX_QCOM_COLOR_FormatYUV420PackedSemiPlanar32m4ka)
+		internalColf = OMX_QCOM_COLOR_FormatYVU420SemiPlanar;
 	else
 		internalColf = colf;
 
@@ -1379,6 +1512,16 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 		ANativeWindow_Buffer windowBuffer;
 		if (ANativeWindow_lock(mWindow, &windowBuffer, NULL) == 0)
 		{
+			// Sanity check on relative dimensions.
+			if(windowBuffer.height < videoBufferHeight)
+			{
+				LOGE("Aborting conversion; window too short for video!");
+				ANativeWindow_unlockAndPost(mWindow);
+				sched_yield();
+				return true;
+			}
+
+
 			LOGV("buffer locked (%d x %d stride=%d, format=%d)", windowBuffer.width, windowBuffer.height, windowBuffer.stride, windowBuffer.format);
 
 			int32_t targetWidth = windowBuffer.stride;
@@ -1415,10 +1558,47 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 #endif
 
 			// If it's a packed format round the size appropriately.
-			if(colf == QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka)
+			if(checkI420Converter())
+			{
+				// Do we need to convert?
+				unsigned char *tmpBuff = NULL;
+				if(gICFM->getDecoderOutputFormat() != OMX_COLOR_FormatYUV420Planar)
+				{
+					LOGV("Alloc'ing tmp buffer due to decoder format %x.", gICFM->getDecoderOutputFormat());
+					tmpBuff = (unsigned char*)malloc(videoBufferWidth*videoBufferHeight*3);
+
+					LOGV("Converting to tmp buffer due to decoder format %x with func=%p videoBits=%p tmpBuff=%p.", 
+						gICFM->getDecoderOutputFormat(), (void*)gICFM->convertDecoderOutputToI420, videoBits, tmpBuff);
+
+					ARect crop = { vbCropLeft, vbCropTop, vbCropRight, vbCropBottom };
+					int res = gICFM->convertDecoderOutputToI420(videoBits, videoBufferWidth, videoBufferHeight, crop, tmpBuff);
+					if(res != 0)
+					{
+						LOGE("Failed internal conversion!");
+					}
+				}
+				else
+				{
+					tmpBuff = videoBits;
+				}
+
+				LOGV("Doing YUV420 conversion %dx%d %p %d %p %d",videoBufferWidth, videoBufferHeight, 
+					tmpBuff, 0, 
+					pixels, windowBuffer.stride * 2);
+				lcc.convertYUV420Planar(videoBufferWidth, videoBufferHeight, 
+					tmpBuff, 0, 
+					pixels, windowBuffer.stride * 2);
+
+				if(gICFM->getDecoderOutputFormat() != OMX_COLOR_FormatYUV420Planar)
+				{
+					LOGV("Freeing tmp buffer due to format %x.", gICFM->getDecoderOutputFormat());
+					free(tmpBuff);
+				}
+			}
+			else if(colf == QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka)
 			{
 				// Special case for QCOM tiled format as the shipped decoders seem busted.
-				unsigned char *tmpBuff = (unsigned char*)malloc(1024*1024*2);
+				unsigned char *tmpBuff = (unsigned char*)malloc(videoBufferWidth*videoBufferHeight*3);
 				convert_64x32_to_NV12(videoBits, tmpBuff, videoBufferWidth, videoBufferWidth, videoBufferHeight);
 
 				int a = vbCropLeft;
@@ -1429,6 +1609,23 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 					       pixels,  windowBuffer.stride, windowBuffer.height,  0, 0, c-a, d-b);
 
 				free(tmpBuff);
+			}
+			else if(colf == OMX_QCOM_COLOR_FormatYUV420PackedSemiPlanar32m4ka)
+			{
+#define ALIGN(x,multiple)    (((x)+(multiple-1))&~(multiple-1))
+				int a = vbCropLeft;
+				int b = vbCropTop;
+				int c = vbCropRight;
+				int d = vbCropBottom;
+
+				// Bump size to multiple of 32.
+				LOGV("Rounding up to %dx%d", ALIGN(videoBufferWidth, 32), ALIGN(videoBufferHeight, 32));
+				/*if(cc.isValid())
+					cc.convert(videoBits, ALIGN(videoBufferWidth, 32), ALIGN(videoBufferHeight, 32), a, b, c, d,
+					       pixels,  windowBuffer.stride, windowBuffer.height, a, b, c, d);
+				else if(lcc.isValid()) */
+					lcc.convertQCOMYUV420SemiPlanar(ALIGN(videoBufferWidth, 32), ALIGN(videoBufferHeight, 32), videoBits, 0, pixels, windowBuffer.stride * 2);
+#undef ALIGN
 			}
 			else if(colf == OMX_COLOR_Format16bitRGB565)
 			{
@@ -1462,11 +1659,19 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 					LOGE("Failed to copy 16 bit RGB buffer.");
 				}
 			}
+			/*else if(colf == OMX_COLOR_FormatYUV420Planar)
+			{
+				lcc.convert(videoBufferWidth, videoBufferHeight, videoBits, 0, pixels, windowBuffer.stride * 2);
+			}
+			else if(colf == OMX_COLOR_FormatYUV420SemiPlanar)
+			{
+				lcc.convert(videoBufferWidth, videoBufferHeight, videoBits, 0, pixels, windowBuffer.stride * 2);
+			}*/
 			else if(cc.isValid())
 			{
 				// Use the system converter.
-				cc.convert(videoBits, videoBufferWidth, videoBufferHeight, 0, 0, videoBufferWidth, videoBufferHeight,
-						pixels, windowBuffer.stride, windowBuffer.height, 0, 0, videoBufferWidth, videoBufferHeight);
+				cc.convert(videoBits, videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom,
+						pixels, windowBuffer.stride, windowBuffer.height, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom);
 			}
 			else if(lcc.isValid())
 			{

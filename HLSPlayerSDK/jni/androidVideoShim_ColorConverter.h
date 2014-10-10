@@ -32,7 +32,7 @@ struct ColorConverter_Local {
             const void *srcBits, size_t srcSkip,
             void *dstBits, size_t dstSkip);
 
-private:
+//private:
     OMX_COLOR_FORMATTYPE mSrcFormat, mDstFormat;
     uint8_t *mClip;
 
