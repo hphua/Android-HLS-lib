@@ -95,8 +95,7 @@ public class SubTitleSegment {
 		if (lines.length < 1 || lines[0].indexOf("WEBVTT") == -1)
 		{
 			Log.i("SubTitleParser.parse", "Not a valid WEBVTT file " + _url);
-			if (this.mOnParseCompleteListener != null)
-				mOnParseCompleteListener.onSubtitleParserComplete(this);
+			postSubtitleParseComplete(this);
 			return;
 		}
 		
@@ -165,8 +164,7 @@ public class SubTitleSegment {
 		
 		_isLoaded = true;
 		
-		if (this.mOnParseCompleteListener != null)
-			mOnParseCompleteListener.onSubtitleParserComplete(this);
+		postSubtitleParseComplete(this);
 	}
 	
 	public static double parseTimeStamp(String input)
@@ -208,5 +206,11 @@ public class SubTitleSegment {
 		mOnParseCompleteListener = listener;
 	}
 	private OnSubtitleParseCompleteListener mOnParseCompleteListener;
+	
+	public void postSubtitleParseComplete(final SubTitleSegment parser)
+	{
+		if (mOnParseCompleteListener != null) mOnParseCompleteListener.onSubtitleParserComplete(parser);
+	}
+	
 
 }

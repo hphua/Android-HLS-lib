@@ -316,8 +316,7 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 			timeAccum += subtitles.get(m).segmentTimeWindowDuration;
 		}
 		
-		if (manifestLoaders.size() == 0 && this.mOnParseCompleteListener != null)
-			mOnParseCompleteListener.onParserComplete(this);
+		if (manifestLoaders.size() == 0) postParseComplete(this);
 			
 	}
 	
@@ -402,7 +401,7 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 		{
 			
 		}
-		if (mReloadEventListener != null) mReloadEventListener.onReloadFailed(this);
+		postReloadFailed(this);
 	}
 
 	@Override
@@ -436,7 +435,7 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 	{
 		if (parser == this && mReloadEventListener != null) // We're reloading
 		{
-			mReloadEventListener.onReloadComplete(this);
+			postReloadComplete(this);
 		}
 		else
 		{
@@ -460,7 +459,7 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 		if (manifestParsers.size() == 0 && manifestLoaders.size() == 0)
 		{
 			verifyManifestItemIntegrity();
-			if (mOnParseCompleteListener != null) mOnParseCompleteListener.onParserComplete(this);
+			postParseComplete(this);
 		}
 	}
 
@@ -491,6 +490,15 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 	{
 		mReloadEventListener = listener;
 	}
+	public void postReloadComplete(ManifestParser parser)
+	{
+		if (mReloadEventListener != null) mReloadEventListener.onReloadComplete(parser);
+	}
+	
+	public void postReloadFailed(ManifestParser parser)
+	{
+		if (mReloadEventListener != null) mReloadEventListener.onReloadFailed(parser);
+	}
 	
 	// Event Listeners
 	public void setOnParseCompleteListener(OnParseCompleteListener listener)
@@ -498,5 +506,9 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 		mOnParseCompleteListener = listener;
 	}
 	private OnParseCompleteListener mOnParseCompleteListener;
+	public void postParseComplete(ManifestParser parser)
+	{
+		if (mOnParseCompleteListener != null) mOnParseCompleteListener.onParserComplete(parser);
+	}
 
 }
