@@ -20,6 +20,7 @@
 #include "androidVideoShim_ColorConverter.h"
 #include "HLSPlayerSDK.h"
 
+
 extern HLSPlayerSDK* gHLSPlayerSDK;
 
 using namespace android_video_shim;
@@ -273,6 +274,10 @@ void HLSPlayer::SetSurface(JNIEnv* env, jobject surface)
 
 		SetNativeWindow(window);
 		int32_t res = ANativeWindow_setBuffersGeometry(mWindow, mWidth, mHeight, WINDOW_FORMAT_RGB_565);
+		if(res != OK)
+		{
+			LOGE("ANativeWindow_setBuffersGeometry returned %d", res);
+		}
 	}
 }
 
@@ -994,7 +999,7 @@ int HLSPlayer::Update()
 	if (GetState() == SEEKING)
 	{
 		int segCount = ((HLSDataSource*) mDataSource.get())->getPreloadedSegmentCount();
-		LOGI("Segment Count %d", segCount);
+		LOGI("Segment Count %d, seeking...", segCount);
 		if (segCount < 1)
 		{
 			return 0; // keep going!
@@ -1008,9 +1013,8 @@ int HLSPlayer::Update()
 
 	if (mDataSource != NULL)
 	{
-
 		int segCount = ((HLSDataSource*) mDataSource.get())->getPreloadedSegmentCount();
-		LOGI("Segment Count %d", segCount);
+		LOGI("Segment Count %d, checking buffers...", segCount);
 		if (segCount < SEGMENTS_TO_BUFFER) // (current segment + 2)
 		{
 			if (mDataSourceCache.size() > 0)
@@ -1023,6 +1027,7 @@ int HLSPlayer::Update()
 					++cur;
 				}
 			}
+
 			if (segCount < SEGMENTS_TO_BUFFER)
 			{
 				LOGI("**** Requesting next segment...");
@@ -1173,6 +1178,100 @@ int HLSPlayer::Update()
     return rval; // keep going!
 }
 
+
+// Utility code to descramble QCOM tiled formats.
+static size_t calculate64x32TileIndex(const size_t tileX, const size_t tileY, const size_t width, const size_t height)
+{
+    size_t index = tileX + (tileY & ~1) * width;
+
+    if (tileY & 1)
+        index += (tileX & ~3) + 2;
+    else if (!((tileY == (height - 1)) && ((height & 1) != 0)))
+        index += (tileX + 2) & ~3;
+
+	return index;
+}
+
+static void convert_64x32_to_NV12(const uint8_t *src, uint8_t *dstPixels, const int pixelWidth, const int pitchBytes, const int pixelHeight)
+{
+#define TILE_W_PIXELS 64
+#define TILE_H_PIXELS 32
+#define TILE_SIZE_BYTES (TILE_W_PIXELS * TILE_H_PIXELS)
+#define TILE_GROUP_SIZE_BYTES (4 * TILE_SIZE_BYTES)
+
+    const int tile_w_count = (pixelWidth - 1) / TILE_W_PIXELS + 1;
+    const int tile_w_count_aligned = (tile_w_count + 1) & ~1;
+
+    const int luma_tile_h_count = (pixelHeight - 1) / TILE_H_PIXELS + 1;
+    const int chroma_tile_h_count = (pixelHeight / 2 - 1) / TILE_H_PIXELS + 1;
+
+    int luma_size = tile_w_count_aligned * luma_tile_h_count * TILE_SIZE_BYTES;
+    if((luma_size % TILE_GROUP_SIZE_BYTES) != 0)
+        luma_size = (((luma_size - 1) / TILE_GROUP_SIZE_BYTES) + 1) * TILE_GROUP_SIZE_BYTES;
+
+    int curHeight = pixelHeight;
+    for(int y = 0; y < luma_tile_h_count; y++) 
+    {
+        int curWidth = pixelWidth;
+        for(int x = 0; x < tile_w_count; x++)
+        {
+            // Determine pointer of chroma data for this tile.
+            const uint8_t *sourceChromaBits = src + luma_size;
+            sourceChromaBits += calculate64x32TileIndex(x, y/2, tile_w_count_aligned, chroma_tile_h_count) * TILE_SIZE_BYTES;
+            if (y & 1)
+                sourceChromaBits += TILE_SIZE_BYTES/2;
+
+        	// Determine pointer of luma data for this tile.
+            const uint8_t *sourceLumaBits = src;
+            sourceLumaBits += calculate64x32TileIndex(x, y,     tile_w_count_aligned, luma_tile_h_count) * TILE_SIZE_BYTES;
+
+            // Output offset for luma data.
+            int lumaOffset = y * TILE_H_PIXELS * pitchBytes + x * TILE_W_PIXELS;
+
+            // Output offset for chroma data.
+            int chromaOffset = (pixelHeight * pitchBytes) + (lumaOffset / pitchBytes) * pitchBytes/2 + (lumaOffset % pitchBytes);
+
+            // Clamp to right edge of tile.
+            int curTileWidth = curWidth;
+            if (curTileWidth > TILE_W_PIXELS)
+                curTileWidth = TILE_W_PIXELS;
+
+            // Clamp to bottom edge of tile.
+            int curTileHeight = curHeight;
+            if (curTileHeight > TILE_H_PIXELS)
+                curTileHeight = TILE_H_PIXELS;
+
+            // We copy luma twice per "row" in following loop, so half our height.
+            curTileHeight /= 2; 
+
+            while (curTileHeight--) 
+            {
+            	// Copy luma pixels
+            	for(int i=0; i<2; i++)
+            	{
+	                memcpy(&dstPixels[lumaOffset], sourceLumaBits, curTileWidth);
+	                sourceLumaBits += TILE_W_PIXELS;
+	                lumaOffset += pitchBytes;            		
+            	}
+
+            	// Copy chroma pixels.
+                memcpy(&dstPixels[chromaOffset], sourceChromaBits, curTileWidth);
+                sourceChromaBits += TILE_W_PIXELS;
+                chromaOffset += pitchBytes;
+            }
+
+            curWidth -= TILE_W_PIXELS;
+        }
+
+        curHeight -= TILE_H_PIXELS;
+    }
+
+#undef TILE_W_PIXELS
+#undef TILE_H_PIXELS
+#undef TILE_SIZE_BYTES
+#undef TILE_GROUP_SIZE_BYTES
+}
+
 bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 {
 	LOGTRACE("%s", __func__);
@@ -1200,7 +1299,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 
 	//RUNDEBUG(buffer->meta_data()->dumpToLog());
 	buffer->meta_data()->dumpToLog();
-	LOGI("Buffer size=%d | range_length=%d", buffer->size(), buffer->range_length());
+	LOGI("Buffer size=%d | range_offset=%d | range_length=%d", buffer->size(), buffer->range_offset(), buffer->range_length());
 
 	// Get the frame's width and height.
 	int videoBufferWidth = 0, videoBufferHeight = 0, vbCropTop = 0, vbCropLeft = 0, vbCropBottom = 0, vbCropRight = 0;
@@ -1210,16 +1309,15 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 	if(mVideoSource23.get())
 		vidFormat = mVideoSource23->getFormat();
 
-	if(!vidFormat->findInt32(kKeyWidth, &videoBufferWidth) || !buffer->meta_data()->findInt32(kKeyHeight, &videoBufferHeight))
+	if(!buffer->meta_data()->findInt32(kKeyWidth, &videoBufferWidth) || !buffer->meta_data()->findInt32(kKeyHeight, &videoBufferHeight))
 	{
 		LOGV("Falling back to source dimensions.");
-		if(!buffer->meta_data()->findInt32(kKeyWidth, &videoBufferWidth) || !vidFormat->findInt32(kKeyHeight, &videoBufferHeight))
+		if(!vidFormat->findInt32(kKeyWidth, &videoBufferWidth) || !vidFormat->findInt32(kKeyHeight, &videoBufferHeight))
 		{
 			// I hope we're right!
 			LOGV("Setting best guess width/height %dx%d", mWidth, mHeight);
 			videoBufferWidth = mWidth;
 			videoBufferHeight = mHeight;
-			//return true;
 		}
 	}
 
@@ -1252,28 +1350,28 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 			vbCropRight = videoBufferWidth - 1;
 		}
 	}
-	LOGV2("vbw=%d vbh=%d vbcl=%d vbct=%d vbcr=%d vbcb=%d", videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom);
+	LOGV("vbw=%d vbh=%d vbcl=%d vbct=%d vbcr=%d vbcb=%d", videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom);
 
-	int colf = 0;
+	int colf = 0, internalColf = 0;
 	bool res = vidFormat->findInt32(kKeyColorFormat, &colf);
-	LOGV2("Found Frame Color Format: %s %d", res ? "true" : "false", colf);
+
+	// We need to unswizzle certain formats for maximum proper behavior.
+	if(colf == QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka)
+		internalColf = OMX_COLOR_FormatYUV420SemiPlanar;
+	else
+		internalColf = colf;
+
+	LOGV("Found Frame Color Format: %s colf=%x internalColf=%x", res ? "true" : "false", colf, internalColf);
 
 	const char *omxCodecString = "";
 	res = vidFormat->findCString(kKeyDecoderComponent, &omxCodecString);
 	LOGV("Found Frame decoder component: %s %s", res ? "true" : "false", omxCodecString);
 
-	ColorConverter_Local lcc((OMX_COLOR_FORMATTYPE)colf, OMX_COLOR_Format16bitRGB565);
-	LOGV("Local ColorConversion from %x is valid: %s", colf, lcc.isValid() ? "true" : "false" );
+	ColorConverter_Local lcc((OMX_COLOR_FORMATTYPE)internalColf, OMX_COLOR_Format16bitRGB565);
+	LOGV("Local ColorConversion from %x is valid: %s", internalColf, lcc.isValid() ? "true" : "false" );
 
-	ColorConverter cc((OMX_COLOR_FORMATTYPE)colf, OMX_COLOR_Format16bitRGB565); // Should be getting these from the formats, probably
-	LOGV("System ColorConversion from %x is valid: %s", colf, cc.isValid() ? "true" : "false" );
-
-	bool useLocalCC = lcc.isValid();	
-	if (!useLocalCC && !cc.isValid())
-	{
-		LOGE("No valid color conversion found for %d", colf);
-		return false;
-	}
+	ColorConverter cc((OMX_COLOR_FORMATTYPE)internalColf, OMX_COLOR_Format16bitRGB565); // Should be getting these from the formats, probably
+	LOGV("System ColorConversion from %x is valid: %s", internalColf, cc.isValid() ? "true" : "false" );
 
 	int64_t timeUs;
     if (buffer->meta_data()->findInt64(kKeyTime, &timeUs))
@@ -1286,35 +1384,100 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 			int32_t targetWidth = windowBuffer.stride;
 			int32_t targetHeight = windowBuffer.height;
 
-			// Clear to black.
 			unsigned short *pixels = (unsigned short *)windowBuffer.bits;
 
 #ifdef _BLITTEST
+			// Clear to black.
 			memset(pixels, rand(), windowBuffer.stride * windowBuffer.height * 2);
 #endif
 
 			unsigned char *videoBits = (unsigned char*)buffer->data() + buffer->range_offset();
 			LOGI("Saw some source pixels: %x", *(int*)videoBits);
 
-			LOGV("mWidth=%d | mHeight=%d | mCropWidth=%d | mCropHeight=%d | buffer.width=%d | buffer.height=%d videoBits=%p",
-							mWidth, mHeight, mCropWidth, mCropHeight, windowBuffer.width, windowBuffer.height, videoBits);
+			LOGV("mWidth=%d | mHeight=%d | mCropWidth=%d | mCropHeight=%d | buffer.width=%d | buffer.height=%d | buffer.stride=%d | videoBits=%p",
+							mWidth, mHeight, mCropWidth, mCropHeight, windowBuffer.width, windowBuffer.height, windowBuffer.stride, videoBits);
 
-			int32_t offsetx = (windowBuffer.width - videoBufferWidth) / 2;
-			if (offsetx & 1 == 1) ++offsetx;
-			int32_t offsety = (windowBuffer.height - videoBufferHeight) / 2;
+			LOGV("converting source coords, %d, %d, %d, %d, %d, %d", videoBufferWidth, videoBufferHeight, 0, 0, videoBufferWidth, videoBufferHeight);
+			LOGV("converting target coords, %d, %d, %d, %d, %d, %d", targetWidth, targetHeight, 0, 0, videoBufferWidth, videoBufferHeight);
 
-			LOGV("converting source coords, %d, %d, %d, %d, %d, %d", videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom);
-			LOGV("converting target coords, %d, %d, %d, %d, %d, %d", targetWidth, targetHeight, vbCropLeft + offsetx, vbCropTop + offsety, vbCropRight + offsetx, vbCropBottom + offsety);
-			status_t ccres = OK;
+#if 0
+			// Useful logic to vary behavior over time.
+			static int offset = -64;
+			static int frameCount = 0;
+			frameCount++;
+			if(frameCount == 10)
+			{
+				frameCount = 0;
+				offset++;
+			}
 
-#ifndef _BLITTEST
-			if (useLocalCC)
-				lcc.convert(videoBits, videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom,
-						windowBuffer.bits, targetWidth, targetHeight, vbCropLeft + offsetx, vbCropTop + offsety, vbCropRight + offsetx, vbCropBottom + offsety);
-			else
-				cc.convert(videoBits, videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom,
-						windowBuffer.bits, targetWidth, targetHeight, vbCropLeft + offsetx, vbCropTop + offsety, vbCropRight + offsetx, vbCropBottom + offsety);
+			LOGI("offset = %d", offset);
 #endif
+
+			// If it's a packed format round the size appropriately.
+			if(colf == QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka)
+			{
+				// Special case for QCOM tiled format as the shipped decoders seem busted.
+				unsigned char *tmpBuff = (unsigned char*)malloc(1024*1024*2);
+				convert_64x32_to_NV12(videoBits, tmpBuff, videoBufferWidth, videoBufferWidth, videoBufferHeight);
+
+				int a = vbCropLeft;
+				int b = vbCropTop;
+				int c = vbCropRight;
+				int d = vbCropBottom;
+				cc.convert(tmpBuff, videoBufferWidth,    videoBufferHeight,    a, b, c,   d,
+					       pixels,  windowBuffer.stride, windowBuffer.height,  0, 0, c-a, d-b);
+
+				free(tmpBuff);
+			}
+			else if(colf == OMX_COLOR_Format16bitRGB565)
+			{
+				// Directly copy 16 bit color.
+				size_t bufSize = buffer->range_length() - buffer->range_offset();
+				
+				if(bufSize >= targetWidth * videoBufferWidth * sizeof(short))
+				{
+					LOGV("A bufSize = %d", bufSize);
+					for(int i=0; i<videoBufferHeight; i++)
+					{
+						//memset(pixels + i * targetWidth, rand(), targetWidth * sizeof(short));
+						memcpy(pixels + i * targetWidth, 
+								videoBits + i * targetWidth * sizeof(short), 
+								videoBufferWidth * sizeof(short));
+					}
+				}
+				else if(bufSize == videoBufferWidth * videoBufferHeight * sizeof(short))
+				{
+					LOGV("B bufSize = %d targetWidth=%d videoBufferWidth=%d", bufSize, targetWidth, videoBufferWidth);
+					for(int i=0; i<videoBufferHeight; i++)
+					{
+						//memset(pixels + i * windowBuffer.width, rand(), targetWidth * sizeof(short));
+						memcpy(pixels + i * windowBuffer.width,
+								videoBits + i * videoBufferWidth * sizeof(short), 
+								videoBufferWidth * sizeof(short));
+					}
+				}
+				else
+				{
+					LOGE("Failed to copy 16 bit RGB buffer.");
+				}
+			}
+			else if(cc.isValid())
+			{
+				// Use the system converter.
+				cc.convert(videoBits, videoBufferWidth, videoBufferHeight, 0, 0, videoBufferWidth, videoBufferHeight,
+						pixels, windowBuffer.stride, windowBuffer.height, 0, 0, videoBufferWidth, videoBufferHeight);
+			}
+			else if(lcc.isValid())
+			{
+				// Use our own converter.
+				lcc.convert(videoBufferWidth, videoBufferHeight, videoBits, 0, pixels, windowBuffer.stride * 2);
+			}
+			else
+			{
+				LOGE("No conversion possible.");
+			}
+
 			//if (ccres != OK) LOGE("ColorConversion error: %s (%d)", strerror(-ccres), -ccres);
 
 			ANativeWindow_unlockAndPost(mWindow);
