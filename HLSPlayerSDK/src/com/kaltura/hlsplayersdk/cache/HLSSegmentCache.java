@@ -9,6 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import android.os.Handler;
 import android.util.Log;
 
+import com.squareup.okhttp.ConnectionPool;
 import com.squareup.okhttp.OkHttpClient;
 import com.squareup.okhttp.Request;
 
@@ -19,6 +20,7 @@ public class HLSSegmentCache
 	
 	protected static Map<String, SegmentCacheEntry> segmentCache = null;
 	public static OkHttpClient httpClient = new OkHttpClient();
+	private static ConnectionPool connectionPool = new ConnectionPool(4, 300000);
 	
 	static public SegmentCacheEntry populateCache(final String segmentUri)
 	{
@@ -86,6 +88,7 @@ public class HLSSegmentCache
 		{
 			Log.i("HLS Cache", "Initializing concurrent hash map.");
 			segmentCache = new ConcurrentHashMap<String, SegmentCacheEntry>();
+			httpClient.setConnectionPool(connectionPool);
 		}
 	}
 	
