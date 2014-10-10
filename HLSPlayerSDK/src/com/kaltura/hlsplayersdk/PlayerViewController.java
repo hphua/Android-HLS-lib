@@ -2,6 +2,7 @@ package com.kaltura.hlsplayersdk;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.Vector;
 
 import android.app.Activity;
@@ -31,6 +32,7 @@ import com.kaltura.hlsplayersdk.subtitles.SubtitleHandler;
 import com.kaltura.hlsplayersdk.subtitles.TextTrackCue;
 import com.kaltura.hlsplayersdk.types.PlayerStates;
 import com.kaltura.playersdk.AlternateAudioTracksInterface;
+import com.kaltura.playersdk.QualityTrack;
 import com.kaltura.playersdk.QualityTracksInterface;
 import com.kaltura.playersdk.TextTracksInterface;
 import com.kaltura.playersdk.VideoPlayerInterface;
@@ -223,10 +225,7 @@ public class PlayerViewController extends RelativeLayout implements
 	{
 		if (currentController != null)
 		{
-			if (currentController.mOnAudioTrackSwitchingListener != null)
-			{
-				currentController.mOnAudioTrackSwitchingListener.onAudioSwitchingEnd(audioTrack);
-			}
+			currentController.postAudioTrackSwitchingEnd(audioTrack);
 				
 		}
 	}
@@ -238,11 +237,7 @@ public class PlayerViewController extends RelativeLayout implements
 	{
 		if (currentController != null)
 		{
-			if (currentController.mOnQualitySwitchingListener != null)
-			{
-				currentController.mOnQualitySwitchingListener.onQualitySwitchingEnd(qualityLevel);
-			}
-				
+			currentController.postQualityTrackSwitchingEnd(qualityLevel);
 		}
 	}
 	
@@ -286,8 +281,9 @@ public class PlayerViewController extends RelativeLayout implements
 	private SubtitleHandler mSubtitleHandler = null;
 
 
-	public OnPlayheadUpdateListener mPlayheadUpdateListener;
-	public OnPreparedListener mPreparedListener;
+	private OnPlayheadUpdateListener mPlayheadUpdateListener = null;
+	private OnPreparedListener mPreparedListener = null;
+	private OnProgressListener mOnProgressListener = null;
 
 	// Video state.
 	public int mVideoWidth = 640, mVideoHeight = 480;
@@ -309,8 +305,7 @@ public class PlayerViewController extends RelativeLayout implements
 						Log.i("videoThread", "Ran into a discontinuity (INFO_DISCONTINUITY)");
 						HandleFormatChange();
 					}
-					else if (mPlayheadUpdateListener != null)
-						mPlayheadUpdateListener.onPlayheadUpdated(mTimeMS);
+					else postPlayheadUpdate(mTimeMS);
 
 					// SUBTITLES!
 					
@@ -323,7 +318,7 @@ public class PlayerViewController extends RelativeLayout implements
 							for (int i = 0; i < cues.size(); ++i)
 							{
 								TextTrackCue cue = cues.get(i);
-								mSubtitleTextListener.onSubtitleText(cue.startTime, cue.endTime - cue.startTime, cue.buffer);
+								postTextTrackText(cue.startTime, cue.endTime - cue.startTime, cue.buffer);
 							}
 						}
 					}
@@ -424,40 +419,29 @@ public class PlayerViewController extends RelativeLayout implements
 		mSubtitleHandler = new SubtitleHandler(parser);
 		if (mSubtitleHandler.hasSubtitles())
 		{
-			if (mOnTextTracksListListener != null)
-				mOnTextTracksListListener.OnTextTracksList(mSubtitleHandler.getLanguageList(), mSubtitleHandler.getDefaultLanguageIndex());
+			postTextTracksList(mSubtitleHandler.getLanguageList(), mSubtitleHandler.getDefaultLanguageIndex());
 			
 			mSubtitleLanguage = mSubtitleHandler.getDefaultLanguageIndex();
 			mSubtitleHandler.precacheSegmentAtTime(0, mSubtitleLanguage );
-			if (mOnTextTrackChangeListener != null)
-				mOnTextTrackChangeListener.onOnTextTrackChanged(mSubtitleLanguage);
-			
-					
+			postTextTrackChanged(mSubtitleLanguage);
 		}
 		else
 		{
 			mSubtitleHandler = null;
-			if (mOnTextTracksListListener != null)
-				mOnTextTracksListListener.OnTextTracksList(new ArrayList<String>(), -1);
+			postTextTracksList(new ArrayList<String>(), -1);
 			
 		}
 		
 		if (mStreamHandler.hasAltAudio())
 		{
-			if (mOnAudioTracksListListener != null)
-				mOnAudioTracksListListener.OnAudioTracksList(mStreamHandler.getAltAudioLanguageList(), mStreamHandler.getAltAudioDefaultIndex());
+			postAudioTracksList(mStreamHandler.getAltAudioLanguageList(), mStreamHandler.getAltAudioDefaultIndex());
 		}
 		else
 		{
-			if (mOnAudioTracksListListener != null)
-				mOnAudioTracksListListener.OnAudioTracksList(new ArrayList<String>(), -1);
+			postAudioTracksList(new ArrayList<String>(), -1);
 		}
 		
-		if (mOnQualityTracksListListener != null)
-		{
-			mOnQualityTracksListListener.OnQualityTracksList(mStreamHandler.getQualityTrackList(), 0);
-		}
-		
+		postQualityTracksList(mStreamHandler.getQualityTrackList(), 0);
 		
 		ManifestSegment seg = getStreamHandler().getFileForTime(0, 0);
 		if (seg.altAudioSegment != null)
@@ -467,11 +451,8 @@ public class PlayerViewController extends RelativeLayout implements
 			// event handler can be called immediately.
 			FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.altAudioSegment.uri, seg.altAudioSegment.altAudioIndex, seg.startTime, seg.cryptoId, seg.altAudioSegment.cryptoId);
 			HLSSegmentCache.precache(seg.uri, seg.cryptoId, this, GetInterfaceThread().getHandler());
-			if (mOnAudioTrackSwitchingListener != null)
-			{
-				mOnAudioTrackSwitchingListener.onAudioSwitchingStart(-1, seg.altAudioSegment.altAudioIndex);
-				mOnAudioTrackSwitchingListener.onAudioSwitchingEnd(seg.altAudioSegment.altAudioIndex);
-			}
+			postAudioTrackSwitchingStart(-1, seg.altAudioSegment.altAudioIndex);
+			postAudioTrackSwitchingEnd(seg.altAudioSegment.altAudioIndex);
 		}
 		else
 		{
@@ -684,6 +665,14 @@ public class PlayerViewController extends RelativeLayout implements
 		manifestLoader.get(url);
 	}
 
+
+	private OnPlayerStateChangeListener mPlayerStateChangeListener = null;
+	
+	@Override
+	public void registerPlayerStateChange(OnPlayerStateChangeListener listener) {
+		mPlayerStateChangeListener = listener;
+	}
+
 	private void postPlayerStateChange(final PlayerStates state)
 	{
 		if (mPlayerStateChangeListener != null)
@@ -700,14 +689,6 @@ public class PlayerViewController extends RelativeLayout implements
 		}
 	}
 	
-	OnPlayerStateChangeListener mPlayerStateChangeListener = null;
-	
-	@Override
-	public void registerPlayerStateChange(OnPlayerStateChangeListener listener) {
-		mPlayerStateChangeListener = listener;
-
-	}
-
 	@Override
 	public void registerReadyToPlay(OnPreparedListener listener) {
 		// TODO Auto-generated method stub
@@ -720,15 +701,47 @@ public class PlayerViewController extends RelativeLayout implements
 
 	}
 
+
+	
 	@Override
 	public void registerPlayheadUpdate(OnPlayheadUpdateListener listener) {
 		mPlayheadUpdateListener = listener;
 	}
+	
+	private void postPlayheadUpdate(final int msec)
+	{
+		if (mPlayheadUpdateListener != null)
+		{
+			mActivity.runOnUiThread(new Runnable()
+			{
+				@Override
+				public void run() {
+					mPlayheadUpdateListener.onPlayheadUpdated(msec);					
+				}
+				
+			});
+		}
+	}
 
+	
 	@Override
 	public void registerProgressUpdate(OnProgressListener listener) {
-		// TODO Auto-generated method stub
+		mOnProgressListener = listener;
 
+	}
+	private void postProgressUpdate(final int progress)
+	{
+		if (mOnProgressListener != null)
+		{
+			mActivity.runOnUiThread(new Runnable()
+			{
+				@Override
+				public void run() {
+					mOnProgressListener.onProgressUpdate(progress);					
+				}
+				
+			});
+		}
 	}
 	
 	//////////////////////////////////////////////////////////
@@ -736,11 +749,24 @@ public class PlayerViewController extends RelativeLayout implements
 	//////////////////////////////////////////////////////////
 	private OnTextTracksListListener mOnTextTracksListListener = null;
 	private OnTextTrackChangeListener mOnTextTrackChangeListener = null;
-	
 	private OnTextTrackTextListener mSubtitleTextListener = null;
+
 	public void registerTextTrackText(OnTextTrackTextListener listener)
 	{
 		mSubtitleTextListener = listener;
+	}
+	private void postTextTrackText(final double startTime, final double length, final String buffer)
+	{
+		if (mSubtitleTextListener != null)
+		{
+			mActivity.runOnUiThread(new Runnable()
+			{
+				@Override
+				public void run() {
+					mSubtitleTextListener.onSubtitleText(startTime, length, buffer);					
+				}
+			});
+		}
 	}
 	
 	@Override
@@ -748,19 +774,45 @@ public class PlayerViewController extends RelativeLayout implements
 		if (mSubtitleHandler != null && newIndex < mSubtitleHandler.getLanguageCount())
 		{
 			mSubtitleLanguage = newIndex;
-			if (mOnTextTrackChangeListener != null)
-				mOnTextTrackChangeListener.onOnTextTrackChanged(mSubtitleLanguage);
+			postTextTrackChanged(mSubtitleLanguage);
 		}
 		
 	}
+
 	@Override
 	public void registerTextTracksList(OnTextTracksListListener listener) {
 		mOnTextTracksListListener = listener;		
 	}
+	private void postTextTracksList(final List<String> list, final int defaultTrackIndex)
+	{
+		if (mOnTextTracksListListener != null)
+		{
+			mActivity.runOnUiThread(new Runnable()
+			{
+				@Override
+				public void run() {
+					mOnTextTracksListListener.OnTextTracksList(list, defaultTrackIndex);					
+				}				
+			});
+		}
+	}
+	
 	@Override
 	public void registerTextTrackChanged(OnTextTrackChangeListener listener) {
 		mOnTextTrackChangeListener = listener;
-		
+	}
+	private void postTextTrackChanged(final int newTrackIndex )
+	{
+		if (mOnTextTrackChangeListener != null)
+		{
+			mActivity.runOnUiThread(new Runnable()
+			{
+				@Override
+				public void run() {
+					mOnTextTrackChangeListener.onOnTextTrackChanged(newTrackIndex);					
+				}				
+			});
+		}
 	}
 	
 	//////////////////////////////////////////////////////////
@@ -777,13 +829,11 @@ public class PlayerViewController extends RelativeLayout implements
 	public void softSwitchAudioTrack(int newAudioIndex) {
 		if (getStreamHandler() == null) return; // We haven't started anything yet.
 
-		if (mOnAudioTrackSwitchingListener != null)
-			mOnAudioTrackSwitchingListener.onAudioSwitchingStart( getStreamHandler().getAltAudioCurrentIndex(), newAudioIndex);
+		postAudioTrackSwitchingStart( getStreamHandler().getAltAudioCurrentIndex(), newAudioIndex);
 		
 		boolean success = getStreamHandler().setAltAudioTrack(newAudioIndex); 
 
-		if (!success && mOnAudioTrackSwitchingListener != null)
-			mOnAudioTrackSwitchingListener.onAudioSwitchingEnd( getStreamHandler().getAltAudioCurrentIndex());
+		postAudioTrackSwitchingEnd( getStreamHandler().getAltAudioCurrentIndex());
 	}
 	
 	private OnAudioTracksListListener mOnAudioTracksListListener = null;
@@ -791,13 +841,54 @@ public class PlayerViewController extends RelativeLayout implements
 	public void registerAudioTracksList(OnAudioTracksListListener listener) {
 		mOnAudioTracksListListener = listener;
 	}
+	private void postAudioTracksList(final  List<String> list, final int defaultTrackIndex  )
+	{
+		if (mOnAudioTracksListListener != null)
+		{
+			mActivity.runOnUiThread(new Runnable()
+			{
+				@Override
+				public void run() {
+					mOnAudioTracksListListener.OnAudioTracksList(list, defaultTrackIndex);					
+				}				
+			});
+		}
+	}
 	
 	private OnAudioTrackSwitchingListener mOnAudioTrackSwitchingListener = null;
 	@Override
 	public void registerAudioSwitchingChange( OnAudioTrackSwitchingListener listener) {
 		mOnAudioTrackSwitchingListener = listener;
-		
 	}
+	
+	private void postAudioTrackSwitchingStart(final  int oldTrackIndex, final int newTrackIndex  )
+	{
+		if (mOnAudioTrackSwitchingListener != null)
+		{
+			mActivity.runOnUiThread(new Runnable()
+			{
+				@Override
+				public void run() {
+					mOnAudioTrackSwitchingListener.onAudioSwitchingStart(oldTrackIndex, newTrackIndex);					
+				}				
+			});
+		}
+	}
+	
+	private void postAudioTrackSwitchingEnd(final int newTrackIndex  )
+	{
+		if (mOnAudioTrackSwitchingListener != null)
+		{
+			mActivity.runOnUiThread(new Runnable()
+			{
+				@Override
+				public void run() {
+					mOnAudioTrackSwitchingListener.onAudioSwitchingEnd(newTrackIndex);					
+				}				
+			});
+		}
+	}
+
 
 	//////////////////////////////////////////////////////////
 	// Quality Change interface
@@ -810,14 +901,12 @@ public class PlayerViewController extends RelativeLayout implements
 			int ql = mStreamHandler.getQualityLevels();
 			if (newIndex >= 0 && newIndex < ql -1)
 			{
-				if (mOnQualitySwitchingListener != null)
-					mOnQualitySwitchingListener.onQualitySwitchingStart(mQualityLevel, newIndex);
+				postQualityTrackSwitchingStart(mQualityLevel, newIndex);
 				mQualityLevel = newIndex;
 			}
 			else
 			{
-				if (mOnQualitySwitchingListener != null)
-					mOnQualitySwitchingListener.onQualitySwitchingEnd(mQualityLevel);
+				postQualityTrackSwitchingEnd(mQualityLevel);
 			}
 		}
 	}
@@ -833,11 +922,55 @@ public class PlayerViewController extends RelativeLayout implements
 		mOnQualityTracksListListener = listener;
 	}
 	
+	private void postQualityTracksList(final  List<QualityTrack> list, final int defaultTrackIndex  )
+	{
+		if (mOnQualityTracksListListener != null)
+		{
+			mActivity.runOnUiThread(new Runnable()
+			{
+				@Override
+				public void run() {
+					mOnQualityTracksListListener.OnQualityTracksList(list, defaultTrackIndex);					
+				}				
+			});
+		}
+	}
+	
+	
 	private OnQualitySwitchingListener mOnQualitySwitchingListener = null;
 	@Override
 	public void registerQualitySwitchingChange( OnQualitySwitchingListener listener) {
 		mOnQualitySwitchingListener = listener;		
 	}
+	
+	private void postQualityTrackSwitchingStart(final  int oldTrackIndex, final int newTrackIndex  )
+	{
+		if (mOnQualitySwitchingListener != null)
+		{
+			mActivity.runOnUiThread(new Runnable()
+			{
+				@Override
+				public void run() {
+					mOnQualitySwitchingListener.onQualitySwitchingStart(oldTrackIndex, newTrackIndex);					
+				}				
+			});
+		}
+	}
+	
+	private void postQualityTrackSwitchingEnd(final int newTrackIndex  )
+	{
+		if (mOnQualitySwitchingListener != null)
+		{
+			mActivity.runOnUiThread(new Runnable()
+			{
+				@Override
+				public void run() {
+					mOnQualitySwitchingListener.onQualitySwitchingEnd(newTrackIndex);					
+				}				
+			});
+		}
+	}
+	
 	@Override
 	public void setBufferTime(int newTime) {
 		// TODO Auto-generated method stub
