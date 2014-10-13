@@ -15,7 +15,7 @@
 #define _DEBUG_E
 #define _DEBUG_W
 #define _DEBUG_I
-//#define _DEBUG_V
+#define _DEBUG_V
 //#define _DEBUG_V2
 //#define _DEBUG_RUN
 //#define _DEBUG_ATS
@@ -31,6 +31,8 @@
 //#define _BLITTEST
 
 //#define _VERBOSE
+
+
 #ifdef _DEBUG_E
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, __func__, __VA_ARGS__)
 #else

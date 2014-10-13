@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2009 The Android Open Source Project
+ * Copyright (c) 2010-2011, Code Aurora Forum
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,22 +14,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-//#define LOG_NDEBUG 0
-#define LOG_TAG "ColorConverter_Local"
-#define CHECK(x) assert(x)
-#include <android/log.h>
 
-#include "androidVideoShim.h"
 #include "androidVideoShim_ColorConverter.h"
 
 namespace android_video_shim {
 
-//static const int OMX_QCOM_COLOR_FormatYVU420SemiPlanar = 0x7FA30C00;
-//static const int QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka = 0x7FA30C03;
 static const size_t NV12TILE_BLOCK_WIDTH = 64;
 static const size_t NV12TILE_BLOCK_HEIGHT = 32;
 static const size_t NV12TILE_BLOCK_SIZE = NV12TILE_BLOCK_WIDTH* NV12TILE_BLOCK_HEIGHT;
 static const size_t NV12TILE_BLOCK_GROUP_SIZE =  NV12TILE_BLOCK_SIZE*4;
+
+#define CHECK_EQ(...)
+#define CHECK(...)
 
 ColorConverter_Local::ColorConverter_Local(
         OMX_COLOR_FORMATTYPE from, OMX_COLOR_FORMATTYPE to)
@@ -36,445 +33,355 @@ ColorConverter_Local::ColorConverter_Local(
       mDstFormat(to),
       mClip(NULL) {
 }
+
 ColorConverter_Local::~ColorConverter_Local() {
     delete[] mClip;
     mClip = NULL;
 }
+
 bool ColorConverter_Local::isValid() const {
     if (mDstFormat != OMX_COLOR_Format16bitRGB565) {
         return false;
     }
+
+    int baseColorFormat, temp1, temp2;
+    //GET_BASE_COLOR_FORMAT(mSrcFormat, baseColorFormat, temp1, temp2);
     switch (mSrcFormat) {
-        case OMX_COLOR_Format16bitRGB565:
         case OMX_COLOR_FormatYUV420Planar:
         case OMX_COLOR_FormatCbYCrY:
         case OMX_QCOM_COLOR_FormatYVU420SemiPlanar:
         case OMX_COLOR_FormatYUV420SemiPlanar:
-        case OMX_TI_COLOR_FormatYUV420PackedSemiPlanar:        
-        case OMX_QCOM_COLOR_FormatYUV420PackedSemiPlanar32m:
         case QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka:
-            return true;
+           return true;
         default:
-            return false;
+           return false;
     }
 }
-ColorConverter_Local::BitmapParams::BitmapParams(
-        void *bits,
+
+void ColorConverter_Local::convert(
         size_t width, size_t height,
-        size_t cropLeft, size_t cropTop,
-        size_t cropRight, size_t cropBottom)
-    : mBits(bits),
-      mWidth(width),
-      mHeight(height),
-      mCropLeft(cropLeft),
-      mCropTop(cropTop),
-      mCropRight(cropRight),
-      mCropBottom(cropBottom) {
-}
-size_t ColorConverter_Local::BitmapParams::cropWidth() const {
-    return mCropRight - mCropLeft + 1;
-}
-size_t ColorConverter_Local::BitmapParams::cropHeight() const {
-    return mCropBottom - mCropTop + 1;
-}
-status_t ColorConverter_Local::convert(
-        const void *srcBits,
-        size_t srcWidth, size_t srcHeight,
-        size_t srcCropLeft, size_t srcCropTop,
-        size_t srcCropRight, size_t srcCropBottom,
-        void *dstBits,
-        size_t dstWidth, size_t dstHeight,
-        size_t dstCropLeft, size_t dstCropTop,
-        size_t dstCropRight, size_t dstCropBottom) {
-    if (mDstFormat != OMX_COLOR_Format16bitRGB565) {
-        return ERROR_UNSUPPORTED;
-    }
+        const void *srcBits, size_t srcSkip,
+        void *dstBits, size_t dstSkip) {
+    CHECK_EQ(mDstFormat, OMX_COLOR_Format16bitRGB565);
+    size_t alignedWidth = ((width + 31) & -32);
 
-	LOGV("source coords, %d, %d, %d, %d, %d, %d", srcWidth, srcHeight, srcCropLeft, srcCropTop, srcCropRight, srcCropBottom);
-	LOGV("dest coords, %d, %d, %d, %d, %d, %d", dstWidth, dstHeight, dstCropLeft, dstCropTop, dstCropRight, dstCropBottom);
-
-    BitmapParams src(
-            const_cast<void *>(srcBits),
-            srcWidth, srcHeight,
-            srcCropLeft, srcCropTop, srcCropRight, srcCropBottom);
- 
-    BitmapParams dst(
-            dstBits,
-            dstWidth, dstHeight,
-            dstCropLeft, dstCropTop, dstCropRight, dstCropBottom);
- 
-    status_t err;
-    switch (mSrcFormat) 
-    {
-        case OMX_COLOR_Format16bitRGB565:
-        {
-            // Copy the cropped region.
-            unsigned short *dstShort = (unsigned short *)dstBits;
-            unsigned short *srcShort = (unsigned short *)srcBits;
-            memcpy(dstShort + dstCropLeft + (dstCropTop)*dstWidth,
-                   srcShort, 
-                   srcWidth*srcHeight*sizeof(short));
-
-            for(int i=0; i<dstHeight; i++)
-                dstShort[i*dstWidth + (srcWidth-1)] = 0xF00F;
-
-            break;
-        }
+    int baseColorFormat, temp1, temp2;
+    //GET_BASE_COLOR_FORMAT(mSrcFormat, baseColorFormat, temp1, temp2);
+    switch (mSrcFormat) {
         case OMX_COLOR_FormatYUV420Planar:
-            err = convertYUV420Planar(src, dst);
+            convertYUV420Planar(
+                    width, height, srcBits, srcSkip, dstBits, dstSkip);
             break;
+
         case OMX_COLOR_FormatCbYCrY:
-            err = convertCbYCrY(src, dst);
+            convertCbYCrY(
+                    width, height, srcBits, srcSkip, dstBits, dstSkip);
             break;
+
         case OMX_QCOM_COLOR_FormatYVU420SemiPlanar:
-            err = convertQCOMYUV420SemiPlanar(src, dst);
+            convertQCOMYUV420SemiPlanar(
+                    width, height, srcBits, srcSkip, dstBits, dstSkip);
             break;
+
         case OMX_COLOR_FormatYUV420SemiPlanar:
-            err = convertYUV420SemiPlanar(src, dst);
+            if(alignedWidth != width) {
+                convertYUV420SemiPlanar32Aligned(
+                        width, height, srcBits, srcSkip, dstBits, 2 * alignedWidth, alignedWidth);
+            }
+            else {
+                convertYUV420SemiPlanar(
+                        width, height, srcBits, srcSkip, dstBits, dstSkip);
+            }
             break;
-        case OMX_TI_COLOR_FormatYUV420PackedSemiPlanar:
-        case OMX_QCOM_COLOR_FormatYUV420PackedSemiPlanar32m:
-            err = convertTIYUV420PackedSemiPlanar(src, dst);
-            break;
+
         case QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka:
-            convertQOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka(src, dst);
+            convertNV12Tile(
+                    width, height, srcBits, srcSkip, dstBits, dstSkip);
             break;
+
         default:
         {
-            LOGI("Should not be here. Unknown color conversion %x to %x.", mSrcFormat, mDstFormat);
             CHECK(!"Should not be here. Unknown color conversion.");
             break;
         }
     }
-    return err;
 }
 
-status_t ColorConverter_Local::convertCbYCrY(
-        const BitmapParams &src, const BitmapParams &dst) {
-    
-    LOGI("E");
+void ColorConverter_Local::convertCbYCrY(
+        size_t width, size_t height,
+        const void *srcBits, size_t srcSkip,
+        void *dstBits, size_t dstSkip) {
+    CHECK_EQ(srcSkip, 0);  // Doesn't really make sense for YUV formats.
+    CHECK(dstSkip >= width * 2);
+    CHECK((dstSkip & 3) == 0);
 
-    // XXX Untested
     uint8_t *kAdjustedClip = initClip();
-    if (!((src.mCropLeft & 1) == 0
-        && src.cropWidth() == dst.cropWidth()
-        && src.cropHeight() == dst.cropHeight())) {
-        return ERROR_UNSUPPORTED;
-    }
-    uint16_t *dst_ptr = (uint16_t *)dst.mBits
-        + dst.mCropTop * dst.mWidth + dst.mCropLeft;
-    const uint8_t *src_ptr = (const uint8_t *)src.mBits
-        + (src.mCropTop * dst.mWidth + src.mCropLeft) * 2;
-    for (size_t y = 0; y < src.cropHeight(); ++y) {
-        for (size_t x = 0; x < src.cropWidth(); x += 2) {
-            signed y1 = (signed)src_ptr[2 * x + 1] - 16;
-            signed y2 = (signed)src_ptr[2 * x + 3] - 16;
-            signed u = (signed)src_ptr[2 * x] - 128;
-            signed v = (signed)src_ptr[2 * x + 2] - 128;
+
+    uint32_t *dst_ptr = (uint32_t *)dstBits;
+
+    const uint8_t *src = (const uint8_t *)srcBits;
+
+    for (size_t y = 0; y < height; ++y) {
+        for (size_t x = 0; x < width; x += 2) {
+            signed y1 = (signed)src[2 * x + 1] - 16;
+            signed y2 = (signed)src[2 * x + 3] - 16;
+            signed u = (signed)src[2 * x] - 128;
+            signed v = (signed)src[2 * x + 2] - 128;
+
             signed u_b = u * 517;
             signed u_g = -u * 100;
             signed v_g = -v * 208;
             signed v_r = v * 409;
+
             signed tmp1 = y1 * 298;
             signed b1 = (tmp1 + u_b) / 256;
             signed g1 = (tmp1 + v_g + u_g) / 256;
             signed r1 = (tmp1 + v_r) / 256;
+
             signed tmp2 = y2 * 298;
             signed b2 = (tmp2 + u_b) / 256;
             signed g2 = (tmp2 + v_g + u_g) / 256;
             signed r2 = (tmp2 + v_r) / 256;
+
             uint32_t rgb1 =
                 ((kAdjustedClip[r1] >> 3) << 11)
                 | ((kAdjustedClip[g1] >> 2) << 5)
                 | (kAdjustedClip[b1] >> 3);
+
             uint32_t rgb2 =
                 ((kAdjustedClip[r2] >> 3) << 11)
                 | ((kAdjustedClip[g2] >> 2) << 5)
                 | (kAdjustedClip[b2] >> 3);
-            if (x + 1 < src.cropWidth()) {
-                *(uint32_t *)(&dst_ptr[x]) = (rgb2 << 16) | rgb1;
-            } else {
-                dst_ptr[x] = rgb1;
-            }
+
+            dst_ptr[x / 2] = (rgb2 << 16) | rgb1;
         }
-        src_ptr += src.mWidth * 2;
-        dst_ptr += dst.mWidth;
+
+        src += width * 2;
+        dst_ptr += dstSkip / 4;
     }
-    return OK;
 }
-status_t ColorConverter_Local::convertYUV420Planar(
-        const BitmapParams &src, const BitmapParams &dst) {
-    
-    LOGV("D");
 
-    if (!((src.mCropLeft & 1) == 0
-            && src.cropWidth() == dst.cropWidth()
-            && src.cropHeight() == dst.cropHeight())) {
-        return ERROR_UNSUPPORTED;
-    }
+void ColorConverter_Local::convertYUV420Planar(
+        size_t width, size_t height,
+        const void *srcBits, size_t srcSkip,
+        void *dstBits, size_t dstSkip) {
+    CHECK_EQ(srcSkip, 0);  // Doesn't really make sense for YUV formats.
+    CHECK(dstSkip >= width * 2);
+    CHECK((dstSkip & 3) == 0);
 
-    LOGV("D1 adjusting %dx%d region", src.cropWidth(), src.cropHeight());
     uint8_t *kAdjustedClip = initClip();
 
-    LOGV("D2 dst.bits=%p src.bits=%p", dst.mBits, src.mBits);
-    uint16_t *dst_ptr = (uint16_t *)dst.mBits
-        + dst.mCropTop * dst.mWidth + dst.mCropLeft;
+    uint32_t *dst_ptr = (uint32_t *)dstBits;
+    const uint8_t *src_y = (const uint8_t *)srcBits;
 
-    const uint8_t *src_y =
-        (const uint8_t *)src.mBits + src.mCropTop * src.mWidth + src.mCropLeft;
     const uint8_t *src_u =
-        (const uint8_t *)src_y + src.mWidth * src.mHeight
-        + src.mCropTop * (src.mWidth / 2) + src.mCropLeft / 2;
-    const uint8_t *src_v =
-        src_u + (src.mWidth / 2) * (src.mHeight / 2);
+        (const uint8_t *)src_y + width * height;
 
-    LOGV("D6");
-    for (size_t y = 0; y < src.cropHeight(); ++y) {
-        for (size_t x = 0; x < src.cropWidth(); x += 2) {
+    const uint8_t *src_v =
+        (const uint8_t *)src_u + (width / 2) * (height / 2);
+
+    for (size_t y = 0; y < height; ++y) {
+        for (size_t x = 0; x < width; x += 2) {
             // B = 1.164 * (Y - 16) + 2.018 * (U - 128)
             // G = 1.164 * (Y - 16) - 0.813 * (V - 128) - 0.391 * (U - 128)
             // R = 1.164 * (Y - 16) + 1.596 * (V - 128)
+
             // B = 298/256 * (Y - 16) + 517/256 * (U - 128)
             // G = .................. - 208/256 * (V - 128) - 100/256 * (U - 128)
             // R = .................. + 409/256 * (V - 128)
+
             // min_B = (298 * (- 16) + 517 * (- 128)) / 256 = -277
             // min_G = (298 * (- 16) - 208 * (255 - 128) - 100 * (255 - 128)) / 256 = -172
             // min_R = (298 * (- 16) + 409 * (- 128)) / 256 = -223
+
             // max_B = (298 * (255 - 16) + 517 * (255 - 128)) / 256 = 534
             // max_G = (298 * (255 - 16) - 208 * (- 128) - 100 * (- 128)) / 256 = 432
             // max_R = (298 * (255 - 16) + 409 * (255 - 128)) / 256 = 481
+
             // clip range -278 .. 535
+
             signed y1 = (signed)src_y[x] - 16;
             signed y2 = (signed)src_y[x + 1] - 16;
+
             signed u = (signed)src_u[x / 2] - 128;
             signed v = (signed)src_v[x / 2] - 128;
+
             signed u_b = u * 517;
             signed u_g = -u * 100;
             signed v_g = -v * 208;
             signed v_r = v * 409;
+
             signed tmp1 = y1 * 298;
             signed b1 = (tmp1 + u_b) / 256;
             signed g1 = (tmp1 + v_g + u_g) / 256;
             signed r1 = (tmp1 + v_r) / 256;
+
             signed tmp2 = y2 * 298;
             signed b2 = (tmp2 + u_b) / 256;
             signed g2 = (tmp2 + v_g + u_g) / 256;
             signed r2 = (tmp2 + v_r) / 256;
+
             uint32_t rgb1 =
                 ((kAdjustedClip[r1] >> 3) << 11)
                 | ((kAdjustedClip[g1] >> 2) << 5)
                 | (kAdjustedClip[b1] >> 3);
+
             uint32_t rgb2 =
                 ((kAdjustedClip[r2] >> 3) << 11)
                 | ((kAdjustedClip[g2] >> 2) << 5)
                 | (kAdjustedClip[b2] >> 3);
-            if (x + 1 < src.cropWidth()) {
-                *(uint32_t *)(&dst_ptr[x]) = (rgb2 << 16) | rgb1;
-            } else {
-                dst_ptr[x] = rgb1;
-            }
-        }
-        src_y += src.mWidth;
-        if (y & 1) {
-            src_u += src.mWidth / 2;
-            src_v += src.mWidth / 2;
-        }
-        dst_ptr += dst.mWidth;
-    }
-    LOGV("D7");
-    return OK;
-}
-status_t ColorConverter_Local::convertQCOMYUV420SemiPlanar(
-        const BitmapParams &src, const BitmapParams &dst) {
 
-    LOGV("C");
+            dst_ptr[x / 2] = (rgb2 << 16) | rgb1;
+        }
+
+        src_y += width;
+
+        if (y & 1) {
+            src_u += width / 2;
+            src_v += width / 2;
+        }
+
+        dst_ptr += dstSkip / 4;
+    }
+}
+
+void ColorConverter_Local::convertQCOMYUV420SemiPlanar(
+        size_t width, size_t height,
+        const void *srcBits, size_t srcSkip,
+        void *dstBits, size_t dstSkip) {
+    CHECK_EQ(srcSkip, 0);  // Doesn't really make sense for YUV formats.
+    CHECK(dstSkip >= width * 2);
+    CHECK((dstSkip & 3) == 0);
 
     uint8_t *kAdjustedClip = initClip();
-    if (!((src.mCropLeft & 1) == 0
-            && src.cropWidth() == dst.cropWidth()
-            && src.cropHeight() == dst.cropHeight())) {
-        return ERROR_UNSUPPORTED;
-    }
-    uint16_t *dst_ptr = (uint16_t *)dst.mBits
-        + dst.mCropTop * dst.mWidth + dst.mCropLeft;
-    const uint8_t *src_y =
-        (const uint8_t *)src.mBits + src.mCropTop * src.mWidth + src.mCropLeft;
+
+    uint32_t *dst_ptr = (uint32_t *)dstBits;
+    const uint8_t *src_y = (const uint8_t *)srcBits;
+
     const uint8_t *src_u =
-        (const uint8_t *)src_y + src.mWidth * src.mHeight
-        + src.mCropTop * src.mWidth + src.mCropLeft;
-    for (size_t y = 0; y < src.cropHeight(); ++y) {
-        for (size_t x = 0; x < src.cropWidth(); x += 2) {
+        (const uint8_t *)src_y + width * height;
+
+    for (size_t y = 0; y < height; ++y) {
+        for (size_t x = 0; x < width; x += 2) {
             signed y1 = (signed)src_y[x] - 16;
             signed y2 = (signed)src_y[x + 1] - 16;
+
             signed u = (signed)src_u[x & ~1] - 128;
             signed v = (signed)src_u[(x & ~1) + 1] - 128;
+
             signed u_b = u * 517;
             signed u_g = -u * 100;
             signed v_g = -v * 208;
             signed v_r = v * 409;
+
             signed tmp1 = y1 * 298;
             signed b1 = (tmp1 + u_b) / 256;
             signed g1 = (tmp1 + v_g + u_g) / 256;
             signed r1 = (tmp1 + v_r) / 256;
+
             signed tmp2 = y2 * 298;
             signed b2 = (tmp2 + u_b) / 256;
             signed g2 = (tmp2 + v_g + u_g) / 256;
             signed r2 = (tmp2 + v_r) / 256;
+
             uint32_t rgb1 =
                 ((kAdjustedClip[b1] >> 3) << 11)
                 | ((kAdjustedClip[g1] >> 2) << 5)
                 | (kAdjustedClip[r1] >> 3);
+
             uint32_t rgb2 =
                 ((kAdjustedClip[b2] >> 3) << 11)
                 | ((kAdjustedClip[g2] >> 2) << 5)
                 | (kAdjustedClip[r2] >> 3);
-            if (x + 1 < src.cropWidth()) {
-                *(uint32_t *)(&dst_ptr[x]) = (rgb2 << 16) | rgb1;
-            } else {
-                dst_ptr[x] = rgb1;
-            }
+
+            dst_ptr[x / 2] = (rgb2 << 16) | rgb1;
         }
-        src_y += src.mWidth;
+
+        src_y += width;
+
         if (y & 1) {
-            src_u += src.mWidth;
+            src_u += width;
         }
-        dst_ptr += dst.mWidth;
+
+        dst_ptr += dstSkip / 4;
     }
-    return OK;
 }
-status_t ColorConverter_Local::convertYUV420SemiPlanar(
-        const BitmapParams &src, const BitmapParams &dst) {
 
-    LOGV("B");
+void ColorConverter_Local::convertYUV420SemiPlanar(
+        size_t width, size_t height,
+        const void *srcBits, size_t srcSkip,
+        void *dstBits, size_t dstSkip) {
+    CHECK_EQ(srcSkip, 0);  // Doesn't really make sense for YUV formats.
+    CHECK(dstSkip >= width * 2);
+    CHECK((dstSkip & 3) == 0);
 
-    // XXX Untested
     uint8_t *kAdjustedClip = initClip();
-    if (!((src.mCropLeft & 1) == 0
-            && src.cropWidth() == dst.cropWidth()
-            && src.cropHeight() == dst.cropHeight())) {
-        return ERROR_UNSUPPORTED;
-    }
-    uint16_t *dst_ptr = (uint16_t *)dst.mBits
-        + dst.mCropTop * dst.mWidth + dst.mCropLeft;
-    const uint8_t *src_y =
-        (const uint8_t *)src.mBits + src.mCropTop * src.mWidth + src.mCropLeft;
+
+    uint32_t *dst_ptr = (uint32_t *)dstBits;
+    const uint8_t *src_y = (const uint8_t *)srcBits;
+
     const uint8_t *src_u =
-        (const uint8_t *)src_y + src.mWidth * src.mHeight
-        + src.mCropTop * src.mWidth + src.mCropLeft;
-    for (size_t y = 0; y < src.cropHeight(); ++y) {
-        for (size_t x = 0; x < src.cropWidth(); x += 2) {
+        (const uint8_t *)src_y + width * height;
+
+    for (size_t y = 0; y < height; ++y) {
+        for (size_t x = 0; x < width; x += 2) {
             signed y1 = (signed)src_y[x] - 16;
             signed y2 = (signed)src_y[x + 1] - 16;
+
             signed v = (signed)src_u[x & ~1] - 128;
             signed u = (signed)src_u[(x & ~1) + 1] - 128;
+
             signed u_b = u * 517;
             signed u_g = -u * 100;
             signed v_g = -v * 208;
             signed v_r = v * 409;
+
             signed tmp1 = y1 * 298;
             signed b1 = (tmp1 + u_b) / 256;
             signed g1 = (tmp1 + v_g + u_g) / 256;
             signed r1 = (tmp1 + v_r) / 256;
+
             signed tmp2 = y2 * 298;
             signed b2 = (tmp2 + u_b) / 256;
             signed g2 = (tmp2 + v_g + u_g) / 256;
             signed r2 = (tmp2 + v_r) / 256;
+
             uint32_t rgb1 =
                 ((kAdjustedClip[b1] >> 3) << 11)
                 | ((kAdjustedClip[g1] >> 2) << 5)
                 | (kAdjustedClip[r1] >> 3);
+
             uint32_t rgb2 =
                 ((kAdjustedClip[b2] >> 3) << 11)
                 | ((kAdjustedClip[g2] >> 2) << 5)
                 | (kAdjustedClip[r2] >> 3);
-            if (x + 1 < src.cropWidth()) {
-                *(uint32_t *)(&dst_ptr[x]) = (rgb2 << 16) | rgb1;
-            } else {
-                dst_ptr[x] = rgb1;
-            }
+
+            dst_ptr[x / 2] = (rgb2 << 16) | rgb1;
         }
-        src_y += src.mWidth;
+
+        src_y += width;
+
         if (y & 1) {
-            src_u += src.mWidth;
+            src_u += width;
         }
-        dst_ptr += dst.mWidth;
-    }
-    return OK;
-}
 
-status_t ColorConverter_Local::convertTIYUV420PackedSemiPlanar(
-        const BitmapParams &src, const BitmapParams &dst) {
-
-    LOGV("A");
-
-    uint8_t *kAdjustedClip = initClip();
-    if (!((src.mCropLeft & 1) == 0
-            && src.cropWidth() == dst.cropWidth()
-            && src.cropHeight() == dst.cropHeight())) {
-        return ERROR_UNSUPPORTED;
+        dst_ptr += dstSkip / 4;
     }
-    uint16_t *dst_ptr = (uint16_t *)dst.mBits
-        + dst.mCropTop * dst.mWidth + dst.mCropLeft;
-    const uint8_t *src_y = (const uint8_t *)src.mBits;
-    const uint8_t *src_u =
-        (const uint8_t *)src_y + src.mWidth * (src.mHeight - src.mCropTop / 2);
-    for (size_t y = 0; y < src.cropHeight(); ++y) {
-        for (size_t x = 0; x < src.cropWidth(); x += 2) {
-            signed y1 = (signed)src_y[x] - 16;
-            signed y2 = (signed)src_y[x + 1] - 16;
-            signed u = (signed)src_u[x & ~1] - 128;
-            signed v = (signed)src_u[(x & ~1) + 1] - 128;
-            signed u_b = u * 517;
-            signed u_g = -u * 100;
-            signed v_g = -v * 208;
-            signed v_r = v * 409;
-            signed tmp1 = y1 * 298;
-            signed b1 = (tmp1 + u_b) / 256;
-            signed g1 = (tmp1 + v_g + u_g) / 256;
-            signed r1 = (tmp1 + v_r) / 256;
-            signed tmp2 = y2 * 298;
-            signed b2 = (tmp2 + u_b) / 256;
-            signed g2 = (tmp2 + v_g + u_g) / 256;
-            signed r2 = (tmp2 + v_r) / 256;
-            uint32_t rgb1 =
-                ((kAdjustedClip[r1] >> 3) << 11)
-                | ((kAdjustedClip[g1] >> 2) << 5)
-                | (kAdjustedClip[b1] >> 3);
-            uint32_t rgb2 =
-                ((kAdjustedClip[r2] >> 3) << 11)
-                | ((kAdjustedClip[g2] >> 2) << 5)
-                | (kAdjustedClip[b2] >> 3);
-            if (x + 1 < src.cropWidth()) {
-                *(uint32_t *)(&dst_ptr[x]) = (rgb2 << 16) | rgb1;
-            } else {
-                dst_ptr[x] = rgb1;
-            }
-        }
-        src_y += src.mWidth;
-        if (y & 1) {
-            src_u += src.mWidth;
-        }
-        dst_ptr += dst.mWidth;
-    }
-    return OK;
 }
 
 uint8_t *ColorConverter_Local::initClip() {
     static const signed kClipMin = -278;
     static const signed kClipMax = 535;
+
     if (mClip == NULL) {
         mClip = new uint8_t[kClipMax - kClipMin + 1];
+
         for (signed i = kClipMin; i <= kClipMax; ++i) {
             mClip[i - kClipMin] = (i < 0) ? 0 : (i > 255) ? 255 : (uint8_t)i;
         }
     }
-    return &mClip[-kClipMin];
-}
 
-status_t ColorConverter_Local::convertQOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka(const BitmapParams &src, const BitmapParams &dst)
-{
-    convertNV12Tile(src.mWidth, src.mHeight, src.mBits, 0, dst.mBits, dst.mWidth * sizeof(short));
-    return OK;
+    return &mClip[-kClipMin];
 }
 
 // GetTiledMemBlockNum
@@ -613,7 +520,7 @@ void ColorConverter_Local::convertNV12Tile(
         const void *srcBits, size_t srcSkip,
         void *dstBits, size_t dstSkip) {
 
-    CHECK(srcSkip == 0);  // Doesn't really make sense for YUV formats.
+    CHECK_EQ(srcSkip, 0);  // Doesn't really make sense for YUV formats.
     CHECK(dstSkip >= width * 2);
     CHECK((dstSkip & 3) == 0);
 
@@ -677,6 +584,71 @@ void ColorConverter_Local::convertNV12Tile(
                     block_uv, block_width,
                     block_height, dstSkip);
         }
+    }
+}
+
+void ColorConverter_Local::convertYUV420SemiPlanar32Aligned(
+            size_t width, size_t height,
+            const void *srcBits, size_t srcSkip,
+            void *dstBits, size_t dstSkip,
+            size_t alignedWidth) {
+    CHECK_EQ(srcSkip, 0);  // Doesn't really make sense for YUV formats.
+    CHECK(dstSkip >= alignedWidth * 2);
+    CHECK((dstSkip & 3) == 0);
+
+    uint8_t *kAdjustedClip = initClip();
+
+    uint32_t *dst_ptr = (uint32_t *)dstBits;
+    const uint8_t *src_y = (const uint8_t *)srcBits;
+
+    const uint8_t *src_u =
+        (const uint8_t *)src_y + width * height;
+
+    for (size_t y = 0; y < height; ++y) {
+        for (size_t x = 0; x < alignedWidth; x += 2) {
+            if(x > width)
+                continue;
+            signed y1 = (signed)src_y[x] - 16;
+            signed y2 = (signed)src_y[x + 1] - 16;
+
+            signed v = (signed)src_u[x & ~1] - 128;
+            signed u = (signed)src_u[(x & ~1) + 1] - 128;
+
+            signed u_b = u * 517;
+            signed u_g = -u * 100;
+            signed v_g = -v * 208;
+            signed v_r = v * 409;
+
+            signed tmp1 = y1 * 298;
+            signed b1 = (tmp1 + u_b) / 256;
+            signed g1 = (tmp1 + v_g + u_g) / 256;
+            signed r1 = (tmp1 + v_r) / 256;
+
+            signed tmp2 = y2 * 298;
+            signed b2 = (tmp2 + u_b) / 256;
+            signed g2 = (tmp2 + v_g + u_g) / 256;
+            signed r2 = (tmp2 + v_r) / 256;
+
+            uint32_t rgb1 =
+                ((kAdjustedClip[b1] >> 3) << 11)
+                | ((kAdjustedClip[g1] >> 2) << 5)
+                | (kAdjustedClip[r1] >> 3);
+
+            uint32_t rgb2 =
+                ((kAdjustedClip[b2] >> 3) << 11)
+                | ((kAdjustedClip[g2] >> 2) << 5)
+                | (kAdjustedClip[r2] >> 3);
+
+            dst_ptr[x / 2] = (rgb2 << 16) | rgb1;
+        }
+
+        src_y += width;
+
+        if (y & 1) {
+            src_u += width;
+        }
+
+        dst_ptr += dstSkip / 4;
     }
 }
 

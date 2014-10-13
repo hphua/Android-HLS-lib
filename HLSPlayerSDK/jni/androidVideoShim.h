@@ -301,7 +301,7 @@ namespace android_video_shim
         OMX_TI_COLOR_FormatYUV420PackedSemiPlanar = 0x7F000100,
         OMX_QCOM_COLOR_FormatYVU420SemiPlanar = 0x7FA30C00,
         QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka = 0x7fa30c03,
-        OMX_QCOM_COLOR_FormatYUV420PackedSemiPlanar32m = 0x7fa30c04,
+        OMX_QCOM_COLOR_FormatYUV420PackedSemiPlanar32m4ka = 0x7fa30c04,
 
         OMX_COLOR_FormatMax = 0x7FFFFFFF
     } OMX_COLOR_FORMATTYPE;
