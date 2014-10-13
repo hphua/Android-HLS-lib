@@ -1487,7 +1487,9 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 	bool res = vidFormat->findInt32(kKeyColorFormat, &colf);
 
 	// We need to unswizzle certain formats for maximum proper behavior.
-	if(colf == QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka)
+	if(checkI420Converter())
+		internalColf = OMX_COLOR_FormatYUV420Planar;
+	else if(colf == QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka)
 		internalColf = OMX_COLOR_FormatYUV420SemiPlanar;
 	else if(colf == OMX_QCOM_COLOR_FormatYUV420PackedSemiPlanar32m4ka)
 		internalColf = OMX_QCOM_COLOR_FormatYVU420SemiPlanar;
@@ -1512,8 +1514,8 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 		ANativeWindow_Buffer windowBuffer;
 		if (ANativeWindow_lock(mWindow, &windowBuffer, NULL) == 0)
 		{
-			// Sanity check on relative dimensions.
-			if(windowBuffer.height < videoBufferHeight)
+			// Sanity check on relative dimensions. Disabled for now.
+			if(false && windowBuffer.height < videoBufferHeight)
 			{
 				LOGE("Aborting conversion; window too short for video!");
 				ANativeWindow_unlockAndPost(mWindow);
@@ -1565,7 +1567,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 				if(gICFM->getDecoderOutputFormat() != OMX_COLOR_FormatYUV420Planar)
 				{
 					LOGV("Alloc'ing tmp buffer due to decoder format %x.", gICFM->getDecoderOutputFormat());
-					tmpBuff = (unsigned char*)malloc(videoBufferWidth*videoBufferHeight*3);
+					tmpBuff = (unsigned char*)malloc(videoBufferWidth*videoBufferHeight*4);
 
 					LOGV("Converting to tmp buffer due to decoder format %x with func=%p videoBits=%p tmpBuff=%p.", 
 						gICFM->getDecoderOutputFormat(), (void*)gICFM->convertDecoderOutputToI420, videoBits, tmpBuff);
@@ -1582,12 +1584,30 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 					tmpBuff = videoBits;
 				}
 
-				LOGV("Doing YUV420 conversion %dx%d %p %d %p %d",videoBufferWidth, videoBufferHeight, 
-					tmpBuff, 0, 
-					pixels, windowBuffer.stride * 2);
-				lcc.convertYUV420Planar(videoBufferWidth, videoBufferHeight, 
-					tmpBuff, 0, 
-					pixels, windowBuffer.stride * 2);
+				if(cc.isValid())
+				{
+					LOGV("Doing system color conversion...");
+					
+					int a = vbCropLeft;
+					int b = vbCropTop;
+					int c = vbCropRight;
+					int d = vbCropBottom;
+					cc.convert(tmpBuff, videoBufferWidth,    videoBufferHeight,    a, b, c,   d,
+						       pixels,  windowBuffer.stride, windowBuffer.height,  0, 0, c-a, d-b);
+				}
+				else if(lcc.isValid())
+				{
+					// We could use the local converter but the system one seems to work properly.
+					LOGV("Doing YUV420 conversion %dx%d %p %d %p %d",videoBufferWidth, videoBufferHeight, 
+						tmpBuff, 0, 
+						pixels, windowBuffer.stride * 2);
+
+					lcc.convertYUV420Planar(videoBufferWidth, videoBufferHeight, 
+						tmpBuff, 0, 
+						pixels, windowBuffer.stride * 2);
+
+				}
+
 
 				if(gICFM->getDecoderOutputFormat() != OMX_COLOR_FormatYUV420Planar)
 				{
