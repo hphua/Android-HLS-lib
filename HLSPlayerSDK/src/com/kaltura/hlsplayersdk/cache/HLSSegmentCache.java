@@ -9,9 +9,11 @@ import java.util.concurrent.ConcurrentHashMap;
 import android.os.Handler;
 import android.util.Log;
 
-import com.squareup.okhttp.ConnectionPool;
-import com.squareup.okhttp.OkHttpClient;
-import com.squareup.okhttp.Request;
+import com.loopj.android.http.*;
+
+//import com.squareup.okhttp.ConnectionPool;
+//import com.squareup.okhttp.OkHttpClient;
+//import com.squareup.okhttp.Request;
 
 public class HLSSegmentCache 
 {	
@@ -19,8 +21,7 @@ public class HLSSegmentCache
 	protected static long minimumExpireAge = 5000; // Keep everything touched in last 5 seconds.
 	
 	protected static Map<String, SegmentCacheEntry> segmentCache = null;
-	public static OkHttpClient httpClient = new OkHttpClient();
-	private static ConnectionPool connectionPool = new ConnectionPool(4, 300000);
+	public static AsyncHttpClient httpClient = new AsyncHttpClient();
 	
 	static public SegmentCacheEntry populateCache(final String segmentUri)
 	{
@@ -42,10 +43,18 @@ public class HLSSegmentCache
 			sce.lastTouchedMillis = System.currentTimeMillis();
 			
 			// Issue HTTP request.
-			Request request = new Request.Builder()
-		      .url(segmentUri)
-		      .build();
-			httpClient.newCall(request).enqueue(sce);
+			Thread t = new Thread()		
+			{		
+				public void run() {		
+					httpClient.get(sce.uri, sce);						
+				}		
+			};		
+			t.start();
+			
+//			Request request = new Request.Builder()
+//		      .url(segmentUri)
+//		      .build();
+//			httpClient.newCall(request).enqueue(sce);
 			
 
 			segmentCache.put(segmentUri, sce);		
@@ -88,7 +97,6 @@ public class HLSSegmentCache
 		{
 			Log.i("HLS Cache", "Initializing concurrent hash map.");
 			segmentCache = new ConcurrentHashMap<String, SegmentCacheEntry>();
-			httpClient.setConnectionPool(connectionPool);
 		}
 	}
 	
