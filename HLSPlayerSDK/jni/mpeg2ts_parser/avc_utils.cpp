@@ -45,7 +45,7 @@ void FindAVCDimensions(
         int32_t *sarWidth, int32_t *sarHeight) {
     ABitReader br(seqParamSet->data() + 1, seqParamSet->size() - 1);
     unsigned profile_idc = br.getBits(8);
-    LOGE("SAW PROFILE IDX %d", profile_idc);
+    LOGV("SAW PROFILE IDX %d", profile_idc);
     br.skipBits(16);
     parseUE(&br);  // seq_parameter_set_id
     unsigned chroma_format_idc = 1;  // 4:2:0 chroma format
