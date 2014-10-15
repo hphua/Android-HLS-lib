@@ -760,6 +760,25 @@ bool HLSPlayer::InitSources()
 		LOGE("No format available from the video track.");
 		return false;
 	}
+
+	LOGI("Validating H.264 AVC profile level...");
+	uint32_t vidDataType = 0;
+	size_t vidDataLen = 0;
+	unsigned char *vidDataBytes = NULL;
+	if(vidFormat->findData(kKeyAVCC, &vidDataType, (void const **)&vidDataBytes, &vidDataLen))
+	{
+		// It's the second byte.
+		int level = vidDataBytes[1];
+		if(level > 66)
+		{
+			LOGE("Tried to play video that exceeded baseline profile (%d > 66), aborting!", level);
+			return false;
+		}
+	}
+	else
+	{
+		LOGE("Failed to find H.264 profile data!");
+	}
 	
 	LOGI("Creating hardware video decoder...");
 

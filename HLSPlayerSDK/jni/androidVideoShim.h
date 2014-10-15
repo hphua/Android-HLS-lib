@@ -1630,6 +1630,14 @@ namespace android_video_shim
             lfc(this);
         }
 
+        bool findData(uint32_t key, uint32_t *type, const void **data, size_t *size)
+        {
+            typedef bool (*localFuncCast)(void *thiz, uint32_t key, uint32_t *type, const void **data, size_t *size);
+            localFuncCast lfc = (localFuncCast)searchSymbol("_ZNK7android8MetaData8findDataEjPjPPKvS1_");
+            assert(lfc);
+            return lfc(this, key, type, data, size);
+        }
+
         bool findPointer(uint32_t key, void **value)
         {
             typedef bool (*localFuncCast)(void *thiz, uint32_t key, void **value);
