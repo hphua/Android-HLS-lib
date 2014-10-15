@@ -13,7 +13,7 @@ import com.loopj.android.http.*;
 //import com.squareup.okhttp.Request;
 //import com.squareup.okhttp.Response;
 
-public class SegmentCacheEntry extends AsyncHttpResponseHandler {
+public class SegmentCacheEntry {
 	public String uri;
 	public byte[] data;
 	public boolean running;
@@ -113,18 +113,15 @@ public class SegmentCacheEntry extends AsyncHttpResponseHandler {
 //		Log.i("HLS Cache", "Got " + uri);
 //		HLSSegmentCache.store(uri, response.body().bytes());
 //	}
-
-	@Override
-	public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
-		Log.e("HLS Cache", "Failed to download '" + uri + "'! " + statusCode);
+	
+	public void postOnSegmentFailed(int statusCode)
+	{
 		if (mSegmentCachedListener != null)
 			mSegmentCachedListener.onSegmentFailed(uri, statusCode);
-		
 	}
-	@Override
-	public void onSuccess(int statusCode, Header[] headers, byte[] responseData) {
-		//if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
-		
+	
+	public void postSegmentSucceeded(int statusCode, byte[] responseData)
+	{
 		if (statusCode == 200)
 		{
 			Log.i("HLS Cache", "Got " + uri);
@@ -135,7 +132,30 @@ public class SegmentCacheEntry extends AsyncHttpResponseHandler {
 			if (mSegmentCachedListener != null)
 				mSegmentCachedListener.onSegmentFailed(uri, statusCode);
 		}
-			
-		
 	}
+
+//	@Override
+//	public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
+//		Log.e("HLS Cache", "Failed to download '" + uri + "'! " + statusCode);
+//		if (mSegmentCachedListener != null)
+//			mSegmentCachedListener.onSegmentFailed(uri, statusCode);
+//		
+//	}
+//	@Override
+//	public void onSuccess(int statusCode, Header[] headers, byte[] responseData) {
+//		//if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
+//		
+//		if (statusCode == 200)
+//		{
+//			Log.i("HLS Cache", "Got " + uri);
+//			HLSSegmentCache.store(uri, responseData);
+//		}
+//		else
+//		{
+//			if (mSegmentCachedListener != null)
+//				mSegmentCachedListener.onSegmentFailed(uri, statusCode);
+//		}
+//			
+//		
+//	}
 }

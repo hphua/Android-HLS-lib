@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 
 import com.loopj.android.http.*;
@@ -21,7 +22,15 @@ public class HLSSegmentCache
 	protected static long minimumExpireAge = 5000; // Keep everything touched in last 5 seconds.
 	
 	protected static Map<String, SegmentCacheEntry> segmentCache = null;
-	public static AsyncHttpClient httpClient = new AsyncHttpClient();
+	public static AsyncHttpClient asyncHttpClient = new AsyncHttpClient();
+	public static AsyncHttpClient syncHttpClient = new SyncHttpClient();
+	
+	public static AsyncHttpClient httpClient()
+	{
+		if (Looper.myLooper() == null)
+			return syncHttpClient;
+		return asyncHttpClient;
+	}
 	
 	static public SegmentCacheEntry populateCache(final String segmentUri)
 	{
@@ -43,13 +52,17 @@ public class HLSSegmentCache
 			sce.lastTouchedMillis = System.currentTimeMillis();
 			
 			// Issue HTTP request.
+	
 			Thread t = new Thread()		
 			{		
 				public void run() {		
-					httpClient.get(sce.uri, sce);						
+					httpClient().get(sce.uri, new SegmentBinaryResponseHandler(sce));						
+					//sce.request = client.get(sce.uri, new SegmentBinaryResponseHandler(segmentUri));						
 				}		
 			};		
-			t.start();
+			t.start();		
+			 						
+			 			
 			
 //			Request request = new Request.Builder()
 //		      .url(segmentUri)

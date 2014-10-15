@@ -24,7 +24,7 @@ public class URLLoader extends AsyncHttpResponseHandler
 	
 	public void get(String url)
 	{
-		HLSSegmentCache.httpClient.get(url, this);
+		HLSSegmentCache.httpClient().get(url, this);
 	}
 	
 	
