@@ -12,10 +12,6 @@ import android.util.Log;
 
 import com.loopj.android.http.*;
 
-//import com.squareup.okhttp.ConnectionPool;
-//import com.squareup.okhttp.OkHttpClient;
-//import com.squareup.okhttp.Request;
-
 public class HLSSegmentCache 
 {	
 	protected static long targetSize = 16*1024*1024; // 16mb segment cache.
@@ -56,19 +52,10 @@ public class HLSSegmentCache
 			Thread t = new Thread()		
 			{		
 				public void run() {		
-					httpClient().get(sce.uri, new SegmentBinaryResponseHandler(sce));						
-					//sce.request = client.get(sce.uri, new SegmentBinaryResponseHandler(segmentUri));						
+					sce.request = httpClient().get(sce.uri, new SegmentBinaryResponseHandler(sce));						
 				}		
 			};		
 			t.start();		
-			 						
-			 			
-			
-//			Request request = new Request.Builder()
-//		      .url(segmentUri)
-//		      .build();
-//			httpClient.newCall(request).enqueue(sce);
-			
 
 			segmentCache.put(segmentUri, sce);		
 			return sce;

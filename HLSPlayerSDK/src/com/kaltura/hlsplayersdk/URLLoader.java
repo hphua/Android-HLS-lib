@@ -45,46 +45,9 @@ public class URLLoader extends AsyncHttpResponseHandler
 		mDownloadEventListener = listener;
 	}
 
-	// OkHttp methods.
-//	@Override
-//	public void onFailure(Request arg0, IOException arg1) {
-//		final URLLoader thisLoader = this;
-//		
-//		if (mDownloadEventListener != null)
-//		{
-//			// Post back to main thread to avoid re-entrancy that breaks OkHTTP.
-//			PlayerViewController.GetInterfaceThread().getHandler().post(new Runnable()
-//			{
-//				@Override
-//				public void run() {
-//					mDownloadEventListener.onDownloadFailed(thisLoader, "failure");				
-//				}
-//			});
-//		}
-//	}
-
-//	@Override
-//	public void onResponse(Response arg0) throws IOException {
-//		
-//		final URLLoader thisLoader = this;
-//		final Response response = arg0;
-//		
-//		// Load the response body - this can do HTTP activity.
-//		final String r = response.body().string();
-//		
-//		if (mDownloadEventListener != null)
-//		{
-//			// Post back to main thread to avoid re-entrancy that breaks OkHTTP.
-//			PlayerViewController.GetInterfaceThread().getHandler().post(new Runnable()
-//			{
-//				@Override
-//				public void run() {
-//					mDownloadEventListener.onDownloadComplete(thisLoader, r==null?"null" : r);
-//				}
-//			});
-//		}		
-//	}
-
+	//////////////////////////////////
+	// Event Handlers
+	//////////////////////////////////
 	@Override
 	public void onFailure(int arg0, Header[] arg1, byte[] arg2, Throwable arg3) {
 		final URLLoader thisLoader = this;
@@ -100,7 +63,6 @@ public class URLLoader extends AsyncHttpResponseHandler
 				}
 			});
 		}
-		
 	}
 
 	@Override
@@ -120,6 +82,5 @@ public class URLLoader extends AsyncHttpResponseHandler
 				}
 			});
 		}		
-		
 	}
 }

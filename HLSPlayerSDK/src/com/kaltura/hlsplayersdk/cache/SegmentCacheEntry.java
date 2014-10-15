@@ -1,17 +1,9 @@
 package com.kaltura.hlsplayersdk.cache;
 
-import java.io.IOException;
-
-import org.apache.http.Header;
-
 import android.os.Handler;
 import android.util.Log;
 
 import com.loopj.android.http.*;
-
-//import com.squareup.okhttp.Callback;
-//import com.squareup.okhttp.Request;
-//import com.squareup.okhttp.Response;
 
 public class SegmentCacheEntry {
 	public String uri;
@@ -35,6 +27,8 @@ public class SegmentCacheEntry {
 	public static native int allocAESCryptoState(byte[] key, byte[] iv);
 	public static native void freeCryptoState(int id);
 	public static native long decrypt(int cryptoHandle, byte[] data, long start, long length);
+	
+	public RequestHandle request = null;
 	
 	private Handler mCallbackHandler = null;
 
@@ -98,21 +92,6 @@ public class SegmentCacheEntry {
 		if (curRetries >= maxRetries) return false;
 		return true;
 	}
-
-//	@Override
-//	public void onFailure(Request arg0, IOException arg1) {
-//		Log.e("HLS Cache", "Failed to download '" + uri + "'! " + arg1.toString());
-//		if (mSegmentCachedListener != null)
-//			mSegmentCachedListener.onSegmentFailed(uri, arg1);
-//	}
-//	
-//	@Override
-//	public void onResponse(Response response) throws IOException {
-//		if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
-//		
-//		Log.i("HLS Cache", "Got " + uri);
-//		HLSSegmentCache.store(uri, response.body().bytes());
-//	}
 	
 	public void postOnSegmentFailed(int statusCode)
 	{
@@ -134,28 +113,4 @@ public class SegmentCacheEntry {
 		}
 	}
 
-//	@Override
-//	public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
-//		Log.e("HLS Cache", "Failed to download '" + uri + "'! " + statusCode);
-//		if (mSegmentCachedListener != null)
-//			mSegmentCachedListener.onSegmentFailed(uri, statusCode);
-//		
-//	}
-//	@Override
-//	public void onSuccess(int statusCode, Header[] headers, byte[] responseData) {
-//		//if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
-//		
-//		if (statusCode == 200)
-//		{
-//			Log.i("HLS Cache", "Got " + uri);
-//			HLSSegmentCache.store(uri, responseData);
-//		}
-//		else
-//		{
-//			if (mSegmentCachedListener != null)
-//				mSegmentCachedListener.onSegmentFailed(uri, statusCode);
-//		}
-//			
-//		
-//	}
 }
