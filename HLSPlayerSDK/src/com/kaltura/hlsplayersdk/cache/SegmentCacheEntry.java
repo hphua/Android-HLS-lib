@@ -1,15 +1,11 @@
 package com.kaltura.hlsplayersdk.cache;
 
-import java.io.IOException;
-
 import android.os.Handler;
 import android.util.Log;
 
-import com.squareup.okhttp.Callback;
-import com.squareup.okhttp.Request;
-import com.squareup.okhttp.Response;
+import com.loopj.android.http.*;
 
-public class SegmentCacheEntry implements Callback {
+public class SegmentCacheEntry {
 	public String uri;
 	public byte[] data;
 	public boolean running;
@@ -31,6 +27,8 @@ public class SegmentCacheEntry implements Callback {
 	public static native int allocAESCryptoState(byte[] key, byte[] iv);
 	public static native void freeCryptoState(int id);
 	public static native long decrypt(int cryptoHandle, byte[] data, long start, long length);
+	
+	public RequestHandle request = null;
 	
 	private Handler mCallbackHandler = null;
 
@@ -94,21 +92,25 @@ public class SegmentCacheEntry implements Callback {
 		if (curRetries >= maxRetries) return false;
 		return true;
 	}
-
-	@Override
-	public void onFailure(Request arg0, IOException arg1) {
-		Log.e("HLS Cache", "Failed to download '" + uri + "'! " + arg1.toString());
+	
+	public void postOnSegmentFailed(int statusCode)
+	{
 		if (mSegmentCachedListener != null)
-			mSegmentCachedListener.onSegmentFailed(uri, arg1);
+			mSegmentCachedListener.onSegmentFailed(uri, statusCode);
 	}
 	
-	@Override
-	public void onResponse(Response response) throws IOException {
-		if (!response.isSuccessful()) throw new IOException("Unexpected code " + response);
-		
-		Log.i("HLS Cache", "Got " + uri);
-		HLSSegmentCache.store(uri, response.body().bytes());
-		
-
+	public void postSegmentSucceeded(int statusCode, byte[] responseData)
+	{
+		if (statusCode == 200)
+		{
+			Log.i("HLS Cache", "Got " + uri);
+			HLSSegmentCache.store(uri, responseData);
+		}
+		else
+		{
+			if (mSegmentCachedListener != null)
+				mSegmentCachedListener.onSegmentFailed(uri, statusCode);
+		}
 	}
+
 }

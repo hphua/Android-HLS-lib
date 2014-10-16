@@ -2,18 +2,16 @@ package com.kaltura.hlsplayersdk;
 
 import java.io.IOException;
 
+import org.apache.http.Header;
+
 import android.util.Log;
 
 import com.kaltura.hlsplayersdk.cache.HLSSegmentCache;
 import com.kaltura.hlsplayersdk.manifest.BaseManifestItem;
-import com.squareup.okhttp.Callback;
-import com.squareup.okhttp.Request;
-import com.squareup.okhttp.Response;
+import com.loopj.android.http.*;
 
-public class URLLoader implements Callback 
-{
-	//private static AsyncHttpClient httpClient = new AsyncHttpClient();
-	
+public class URLLoader extends AsyncHttpResponseHandler 
+{	
 	public BaseManifestItem manifestItem = null;
 	public String uri;
 	
@@ -26,20 +24,9 @@ public class URLLoader implements Callback
 	
 	public void get(String url)
 	{
-		//httpClient.get(url, this);
-		
-		// OK path
-		uri = url;
-		Request request = new Request.Builder()
-	      .url(uri)
-	      .build();
-		HLSSegmentCache.httpClient.newCall(request).enqueue(this);
+		HLSSegmentCache.httpClient().get(url, this);
 	}
 	
-	public String getRequestURI()
-	{
-		return uri;
-	}
 	
 	/////////////////////////////////////////////
 	// Listener interface
@@ -58,9 +45,11 @@ public class URLLoader implements Callback
 		mDownloadEventListener = listener;
 	}
 
-	// OkHttp methods.
+	//////////////////////////////////
+	// Event Handlers
+	//////////////////////////////////
 	@Override
-	public void onFailure(Request arg0, IOException arg1) {
+	public void onFailure(int arg0, Header[] arg1, byte[] arg2, Throwable arg3) {
 		final URLLoader thisLoader = this;
 		
 		if (mDownloadEventListener != null)
@@ -77,22 +66,19 @@ public class URLLoader implements Callback
 	}
 
 	@Override
-	public void onResponse(Response arg0) throws IOException {
-		
+	public void onSuccess(int statusCode, Header[] headers, byte[] responseData) {
 		final URLLoader thisLoader = this;
-		final Response response = arg0;
+		final String response = new String(responseData);
 		
-		// Load the response body - this can do HTTP activity.
-		final String r = response.body().string();
-		
+				
 		if (mDownloadEventListener != null)
 		{
-			// Post back to main thread to avoid re-entrancy that breaks OkHTTP.
+			// Post back to main thread to avoid re-entrancy problems
 			PlayerViewController.GetInterfaceThread().getHandler().post(new Runnable()
 			{
 				@Override
 				public void run() {
-					mDownloadEventListener.onDownloadComplete(thisLoader, r==null?"null" : r);
+					mDownloadEventListener.onDownloadComplete(thisLoader, response==null?"null" : response);
 				}
 			});
 		}		

@@ -477,7 +477,7 @@ public class PlayerViewController extends RelativeLayout implements
 	}
 
 	@Override
-	public void onSegmentFailed(String uri, IOException e) {
+	public void onSegmentFailed(String uri, int responseCode) {
 
 		HLSSegmentCache.cancelCacheEvent(uri);
 		
