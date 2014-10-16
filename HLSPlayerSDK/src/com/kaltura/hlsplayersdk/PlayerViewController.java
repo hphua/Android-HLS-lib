@@ -729,7 +729,7 @@ public class PlayerViewController extends RelativeLayout implements
 		mOnProgressListener = listener;
 
 	}
-	private void postProgressUpdate(final int progress)
+	public void postProgressUpdate(final int progress)
 	{
 		if (mOnProgressListener != null)
 		{

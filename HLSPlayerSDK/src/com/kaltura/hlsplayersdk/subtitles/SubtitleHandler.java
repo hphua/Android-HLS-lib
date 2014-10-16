@@ -100,6 +100,8 @@ public class SubtitleHandler implements OnSubtitleParseCompleteListener {
 	
 	private SubTitleSegment getSegmentForTime(double time, int language)
 	{
+		if (mManifest == null) return null;
+
 		ManifestParser mp = null;
 		if (mManifest.subtitlePlayLists.size() > language)
 		{

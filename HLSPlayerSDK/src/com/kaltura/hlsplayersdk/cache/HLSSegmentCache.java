@@ -10,6 +10,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
+import com.kaltura.hlsplayersdk.PlayerViewController;
 import com.loopj.android.http.*;
 
 public class HLSSegmentCache 
@@ -196,8 +197,15 @@ public class HLSSegmentCache
 		Log.i("HLS Cache", "Waiting on request.");
 		long timerStart = System.currentTimeMillis();
 
+		long lastTime = System.currentTimeMillis();
 		while(sce.running)
 		{
+			if (System.currentTimeMillis() - 200 > lastTime)
+			{
+				lastTime = System.currentTimeMillis();
+				double pct = sce.bytesDownloaded != 0 ? ((double)sce.bytesDownloaded / (double)sce.totalSize) * 100 : 0;
+				PlayerViewController.currentController.postProgressUpdate((int)pct);
+			}
 			try {
 				Thread.sleep(30);
 				Thread.yield();

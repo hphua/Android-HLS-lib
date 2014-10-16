@@ -22,7 +22,7 @@ import com.kaltura.playersdk.events.*;
 
 public class VideoPlayerActivity extends ActionBarActivity implements OnTextTracksListListener, OnTextTrackChangeListener, 
 OnTextTrackTextListener, OnAudioTracksListListener, OnAudioTrackSwitchingListener, 
-OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListener, OnPlayerStateChangeListener  {
+OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListener, OnPlayerStateChangeListener, OnProgressListener  {
 
 	PlayerViewController playerView = null;
 	final Context context = this;
@@ -94,6 +94,7 @@ OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListene
         	playerView.registerQualitySwitchingChange(this);
         	playerView.registerPlayheadUpdate(this);
         	playerView.registerPlayerStateChange(this);
+        	playerView.registerProgressUpdate(this);
         }
         catch (Exception e)
         {
@@ -361,5 +362,11 @@ OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListene
 			playerView.setVisibility(View.INVISIBLE);
 		
 		return true;
+	}
+
+	@Override
+	public void onProgressUpdate(int progress) {
+		Log.i("OnProgressUpdate", "Download Progress: " + progress);
+		
 	}
 }

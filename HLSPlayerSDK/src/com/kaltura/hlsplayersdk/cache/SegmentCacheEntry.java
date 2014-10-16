@@ -3,6 +3,7 @@ package com.kaltura.hlsplayersdk.cache;
 import android.os.Handler;
 import android.util.Log;
 
+import com.kaltura.hlsplayersdk.PlayerViewController;
 import com.loopj.android.http.*;
 
 public class SegmentCacheEntry {
@@ -31,6 +32,9 @@ public class SegmentCacheEntry {
 	public RequestHandle request = null;
 	
 	private Handler mCallbackHandler = null;
+	
+	public int bytesDownloaded = 0;
+	public int totalSize = 0;
 
 	public boolean hasCrypto()
 	{
@@ -110,6 +114,20 @@ public class SegmentCacheEntry {
 		{
 			if (mSegmentCachedListener != null)
 				mSegmentCachedListener.onSegmentFailed(uri, statusCode);
+		}
+	}
+	
+	public void updateProgress(int bytesWritten, int totalBytesExpected)
+	{
+		
+		bytesDownloaded = bytesWritten;
+		this.totalSize = totalBytesExpected;
+		// If we have a callback handler, it pretty much means that we're not going to be
+		// in a wait state in the SegmentCache
+		if (mCallbackHandler != null)
+		{
+			double pct = bytesDownloaded != 0 ? ((double)bytesDownloaded / (double)totalSize) * 100 : 0;
+			PlayerViewController.currentController.postProgressUpdate((int)pct);
 		}
 	}
 
