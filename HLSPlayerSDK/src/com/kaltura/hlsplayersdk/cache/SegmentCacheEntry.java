@@ -12,6 +12,8 @@ public class SegmentCacheEntry {
 	public boolean running;
 	public boolean waiting;
 	public long lastTouchedMillis;
+	public long downloadStartTime = 0;
+	public long downloadCompletedTime = 0;
 	public long forceSize = -1;
 
 	// If >= 0, ID of a crypto context on the native side.
@@ -120,6 +122,7 @@ public class SegmentCacheEntry {
 	{
 		if (statusCode == 200)
 		{
+			downloadCompletedTime = System.currentTimeMillis();
 			Log.i("HLS Cache", "Got " + uri);
 			HLSSegmentCache.store(uri, responseData);
 		}

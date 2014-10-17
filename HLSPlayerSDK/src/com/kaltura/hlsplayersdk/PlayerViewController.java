@@ -74,6 +74,8 @@ public class PlayerViewController extends RelativeLayout implements
 	private native void FeedSegment(String url, int quality, int continuityEra, String altAudioURL, int altAudioIndex, double startTime, int cryptoId, int altCryptoId);
 	private native void SeekTo(double timeInSeconds);
 	private native void ApplyFormatChange();
+	private native void SetSegmentCountToBuffer(int segmentCount);
+	private native int DroppedFramesPerSecond();
 
 	// Static interface.
 	// TODO Allow multiple active PlayerViewController instances.
@@ -323,6 +325,8 @@ public class PlayerViewController extends RelativeLayout implements
 					} catch (Exception e) {
 						Log.i("video run", "Video thread sleep interrupted!");
 					}
+					
+					Log.i("PlayerViewController", "Dropped Frames Per Sec: " + DroppedFramesPerSecond());
 
 				} 
 				else {
@@ -424,6 +428,10 @@ public class PlayerViewController extends RelativeLayout implements
 			Log.w("PlayerViewController", "Manifest is not valid. There aren't any segments. Ending playback.");
 			return;
 		}
+		
+		int precacheCount = SetSegmentsToBuffer(); // Make sure the segments to buffer count
+												   // is set correctly in case it was changed
+												   // before starting playback
 		
 		if (mSubtitleHandler.hasSubtitles())
 		{
@@ -987,15 +995,37 @@ public class PlayerViewController extends RelativeLayout implements
 		}
 	}
 	
+	private int mTimeToBuffer = 10;
+	private int SetSegmentsToBuffer()
+	{
+		ManifestParser m = mStreamHandler.getManifestForQuality(mQualityLevel);
+		int segments = 1;
+		if (m != null)
+		{
+			segments = mTimeToBuffer / (int)m.targetDuration;
+			int rem = mTimeToBuffer % (int)m.targetDuration;
+			if (rem != 0) ++segments;
+			if (segments > 1) segments = 1;
+			SetSegmentCountToBuffer(segments);
+			
+		}
+		else
+			SetSegmentCountToBuffer(segments);
+		
+		return segments;
+	}
+	
 	@Override
 	public void setBufferTime(int newTime) {
-		// TODO Auto-generated method stub
-		
+		mTimeToBuffer = newTime;
+		if (mStreamHandler != null && mStreamHandler.manifest != null)
+		{
+			SetSegmentsToBuffer();
+		}
 	}
 	@Override
 	public float getLastDownloadTransferRate() {
-		// TODO Auto-generated method stub
-		return 0;
+		return (float)HLSSegmentCache.lastDownloadDataRate;
 	}
 	@Override
 	public float getDroppedFramesPerSecond() {
