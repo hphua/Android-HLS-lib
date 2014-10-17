@@ -10,6 +10,7 @@ public class SegmentCacheEntry {
 	public String uri;
 	public byte[] data;
 	public boolean running;
+	public boolean waiting;
 	public long lastTouchedMillis;
 	public long forceSize = -1;
 
@@ -79,6 +80,7 @@ public class SegmentCacheEntry {
 	
 	public void notifySegmentCached()
 	{
+		waiting = false;
 		if (mSegmentCachedListener != null && mCallbackHandler != null)
 		{
 			mCallbackHandler.post(new Runnable() {
@@ -99,8 +101,18 @@ public class SegmentCacheEntry {
 	
 	public void postOnSegmentFailed(int statusCode)
 	{
-		if (mSegmentCachedListener != null)
-			mSegmentCachedListener.onSegmentFailed(uri, statusCode);
+		
+		if (retry())
+		{
+			Log.i("SegmentCacheEntry.postOnSegmentFailed", "Segment download failed. Retrying: " + uri + " : " + statusCode);
+			HLSSegmentCache.retry(this);
+		}
+		else
+		{
+			running = false;
+			if (mSegmentCachedListener != null)
+				mSegmentCachedListener.onSegmentFailed(uri, statusCode);
+		}
 	}
 	
 	public void postSegmentSucceeded(int statusCode, byte[] responseData)
@@ -126,8 +138,7 @@ public class SegmentCacheEntry {
 		// in a wait state in the SegmentCache
 		if (mCallbackHandler != null)
 		{
-			double pct = bytesDownloaded != 0 ? ((double)bytesDownloaded / (double)totalSize) * 100 : 0;
-			PlayerViewController.currentController.postProgressUpdate((int)pct);
+			HLSSegmentCache.postProgressUpdate();
 		}
 	}
 

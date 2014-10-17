@@ -37,13 +37,16 @@ public class HLSSegmentCache
 			SegmentCacheEntry existing = segmentCache.get(segmentUri);
 			if(existing != null)
 			{
-				existing.lastTouchedMillis = System.currentTimeMillis();
-				return existing;
+				if (existing.data != null)
+				{
+					existing.lastTouchedMillis = System.currentTimeMillis();
+					return existing;
+				}
 			}
 			
 			// Populate a cache entry and initiate the request.
 			Log.i("HLS Cache", "Miss on " + segmentUri + ", populating..");
-			final SegmentCacheEntry sce = new SegmentCacheEntry();
+			final SegmentCacheEntry sce = existing != null?existing:new SegmentCacheEntry();
 			sce.uri = segmentUri;
 			sce.running = true;
 			sce.lastTouchedMillis = System.currentTimeMillis();
@@ -101,6 +104,17 @@ public class HLSSegmentCache
 		}
 	}
 	
+	public static void retry(SegmentCacheEntry sce)
+	{
+		try {
+			Thread.sleep(100);
+			Thread.yield();
+		} catch (InterruptedException e) {
+			// Don't care.
+		}
+		populateCache(sce.uri);
+	}
+	
 	/**
 	 * Hint we will soon be wanting data from this segment and that we should 
 	 * initiate the download.
@@ -117,6 +131,8 @@ public class HLSSegmentCache
 		sce.setCryptoHandle(cryptoId);
 	}
 	
+
+	
 	/**
 	 * Hint we will soon be wanting data from this segment and that we should 
 	 * initiate the download.
@@ -132,7 +148,7 @@ public class HLSSegmentCache
 		{
 			SegmentCacheEntry sce = segmentCache.get(segmentUri);
 			sce.registerSegmentCachedListener(segmentCachedListener, callbackHandler);
-			
+			sce.waiting = true;
 			if (!sce.running)
 				sce.notifySegmentCached();
 				
@@ -188,6 +204,34 @@ public class HLSSegmentCache
 		return sce.data.length;
 	}
 	
+	private static long lastTime = System.currentTimeMillis();
+	public static void postProgressUpdate()
+	{
+		if (System.currentTimeMillis() - 200 > lastTime)
+		{
+			lastTime = System.currentTimeMillis();
+
+			int totalBytes = 0;
+			int curBytes = 0;
+			synchronized (segmentCache)
+			{
+				Collection<SegmentCacheEntry> values = segmentCache.values();
+
+				for(SegmentCacheEntry v : values)
+				{
+					if (v.waiting)
+					{
+						totalBytes += v.totalSize;
+						curBytes += v.bytesDownloaded;
+					}
+				}
+			}
+			double pct = totalBytes != 0 ? ((double)curBytes / (double)totalBytes) * 100 : 0;
+			PlayerViewController.currentController.postProgressUpdate((int)pct);
+
+		}
+	}
+	
 	static private void waitForLoad(SegmentCacheEntry sce)
 	{
 		// Wait for data, if required...
@@ -197,15 +241,11 @@ public class HLSSegmentCache
 		Log.i("HLS Cache", "Waiting on request.");
 		long timerStart = System.currentTimeMillis();
 
-		long lastTime = System.currentTimeMillis();
+		sce.waiting = true;
 		while(sce.running)
 		{
-			if (System.currentTimeMillis() - 200 > lastTime)
-			{
-				lastTime = System.currentTimeMillis();
-				double pct = sce.bytesDownloaded != 0 ? ((double)sce.bytesDownloaded / (double)sce.totalSize) * 100 : 0;
-				PlayerViewController.currentController.postProgressUpdate((int)pct);
-			}
+
+			postProgressUpdate();
 			try {
 				Thread.sleep(30);
 				Thread.yield();
@@ -213,7 +253,7 @@ public class HLSSegmentCache
 				// Don't care.
 			}
 		}
-		
+		sce.waiting = false;
 		long timerElapsed = System.currentTimeMillis() - timerStart;
 		Log.i("HLS Cache", "Request finished, " + (sce.data.length/1024) + "kb in " + timerElapsed + "ms");			
 	}
