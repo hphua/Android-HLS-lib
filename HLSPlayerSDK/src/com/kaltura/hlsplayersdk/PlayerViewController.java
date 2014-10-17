@@ -1029,8 +1029,7 @@ public class PlayerViewController extends RelativeLayout implements
 	}
 	@Override
 	public float getDroppedFramesPerSecond() {
-		// TODO Auto-generated method stub
-		return 0;
+		return DroppedFramesPerSecond();
 	}
 	@Override
 	public float getBufferPercentage() {
