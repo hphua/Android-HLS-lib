@@ -828,7 +828,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener {
 		else return manifest.streams.get(quality).manifest.segments;
 	}
 	
-	private ManifestParser getManifestForQuality(int quality)
+	public ManifestParser getManifestForQuality(int quality)
 	{
 		if (manifest == null) return new ManifestParser();
 		if (manifest.streams.size() < 1 || manifest.streams.get(0).manifest == null) return manifest;
