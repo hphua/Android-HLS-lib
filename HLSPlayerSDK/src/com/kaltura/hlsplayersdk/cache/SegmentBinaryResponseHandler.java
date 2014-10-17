@@ -28,7 +28,7 @@ public class SegmentBinaryResponseHandler extends AsyncHttpResponseHandler {
 	
     @Override
     public void onRetry(int retryNo) {
-        // Request was retried
+        Log.i("SegmentBinaryResponseHandler", "Automatic Retry: " + retryNo);
     }
 
     @Override

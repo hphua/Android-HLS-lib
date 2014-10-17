@@ -100,7 +100,11 @@ public class SubtitleHandler implements OnSubtitleParseCompleteListener {
 	
 	private SubTitleSegment getSegmentForTime(double time, int language)
 	{
-		if (mManifest == null) return null;
+		if (mManifest == null)
+		{
+			Log.w("SubtitleHandler", "Manifest is null. Subtitles will not display.");
+			return null;
+		}
 
 		ManifestParser mp = null;
 		if (mManifest.subtitlePlayLists.size() > language)

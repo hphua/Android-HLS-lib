@@ -109,6 +109,7 @@ public class SegmentCacheEntry {
 		}
 		else
 		{
+			Log.i("SegmentCacheEntry.postOnSegmentFailed", "Segment download failed. No More Retries Left: " + uri + " : " + statusCode);
 			running = false;
 			if (mSegmentCachedListener != null)
 				mSegmentCachedListener.onSegmentFailed(uri, statusCode);
@@ -133,7 +134,7 @@ public class SegmentCacheEntry {
 	{
 		
 		bytesDownloaded = bytesWritten;
-		this.totalSize = totalBytesExpected;
+		totalSize = totalBytesExpected;
 		// If we have a callback handler, it pretty much means that we're not going to be
 		// in a wait state in the SegmentCache
 		if (mCallbackHandler != null)

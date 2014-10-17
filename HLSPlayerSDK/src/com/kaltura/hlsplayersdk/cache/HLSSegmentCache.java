@@ -46,7 +46,7 @@ public class HLSSegmentCache
 			
 			// Populate a cache entry and initiate the request.
 			Log.i("HLS Cache", "Miss on " + segmentUri + ", populating..");
-			final SegmentCacheEntry sce = existing != null?existing:new SegmentCacheEntry();
+			final SegmentCacheEntry sce = (existing != null) ? existing : new SegmentCacheEntry();
 			sce.uri = segmentUri;
 			sce.running = true;
 			sce.lastTouchedMillis = System.currentTimeMillis();
@@ -226,7 +226,7 @@ public class HLSSegmentCache
 					}
 				}
 			}
-			double pct = totalBytes != 0 ? ((double)curBytes / (double)totalBytes) * 100 : 0;
+			double pct = totalBytes != 0 ? ((double)curBytes / (double)totalBytes) * 100.0 : 0;
 			PlayerViewController.currentController.postProgressUpdate((int)pct);
 
 		}

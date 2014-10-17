@@ -413,14 +413,22 @@ public class PlayerViewController extends RelativeLayout implements
 	 * actually start.
 	 */
 	public void onParserComplete(ManifestParser parser) {
-		if (parser == null) return;
+		if (parser == null)
+		{
+			Log.w("PlayerViewController", "Manifest is null. Ending playback.");
+			return;
+		}
 		noMoreSegments = false;
 		Log.i(this.getClass().getName() + ".onParserComplete", "Entered");
 		mStreamHandler = new StreamHandler(parser);
 		mSubtitleHandler = new SubtitleHandler(parser);
 		
 		ManifestSegment seg = getStreamHandler().getFileForTime(0, 0);
-		if (seg == null) return;
+		if (seg == null)
+		{
+			Log.w("PlayerViewController", "Manifest is not valid. There aren't any segments. Ending playback.");
+			return;
+		}
 		
 		if (mSubtitleHandler.hasSubtitles())
 		{
