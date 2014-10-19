@@ -1030,8 +1030,7 @@ public class PlayerViewController extends RelativeLayout implements
 	}
 	@Override
 	public float getBufferPercentage() {
-		// TODO Auto-generated method stub
-		return 0;
+		return HLSSegmentCache.lastBufferPct;
 	}
 	@Override
 	public int getCurrentQualityIndex() {
