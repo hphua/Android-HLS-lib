@@ -23,6 +23,7 @@ public class HLSSegmentCache
 	public static AsyncHttpClient syncHttpClient = new SyncHttpClient();
 	
 	public static double lastDownloadDataRate = 0.0;
+	public static float lastBufferPct = 0;
 	
 	public static AsyncHttpClient httpClient()
 	{
@@ -233,6 +234,7 @@ public class HLSSegmentCache
 				}
 			}
 			double pct = totalBytes != 0 ? ((double)curBytes / (double)totalBytes) * 100.0 : 0;
+			lastBufferPct = (float)pct;
 			PlayerViewController.currentController.postProgressUpdate((int)pct);
 
 		}
