@@ -393,7 +393,7 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 	public void onDownloadFailed(URLLoader loader, String response) {
 		if (loader.manifestItem != null)
 		{
-			Log.w("ManifestParser.onManifestError", "ERROR loading maifest " + response);
+			Log.w("ManifestParser.onManifestError", "ERROR loading manifest " + response);
 			manifestLoaders.remove(loader);
 			announceIfComplete();
 		}

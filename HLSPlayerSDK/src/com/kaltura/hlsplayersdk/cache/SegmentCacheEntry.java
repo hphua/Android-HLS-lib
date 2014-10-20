@@ -3,12 +3,14 @@ package com.kaltura.hlsplayersdk.cache;
 import android.os.Handler;
 import android.util.Log;
 
+import com.kaltura.hlsplayersdk.PlayerViewController;
 import com.loopj.android.http.*;
 
 public class SegmentCacheEntry {
 	public String uri;
 	public byte[] data;
 	public boolean running;
+	public boolean waiting;
 	public long lastTouchedMillis;
 	public long forceSize = -1;
 
@@ -31,6 +33,9 @@ public class SegmentCacheEntry {
 	public RequestHandle request = null;
 	
 	private Handler mCallbackHandler = null;
+	
+	public int bytesDownloaded = 0;
+	public int totalSize = 0;
 
 	public boolean hasCrypto()
 	{
@@ -75,6 +80,7 @@ public class SegmentCacheEntry {
 	
 	public void notifySegmentCached()
 	{
+		waiting = false;
 		if (mSegmentCachedListener != null && mCallbackHandler != null)
 		{
 			mCallbackHandler.post(new Runnable() {
@@ -95,8 +101,19 @@ public class SegmentCacheEntry {
 	
 	public void postOnSegmentFailed(int statusCode)
 	{
-		if (mSegmentCachedListener != null)
-			mSegmentCachedListener.onSegmentFailed(uri, statusCode);
+		
+		if (retry())
+		{
+			Log.i("SegmentCacheEntry.postOnSegmentFailed", "Segment download failed. Retrying: " + uri + " : " + statusCode);
+			HLSSegmentCache.retry(this);
+		}
+		else
+		{
+			Log.i("SegmentCacheEntry.postOnSegmentFailed", "Segment download failed. No More Retries Left: " + uri + " : " + statusCode);
+			running = false;
+			if (mSegmentCachedListener != null)
+				mSegmentCachedListener.onSegmentFailed(uri, statusCode);
+		}
 	}
 	
 	public void postSegmentSucceeded(int statusCode, byte[] responseData)
@@ -110,6 +127,19 @@ public class SegmentCacheEntry {
 		{
 			if (mSegmentCachedListener != null)
 				mSegmentCachedListener.onSegmentFailed(uri, statusCode);
+		}
+	}
+	
+	public void updateProgress(int bytesWritten, int totalBytesExpected)
+	{
+		
+		bytesDownloaded = bytesWritten;
+		totalSize = totalBytesExpected;
+		// If we have a callback handler, it pretty much means that we're not going to be
+		// in a wait state in the SegmentCache
+		if (mCallbackHandler != null)
+		{
+			HLSSegmentCache.postProgressUpdate();
 		}
 	}
 

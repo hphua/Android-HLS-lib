@@ -25,4 +25,19 @@ public class SegmentBinaryResponseHandler extends AsyncHttpResponseHandler {
 	public void onSuccess(int statusCode, Header[] headers, byte[] responseData) {
 		entry.postSegmentSucceeded(statusCode, responseData);
 	}
+	
+    @Override
+    public void onRetry(int retryNo) {
+        Log.i("SegmentBinaryResponseHandler", "Automatic Retry: " + retryNo);
+    }
+
+    @Override
+    public void onProgress(int bytesWritten, int totalSize) {
+        entry.updateProgress(bytesWritten, totalSize);
+    }
+
+    @Override
+    public void onFinish() {
+        // Completed the request (either success or failure)
+    }
 }

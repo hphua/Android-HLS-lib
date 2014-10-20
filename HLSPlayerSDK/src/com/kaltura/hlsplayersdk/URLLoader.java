@@ -49,8 +49,9 @@ public class URLLoader extends AsyncHttpResponseHandler
 	// Event Handlers
 	//////////////////////////////////
 	@Override
-	public void onFailure(int arg0, Header[] arg1, byte[] arg2, Throwable arg3) {
+	public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
 		final URLLoader thisLoader = this;
+		final int sc = statusCode;
 		
 		if (mDownloadEventListener != null)
 		{
@@ -59,7 +60,7 @@ public class URLLoader extends AsyncHttpResponseHandler
 			{
 				@Override
 				public void run() {
-					mDownloadEventListener.onDownloadFailed(thisLoader, "failure");				
+					mDownloadEventListener.onDownloadFailed(thisLoader, "Failure: " + sc);				
 				}
 			});
 		}

@@ -413,10 +413,23 @@ public class PlayerViewController extends RelativeLayout implements
 	 * actually start.
 	 */
 	public void onParserComplete(ManifestParser parser) {
+		if (parser == null)
+		{
+			Log.w("PlayerViewController", "Manifest is null. Ending playback.");
+			return;
+		}
 		noMoreSegments = false;
 		Log.i(this.getClass().getName() + ".onParserComplete", "Entered");
 		mStreamHandler = new StreamHandler(parser);
 		mSubtitleHandler = new SubtitleHandler(parser);
+		
+		ManifestSegment seg = getStreamHandler().getFileForTime(0, 0);
+		if (seg == null)
+		{
+			Log.w("PlayerViewController", "Manifest is not valid. There aren't any segments. Ending playback.");
+			return;
+		}
+		
 		if (mSubtitleHandler.hasSubtitles())
 		{
 			postTextTracksList(mSubtitleHandler.getLanguageList(), mSubtitleHandler.getDefaultLanguageIndex());
@@ -443,7 +456,7 @@ public class PlayerViewController extends RelativeLayout implements
 		
 		postQualityTracksList(mStreamHandler.getQualityTrackList(), 0);
 		
-		ManifestSegment seg = getStreamHandler().getFileForTime(0, 0);
+
 		if (seg.altAudioSegment != null)
 		{
 			// We need to feed the segment before calling precache so that the datasource can be initialized before we
@@ -729,7 +742,7 @@ public class PlayerViewController extends RelativeLayout implements
 		mOnProgressListener = listener;
 
 	}
-	private void postProgressUpdate(final int progress)
+	public void postProgressUpdate(final int progress)
 	{
 		if (mOnProgressListener != null)
 		{
