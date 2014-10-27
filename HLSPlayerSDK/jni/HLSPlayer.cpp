@@ -19,6 +19,7 @@
 
 #include "androidVideoShim_ColorConverter.h"
 #include "HLSPlayerSDK.h"
+#include "cmath"
 
 
 extern HLSPlayerSDK* gHLSPlayerSDK;
@@ -2261,6 +2262,10 @@ int HLSPlayer::DroppedFramesPerSecond()
 	for (int i = 0; i < MAX_DROPPED_FRAME_SECONDS; ++i)
 	{
 		sum += mDroppedFrameCounts[i];
+		//LOGI("Dropped Frames Count [%d] = %d", i, mDroppedFrameCounts[i]);
 	}
-	return sum / MAX_DROPPED_FRAME_SECONDS;
+	//LOGI("Dropped Frames Sum = %d", sum);
+	float dfs = ((float) sum / (float)MAX_DROPPED_FRAME_SECONDS);
+	//LOGI("Dropped Frames Average = %f", dfs);
+	return round(dfs);
 }
