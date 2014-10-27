@@ -1,20 +1,15 @@
 package com.kaltura.hlsplayersdk;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Vector;
 
 import android.app.Activity;
 import android.content.Context;
-import android.media.MediaPlayer.OnErrorListener;
-import android.media.MediaPlayer.OnPreparedListener;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.os.Looper;
-import android.os.Message;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.Surface;
@@ -38,6 +33,7 @@ import com.kaltura.playersdk.TextTracksInterface;
 import com.kaltura.playersdk.VideoPlayerInterface;
 import com.kaltura.playersdk.events.OnAudioTrackSwitchingListener;
 import com.kaltura.playersdk.events.OnAudioTracksListListener;
+import com.kaltura.playersdk.events.OnErrorListener;
 import com.kaltura.playersdk.events.OnPlayerStateChangeListener;
 import com.kaltura.playersdk.events.OnPlayheadUpdateListener;
 import com.kaltura.playersdk.events.OnProgressListener;
@@ -282,7 +278,6 @@ public class PlayerViewController extends RelativeLayout implements
 
 
 	private OnPlayheadUpdateListener mPlayheadUpdateListener = null;
-	private OnPreparedListener mPreparedListener = null;
 	private OnProgressListener mOnProgressListener = null;
 
 	// Video state.
@@ -483,10 +478,7 @@ public class PlayerViewController extends RelativeLayout implements
 	public void onSegmentCompleted(String uri) {
 		HLSSegmentCache.cancelCacheEvent(uri);
 		
-		play();
-		// Fire prepared event.
-		if(mPreparedListener != null)
-			mPreparedListener.onPrepared(null);		
+		play();	
 	}
 
 	@Override
@@ -556,7 +548,7 @@ public class PlayerViewController extends RelativeLayout implements
 	// VideoPlayerInterface methods
 	// /////////////////////////////////////////////////////////////////////////////////////////////
 	public boolean isPlaying() {
-		return isPlaying();
+		return getIsPlaying();
 	}
 
 	public int getDuration() {
@@ -703,20 +695,6 @@ public class PlayerViewController extends RelativeLayout implements
 	}
 	
 	@Override
-	public void registerReadyToPlay(OnPreparedListener listener) {
-		// TODO Auto-generated method stub
-		mPreparedListener = listener;
-	}
-
-	@Override
-	public void registerError(OnErrorListener listener) {
-		// TODO Auto-generated method stub
-
-	}
-
-
-	
-	@Override
 	public void registerPlayheadUpdate(OnPlayheadUpdateListener listener) {
 		mPlayheadUpdateListener = listener;
 	}
@@ -755,6 +733,31 @@ public class PlayerViewController extends RelativeLayout implements
 				
 			});
 		}
+	}
+	
+	OnErrorListener mErrorListener = null;
+	@Override
+	public void registerError(OnErrorListener listener) {
+		mErrorListener = listener;
+		
+	}
+	
+	public void postError(int errorCode, String errorMessage)
+	{
+		if (mErrorListener != null)
+			mErrorListener.onError(errorCode, errorMessage);
+	}
+	
+	@Override
+	public void removePlayheadUpdateListener() {
+		if (mPlayheadUpdateListener != null)
+			mPlayheadUpdateListener = null;
+		
+	}
+	
+	@Override
+	public void setStartingPoint(int point) {
+		postError(OnErrorListener.MEDIA_ERROR_UNSUPPORTED, "setStartingPoint");
 	}
 	
 	//////////////////////////////////////////////////////////
@@ -1009,6 +1012,7 @@ public class PlayerViewController extends RelativeLayout implements
 		if (mStreamHandler != null) return mStreamHandler.lastQuality;
 		return 0;
 	}
+
 
 
 
