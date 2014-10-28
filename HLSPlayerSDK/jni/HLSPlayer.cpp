@@ -19,13 +19,14 @@
 
 #include "androidVideoShim_ColorConverter.h"
 #include "HLSPlayerSDK.h"
+#include "cmath"
 
 
 extern HLSPlayerSDK* gHLSPlayerSDK;
 
 using namespace android_video_shim;
 
-const int SEGMENTS_TO_BUFFER = 2;
+int SEGMENTS_TO_BUFFER = 2;
 
 //////////
 //
@@ -73,7 +74,8 @@ mNextSegmentMethodID(NULL), mSetVideoResolutionID(NULL), mEnableHWRendererModeID
 mSegmentTimeOffset(0), mVideoFrameDelta(0), mLastVideoTimeUs(0),
 mSegmentForTimeMethodID(NULL), mFrameCount(0), mDataSource(NULL), audioThread(0),
 mScreenHeight(0), mScreenWidth(0), mJAudioTrack(NULL), mStartTimeMS(0), mUseOMXRenderer(true),
-mNotifyFormatChangeComplete(NULL), mNotifyAudioTrackChangeComplete(NULL)
+mNotifyFormatChangeComplete(NULL), mNotifyAudioTrackChangeComplete(NULL),
+mDroppedFrameIndex(0), mDroppedFrameLastSecond(0)
 {
 	LOGTRACE("%s", __func__);
 	status_t status = mClient.connect();
@@ -165,6 +167,12 @@ void HLSPlayer::Reset()
 	mVideoFrameDelta = 0;
 	mFrameCount = 0;
 	mStartTimeMS = 0;
+}
+
+void HLSPlayer::SetSegmentCountTobuffer(int segmentCount)
+{
+	LOGI("Setting segment buffer count to %d", segmentCount);
+	SEGMENTS_TO_BUFFER = segmentCount + 1; // The +1 is the segment we're playing
 }
 
 ///
@@ -1161,6 +1169,7 @@ int HLSPlayer::Update()
 				// Do we need to catch up?
 				mVideoBuffer->release();
 				mVideoBuffer = NULL;
+				DroppedAFrame();
 				continue;
 			}
 			else
@@ -2196,4 +2205,67 @@ bool HLSPlayer::ReadUntilTime(double timeSecs)
 
 	mLastVideoTimeUs = timeUs;
 	return true;
+}
+
+
+// I did not add this to a class or a header because I don't expect it to be used anywhere else
+// All the other timing is based off the audio
+uint32_t getTimeMS()
+{
+
+	struct timespec now;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	return (uint32_t)((now.tv_sec*1000000000LL + now.tv_nsec) / 100000);
+}
+
+void HLSPlayer::UpdateDroppedFrameInfo()
+{
+	// If we don't have a last second, reset everything to 0
+	if (mDroppedFrameLastSecond == 0)
+	{
+		mDroppedFrameIndex = 0;
+		memset(mDroppedFrameCounts, 0, sizeof(int) * MAX_DROPPED_FRAME_SECONDS);
+		mDroppedFrameLastSecond = getTimeMS();
+	}
+
+	LOGI("GetTimeMS: %d" , getTimeMS());
+
+	// If we've gone beyond a second, move our index up one, and set it to 0 to start
+	// that seconds count over again.
+	if (getTimeMS() - 1000 > mDroppedFrameLastSecond)
+	{
+		mDroppedFrameLastSecond = getTimeMS();
+		mDroppedFrameIndex = (mDroppedFrameIndex + 1) % MAX_DROPPED_FRAME_SECONDS;
+		LOGI("mDroppedFrameIndex = %d", mDroppedFrameIndex);
+		mDroppedFrameCounts[mDroppedFrameIndex] = 0;
+	}
+}
+
+void HLSPlayer::DroppedAFrame()
+{
+	AutoLock locker(&lock, __func__);
+
+	UpdateDroppedFrameInfo();
+
+
+	// Increment the count in the current second
+	mDroppedFrameCounts[mDroppedFrameIndex]++;
+}
+
+int HLSPlayer::DroppedFramesPerSecond()
+{
+	AutoLock locker(&lock, __func__);
+
+	UpdateDroppedFrameInfo();
+
+	int sum = 0;
+	for (int i = 0; i < MAX_DROPPED_FRAME_SECONDS; ++i)
+	{
+		sum += mDroppedFrameCounts[i];
+		//LOGI("Dropped Frames Count [%d] = %d", i, mDroppedFrameCounts[i]);
+	}
+	//LOGI("Dropped Frames Sum = %d", sum);
+	float dfs = ((float) sum / (float)MAX_DROPPED_FRAME_SECONDS);
+	//LOGI("Dropped Frames Average = %f", dfs);
+	return round(dfs);
 }

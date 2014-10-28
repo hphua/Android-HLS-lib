@@ -22,6 +22,9 @@ public class HLSSegmentCache
 	public static AsyncHttpClient asyncHttpClient = new AsyncHttpClient();
 	public static AsyncHttpClient syncHttpClient = new SyncHttpClient();
 	
+	public static double lastDownloadDataRate = 0.0;
+	public static float lastBufferPct = 0;
+	
 	public static AsyncHttpClient httpClient()
 	{
 		if (Looper.myLooper() == null)
@@ -50,12 +53,13 @@ public class HLSSegmentCache
 			sce.uri = segmentUri;
 			sce.running = true;
 			sce.lastTouchedMillis = System.currentTimeMillis();
+			sce.downloadStartTime = sce.lastTouchedMillis;
 			
 			// Issue HTTP request.
 	
 			Thread t = new Thread()		
 			{		
-				public void run() {		
+				public void run() {
 					sce.request = httpClient().get(sce.uri, new SegmentBinaryResponseHandler(sce));						
 				}		
 			};		
@@ -92,6 +96,9 @@ public class HLSSegmentCache
 		
 		sce.notifySegmentCached();
 
+		if (sce.downloadCompletedTime != 0 && sce.downloadStartTime != 0 && sce.downloadCompletedTime != sce.downloadStartTime)
+			lastDownloadDataRate = (double)sce.data.length / (sce.downloadCompletedTime - sce.downloadStartTime);
+		
 		expire();
 	}
 	
@@ -227,6 +234,7 @@ public class HLSSegmentCache
 				}
 			}
 			double pct = totalBytes != 0 ? ((double)curBytes / (double)totalBytes) * 100.0 : 0;
+			lastBufferPct = (float)pct;
 			PlayerViewController.currentController.postProgressUpdate((int)pct);
 
 		}

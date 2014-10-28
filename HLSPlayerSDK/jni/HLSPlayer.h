@@ -21,6 +21,8 @@
 #include <pthread.h>
 #include <list>
 
+#define MAX_DROPPED_FRAME_SECONDS 5
+
 namespace android
 {
 	class MPEG2TSExtractor;
@@ -39,10 +41,13 @@ public:
 
 	void SetSurface(JNIEnv* env, jobject surface);
 	android_video_shim::status_t FeedSegment(const char* path, int32_t quality, int continuityEra, const char* altAudioPath, int audioIndex, double time, int cryptoId, int altCryptoId );
+	void SetSegmentCountTobuffer(int segmentCount);
 
 	bool Play();
 	void Stop();
 	int Update();
+
+	int DroppedFramesPerSecond();
 
 	void Seek(double time);
 
@@ -172,6 +177,13 @@ private:
 	int32_t mStartTimeMS;
 
 	pthread_mutex_t lock;
+
+	// DroppedFrameCounter
+	int mDroppedFrameCounts[MAX_DROPPED_FRAME_SECONDS]; // each int holds the count for a single second
+	int mDroppedFrameIndex;
+	int32_t mDroppedFrameLastSecond;
+	void DroppedAFrame();
+	void UpdateDroppedFrameInfo();
 };
 
 

@@ -295,6 +295,15 @@ extern "C"
 		return rval;
 	}
 
+	jint Java_com_kaltura_hlsplayersdk_PlayerViewController_DroppedFramesPerSecond(JNIEnv* env, jobject jcaller)
+	{
+		if (gHLSPlayerSDK == NULL)
+			return 0;
+		if (!gHLSPlayerSDK->GetPlayer())
+			return 0;
+		return gHLSPlayerSDK->GetPlayer()->DroppedFramesPerSecond();
+	}
+
 	void Java_com_kaltura_hlsplayersdk_PlayerViewController_FeedSegment(JNIEnv* env, jobject jcaller, jstring jurl, jint quality, jint continuityEra, jstring jaltAudioUrl, jint altAudioIndex, jdouble startTime, int cryptoId, int altCryptoId )
 	{
 		LOGI("Entered");
@@ -353,6 +362,16 @@ extern "C"
 			gHLSPlayerSDK->GetPlayer()->ApplyFormatChange();
 		}
 	}
+
+
+	void Java_com_kaltura_hlsplayersdk_PlayerViewController_SetSegmentCountToBuffer(JNIEnv* env, jobject jcaller, jint segCount)
+	{
+		if (gHLSPlayerSDK != NULL && gHLSPlayerSDK->GetPlayer())
+		{
+			gHLSPlayerSDK->GetPlayer()->SetSegmentCountTobuffer(segCount);
+		}
+	}
+
 
 }
 
