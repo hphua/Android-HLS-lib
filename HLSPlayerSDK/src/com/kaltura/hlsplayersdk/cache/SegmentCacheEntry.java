@@ -4,6 +4,7 @@ import android.os.Handler;
 import android.util.Log;
 
 import com.kaltura.hlsplayersdk.PlayerViewController;
+import com.kaltura.playersdk.events.OnErrorListener;
 import com.loopj.android.http.*;
 
 public class SegmentCacheEntry {
@@ -115,6 +116,7 @@ public class SegmentCacheEntry {
 			running = false;
 			if (mSegmentCachedListener != null)
 				mSegmentCachedListener.onSegmentFailed(uri, statusCode);
+			PlayerViewController.currentController.postError(OnErrorListener.MEDIA_ERROR_IO, uri + "(" + statusCode + ")");
 		}
 	}
 	
@@ -130,6 +132,7 @@ public class SegmentCacheEntry {
 		{
 			if (mSegmentCachedListener != null)
 				mSegmentCachedListener.onSegmentFailed(uri, statusCode);
+			PlayerViewController.currentController.postError(OnErrorListener.MEDIA_ERROR_IO, uri + "(" + statusCode + ")");
 		}
 	}
 	
