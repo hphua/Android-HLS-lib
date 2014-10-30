@@ -63,6 +63,7 @@ void HLSSegmentCache::precache(const char *uri, int cryptoId)
 
 	jstring juri = env->NewStringUTF(uri);
 	env->CallStaticVoidMethod(mClass, mPrecache, juri, cryptoId);
+	env->DeleteLocalRef(juri); // Cleaning up, just in case we're called from a native thread
 }
 
 int64_t HLSSegmentCache::read(const char *uri, int64_t offset, int64_t size, void *bytes)

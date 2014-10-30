@@ -32,6 +32,25 @@ public class HLSSegmentCache
 		return asyncHttpClient;
 	}
 	
+	static public int getCryptoId(final String segmentUri)
+	{
+		initialize();
+		synchronized (segmentCache)
+		{
+			SegmentCacheEntry sce = segmentCache.get(segmentUri);
+			if (sce != null)
+			{
+				Log.i("getCryptoId", "Found Id (" + sce.cryptoHandle + ") for URI: " + segmentUri );
+				return sce.cryptoHandle;
+			}
+			else
+			{
+				Log.i("getCryptoId", "Found no existing sce for URI: " + segmentUri );
+				return -1;
+			}
+		}
+	}
+	
 	static public SegmentCacheEntry populateCache(final String segmentUri)
 	{
 		synchronized (segmentCache)

@@ -777,11 +777,13 @@ bool HLSPlayer::InitSources()
 	{
 		// It's the second byte.
 		int level = vidDataBytes[1];
+#ifndef ALLOW_ALL_PROFILES
 		if(level > 66)
 		{
 			LOGE("Tried to play video that exceeded baseline profile (%d > 66), aborting!", level);
 			return false;
 		}
+#endif
 	}
 	else
 	{

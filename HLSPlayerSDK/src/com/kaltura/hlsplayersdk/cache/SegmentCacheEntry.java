@@ -47,7 +47,11 @@ public class SegmentCacheEntry {
 
 	public void setCryptoHandle(int handle)
 	{
-		cryptoHandle = handle;
+		// If we already have a crypto handle, I don't think we want to reset it
+		if (cryptoHandle == -1)
+			cryptoHandle = handle;
+		else if (handle != cryptoHandle)
+			Log.i("setCryptoHandle", "Tried to change an existing cryptoHandle (" + cryptoHandle + ") to (" + handle + ")");
 	}
 
 	public void ensureDecryptedTo(long offset)
