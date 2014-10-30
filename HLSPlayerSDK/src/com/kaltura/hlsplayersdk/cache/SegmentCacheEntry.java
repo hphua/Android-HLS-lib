@@ -23,6 +23,7 @@ public class SegmentCacheEntry {
 	// All bytes < decryptHighWaterMark are descrypted; all >=  are still 
 	// encrypted. This allows us to avoid duplicating every segment.
 	protected long decryptHighWaterMark = 0;
+	private boolean fullyDecrypted = false;
 	
 	// We will retry 3 times before giving up
 	private static final int maxRetries = 3;
@@ -39,7 +40,7 @@ public class SegmentCacheEntry {
 	
 	public int bytesDownloaded = 0;
 	public int totalSize = 0;
-
+	
 	public boolean hasCrypto()
 	{
 		return (cryptoHandle != -1);
@@ -58,15 +59,23 @@ public class SegmentCacheEntry {
 	{
 		if(cryptoHandle == -1)
 			return;
-		
-		//Log.i("HLS Cache", "Decrypting to " + offset);
-		//Log.i("HLS Cache", "  first byte = " + data[0]);
+//		if (offset == 188)
+//		{
+//			Log.i("HLS Cache", "Decrypting " + uri);
+//			Log.i("HLS Cache", "  to " + offset);
+//			Log.i("HLS Cache", "  first bytes = " + data[0] + data[1] + data[2] + data[3] + data[4]);
+//		}
 		long delta = offset - decryptHighWaterMark;
-		//Log.i("HLS Cache", "  delta = " + delta + " | HighWaterMark = " + decryptHighWaterMark);
+//		if (offset == 188)
+//			Log.i("HLS Cache", "  delta = " + delta + " | HighWaterMark = " + decryptHighWaterMark);
+		
 		if (delta > 0)
 			decryptHighWaterMark = decrypt(cryptoHandle, data, decryptHighWaterMark, delta);
-		//Log.i("HLS Cache", "Decrypted to " + decryptHighWaterMark);
-		//Log.i("HLS Cache", "  first byte = " + data[0]);
+//		if (offset == 188)
+//		{
+//			Log.i("HLS Cache", "Decrypted to " + decryptHighWaterMark);
+//			Log.i("HLS Cache", "  first bytes = " + data[0] + data[1] + data[2] + data[3] + data[4]);
+//		}
 	}
 
 	public boolean isFullyDecrypted()
@@ -108,7 +117,6 @@ public class SegmentCacheEntry {
 	
 	public void postOnSegmentFailed(int statusCode)
 	{
-		
 		if (retry())
 		{
 			Log.i("SegmentCacheEntry.postOnSegmentFailed", "Segment download failed. Retrying: " + uri + " : " + statusCode);
