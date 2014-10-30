@@ -11,7 +11,7 @@
 #include <android/log.h>
 
 #define USE_AUDIO
-#define ALLOW_ALL_PROFILES
+//#define ALLOW_ALL_PROFILES
 
 #define _DEBUG_E
 #define _DEBUG_W
