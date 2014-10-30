@@ -415,6 +415,7 @@ public class PlayerViewController extends RelativeLayout implements
 		if (parser == null)
 		{
 			Log.w("PlayerViewController", "Manifest is null. Ending playback.");
+			postError(OnErrorListener.MEDIA_ERROR_NOT_VALID, "No Valid Manifest");
 			return;
 		}
 		noMoreSegments = false;
@@ -425,6 +426,7 @@ public class PlayerViewController extends RelativeLayout implements
 		ManifestSegment seg = getStreamHandler().getFileForTime(0, 0);
 		if (seg == null)
 		{
+			postError(OnErrorListener.MEDIA_ERROR_NOT_VALID, "Manifest is not valid. There aren't any segments.");
 			Log.w("PlayerViewController", "Manifest is not valid. There aren't any segments. Ending playback.");
 			return;
 		}
@@ -505,6 +507,7 @@ public class PlayerViewController extends RelativeLayout implements
 
 	public void onDownloadFailed(URLLoader loader, String response) {
 		Log.i("PlayerViewController", "Download failed: " + response);
+		postError(OnErrorListener.MEDIA_ERROR_IO, loader.uri + " (" + response + ")");
 	}
 
 	protected StreamHandler getStreamHandler() {
@@ -750,10 +753,18 @@ public class PlayerViewController extends RelativeLayout implements
 		
 	}
 	
-	public void postError(int errorCode, String errorMessage)
+	public void postError(final int errorCode, final String errorMessage)
 	{
 		if (mErrorListener != null)
-			mErrorListener.onError(errorCode, errorMessage);
+		{
+			mActivity.runOnUiThread(new Runnable()
+			{
+				@Override
+				public void run() {
+					mErrorListener.onError(errorCode, errorMessage);
+				}
+			});
+		}
 	}
 	
 	@Override
@@ -845,7 +856,7 @@ public class PlayerViewController extends RelativeLayout implements
 
 	@Override
 	public void hardSwitchAudioTrack(int newAudioIndex) {
-		// TODO Auto-generated method stub
+		postError(OnErrorListener.MEDIA_ERROR_UNSUPPORTED, "hardSwitchAudioTrack");
 		
 	}
 	
@@ -936,7 +947,7 @@ public class PlayerViewController extends RelativeLayout implements
 	}
 	@Override
 	public void setAutoSwitch(boolean autoSwitch) {
-		// TODO Auto-generated method stub
+		postError(OnErrorListener.MEDIA_ERROR_UNSUPPORTED, "setAutoSwitch");
 		
 	}
 	

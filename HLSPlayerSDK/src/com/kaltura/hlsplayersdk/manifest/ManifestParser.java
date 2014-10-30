@@ -6,9 +6,11 @@ import java.util.Vector;
 import android.util.Log;
 import android.util.EventLog.Event;
 
+import com.kaltura.hlsplayersdk.PlayerViewController;
 import com.kaltura.hlsplayersdk.URLLoader;
 import com.kaltura.hlsplayersdk.subtitles.*;
 import com.kaltura.hlsplayersdk.manifest.events.*;
+import com.kaltura.playersdk.events.OnErrorListener;
 
 public class ManifestParser implements OnParseCompleteListener, URLLoader.DownloadEventListener {
 	public static final String DEFAULT = "DEFAULT";
@@ -126,8 +128,9 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 			
 			if (i == 0 && !curLine.contains("#EXTM3U"))
 			{
-				Log.i(this.type + ".parse()", "Bad Stream! #EXTM3U is not contained within the first line");
+				Log.i(this.type + ".parse()", "Bad Stream! #EXTM3U is missing from the first line");
 				goodManifest = false;
+				PlayerViewController.currentController.postError(OnErrorListener.MEDIA_ERROR_MALFORMED, "#EXTM3U is missing from the first line. " + this.fullUrl);
 				break;
 			}
 			
@@ -401,6 +404,7 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 		{
 			
 		}
+		PlayerViewController.currentController.postError(OnErrorListener.MEDIA_ERROR_IO, loader.uri + "(" + response + ")");
 		postReloadFailed(this);
 	}
 
