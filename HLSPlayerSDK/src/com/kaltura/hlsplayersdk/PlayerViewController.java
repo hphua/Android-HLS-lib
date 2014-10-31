@@ -590,6 +590,7 @@ public class PlayerViewController extends RelativeLayout implements
 	}
 
 	public void stop() {
+		HLSSegmentCache.cancelDownloads();
 		StopPlayer();
 		try {
 			Thread.sleep(100);
@@ -659,6 +660,7 @@ public class PlayerViewController extends RelativeLayout implements
 	public void setVideoUrl(String url) {
 		Log.i("PlayerView.setVideoUrl", url);
 		HLSSegmentCache.cancelAllCacheEvents();
+		HLSSegmentCache.cancelDownloads();
 		targetSeekMS = 0;
 		targetSeekSet = false;
 		StopPlayer();

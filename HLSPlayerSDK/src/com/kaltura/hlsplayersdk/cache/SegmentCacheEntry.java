@@ -41,6 +41,18 @@ public class SegmentCacheEntry {
 	public int bytesDownloaded = 0;
 	public int totalSize = 0;
 	
+	public void cancel()
+	{
+		if (running)
+		{
+			Log.i("HLS Cache", "Cancelling " + uri);
+			registerSegmentCachedListener(null, null);
+			running = false;
+			waiting = false;
+		}
+		
+	}
+	
 	public boolean hasCrypto()
 	{
 		return (cryptoHandle != -1);
