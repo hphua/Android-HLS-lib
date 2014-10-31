@@ -1871,7 +1871,7 @@ namespace android_video_shim
             fakeObj[0] = (void**)(((int*)newVtable) + 2);
 
             // Dump some useful known symbols.
-            #if 1
+            #if 0
             #define DLSYM_MACRO(s) LOGI("   o %s=%p", #s, searchSymbol(#s));
 
             DLSYM_MACRO(_ZN7android10DataSource7getSizeEPx); // Only on higher
@@ -1892,12 +1892,12 @@ namespace android_video_shim
             // actually treating them as such here because there's no instance.
             // So we should be OK! But if the values here report as not code
             // segment values then you might need to revisit.
-            LOGI(" _initCheck=%p", (void*)&HLSDataSource::_initCheck);
-            LOGI(" _readAt=%p", (void*)&HLSDataSource::_readAt);
-            LOGI(" _getSize=%p", (void*)&HLSDataSource::_getSize);
+            LOGSYMBOLERROR(" _initCheck=%p", (void*)&HLSDataSource::_initCheck);
+            LOGSYMBOLERROR(" _readAt=%p", (void*)&HLSDataSource::_readAt);
+            LOGSYMBOLERROR(" _getSize=%p", (void*)&HLSDataSource::_getSize);
 
-            LOGI(" _readAt_23=%p", (void*)&HLSDataSource::_readAt_23);
-            LOGI(" _getSize_23=%p", (void*)&HLSDataSource::_getSize_23);
+            LOGSYMBOLERROR(" _readAt_23=%p", (void*)&HLSDataSource::_readAt_23);
+            LOGSYMBOLERROR(" _getSize_23=%p", (void*)&HLSDataSource::_getSize_23);
 
             // And override the pointers as appropriate.
             if(AVSHIM_USE_NEWDATASOURCEVTABLE)

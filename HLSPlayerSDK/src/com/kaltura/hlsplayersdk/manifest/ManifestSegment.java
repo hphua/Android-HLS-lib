@@ -65,6 +65,11 @@ public class ManifestSegment extends BaseManifestItem
 	{
 		if(cryptoId != -1 || key == null)
 			return;
+		
+		// If we're already in the cache, use the same handle
+		cryptoId = HLSSegmentCache.getCryptoId(uri);
+		if (cryptoId != -1) 
+			return;
 
 		// Read the key optimistically.
 		ByteBuffer keyBytes = ByteBuffer.allocate(16);
