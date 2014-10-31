@@ -6,6 +6,7 @@ import java.nio.charset.Charset;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -24,6 +25,8 @@ public class HLSSegmentCache
 	
 	public static double lastDownloadDataRate = 0.0;
 	public static float lastBufferPct = 0;
+	
+	protected static Context context = null;
 	
 	public static AsyncHttpClient httpClient()
 	{
@@ -79,7 +82,7 @@ public class HLSSegmentCache
 			Thread t = new Thread()		
 			{		
 				public void run() {
-					sce.request = httpClient().get(sce.uri, new SegmentBinaryResponseHandler(sce));						
+					sce.request = httpClient().get(context, sce.uri, new SegmentBinaryResponseHandler(sce));						
 				}		
 			};		
 			t.start();		
@@ -101,6 +104,12 @@ public class HLSSegmentCache
 			if(sce == null)
 			{
 				Log.e("HLS Cache", "Lost entry for " + segmentUri + "!");
+				return;
+			}
+			
+			if (sce.data != null)
+			{
+				Log.i("HLS Cache", "Segment already has data. Ignoring new data.");
 				return;
 			}
 			
@@ -127,6 +136,8 @@ public class HLSSegmentCache
 		{
 			Log.i("HLS Cache", "Initializing concurrent hash map.");
 			segmentCache = new ConcurrentHashMap<String, SegmentCacheEntry>();
+			context = PlayerViewController.currentController.getContext();
+			if (context == null) Log.e("HLS Cache", "Context is null!!!");
 		}
 	}
 	
@@ -227,6 +238,7 @@ public class HLSSegmentCache
 		waitForLoad(sce);
 		if(sce.forceSize != -1)
 			return sce.forceSize;
+		if (sce.data == null) return 0;
 		return sce.data.length;
 	}
 	
@@ -256,6 +268,21 @@ public class HLSSegmentCache
 			lastBufferPct = (float)pct;
 			PlayerViewController.currentController.postProgressUpdate((int)pct);
 
+		}
+	}
+	
+	static public void cancelDownloads()
+	{
+		synchronized (segmentCache)
+		{
+			Log.i("HLS Cache", "Cancelling downloads");
+//			syncHttpClient.cancelRequests(context, true);
+//			asyncHttpClient.cancelRequests(context, true);
+			// Get all the values in the set.
+			Collection<SegmentCacheEntry> values = segmentCache.values();
+
+			for(SegmentCacheEntry v : values)
+				v.cancel();
 		}
 	}
 	
@@ -333,6 +360,12 @@ public static String bytesToHex(ByteBuffer bytes) {
 		}
 		
 		waitForLoad(sce);
+		
+		if (sce.data == null || sce.data.length == 0)
+		{
+			Log.e("HLS Cache", "Segment Data is nonexistant or empty");
+			return 0;
+		}
 		
 		synchronized(segmentCache)
 		{
