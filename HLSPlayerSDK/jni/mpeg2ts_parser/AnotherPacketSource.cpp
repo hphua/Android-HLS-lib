@@ -204,6 +204,7 @@ void AnotherPacketSource::queueAccessUnit(const sp<ABuffer> &buffer) {
         int64_t latestTimeUs = 0;
         CHECK(mLatestEnqueuedMeta->findInt64("timeUs", &latestTimeUs));
         if (lastQueuedTimeUs > latestTimeUs) {
+            LOGE("Setting buffer with bad time %p", mLatestEnqueuedMeta.get());
             mLatestEnqueuedMeta = buffer->meta();
         }
     }

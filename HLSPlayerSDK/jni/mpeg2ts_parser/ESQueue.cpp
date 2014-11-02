@@ -330,7 +330,7 @@ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnit() {
             return dequeueAccessUnitH264();
         case AAC:
             if(AVSHIM_USE_NEWDATASOURCEVTABLE)
-                return dequeueAccessUnitAAC();
+                return dequeueAccessUnitAAC_23();
             else
             {
                 LOGI("Taking 2.3 path for AAC decoding.");
@@ -463,14 +463,24 @@ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnitAAC_23() {
     mBuffer->setRange(0, mBuffer->size() - offset);
 
     //int64_t timeUs = fetchTimestamp(offset);
-    RangeInfo *info = &*mRangeInfos.begin();
+    if(mRangeInfos.size())
+    {
+        RangeInfo *info = &*mRangeInfos.begin();
 
-    int64_t timeUs = info->mTimestampUs;
+        int64_t timeUs = info->mTimestampUs;
 
-    accessUnit->meta()->setInt64("time", timeUs);
-    accessUnit->meta()->setInt64("timeUs", timeUs);
+        accessUnit->meta()->setInt64("time", timeUs);
+        accessUnit->meta()->setInt64("timeUs", timeUs);
 
-    mRangeInfos.erase(mRangeInfos.begin());
+        mRangeInfos.erase(mRangeInfos.begin());        
+    }
+    else
+    {
+        // Fake it!
+        LOGE("Faking time for AAC access unit.");
+        accessUnit->meta()->setInt64("time", 0);
+        accessUnit->meta()->setInt64("timeUs", 0);
+    }
 
 //    CHECK_GT(mTimestamps.size(), 0u);
 //    int64_t timeUs = *mTimestamps.begin();
