@@ -300,7 +300,7 @@ status_t ElementaryStreamQueue::appendData(
 }
 
 sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnit() {
-    if ((mFlags & kFlag_AlignedData) && mMode == H264) {
+    if ((mFlags & kFlag_AlignedData) && mMode == H264 && !AVSHIM_HAS_OMXRENDERERPATH) {
         if (mRangeInfos.empty()) {
             return NULL;
         }
@@ -462,8 +462,8 @@ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnitAAC_23() {
             mBuffer->size() - offset);
     mBuffer->setRange(0, mBuffer->size() - offset);
 
-    //int64_t timeUs = fetchTimestamp(offset);
-    if(mRangeInfos.size())
+    int64_t timeUs = fetchTimestamp(offset);
+    /*if(mRangeInfos.size())
     {
         RangeInfo *info = &*mRangeInfos.begin();
 
@@ -480,7 +480,10 @@ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnitAAC_23() {
         LOGE("Faking time for AAC access unit.");
         accessUnit->meta()->setInt64("time", 0);
         accessUnit->meta()->setInt64("timeUs", 0);
-    }
+    }*/
+
+    accessUnit->meta()->setInt64("time", timeUs);
+    accessUnit->meta()->setInt64("timeUs", timeUs);
 
 //    CHECK_GT(mTimestamps.size(), 0u);
 //    int64_t timeUs = *mTimestamps.begin();
