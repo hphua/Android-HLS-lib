@@ -26,6 +26,7 @@
     		<item android:id="@+id/abc_dvr_item" android:title="@string/abc_dvr" android:orderInCategory="5"></item>
     		<item android:id="@+id/bipbop" android:title="Bibbop" android:orderInCategory="6"></item>
     		<item android:id="@+id/aes_vod" android:title="AES VOD" android:orderInCategory="7"></item>
+    		<item android:id="@+id/soak" android:title="Soak" android:orderInCategory="8"></item>
         </menu>
     </item>
 

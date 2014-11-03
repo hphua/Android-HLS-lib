@@ -76,6 +76,7 @@ public class PlayerViewController extends RelativeLayout implements
 	private native void ApplyFormatChange();
 	private native void SetSegmentCountToBuffer(int segmentCount);
 	private native int DroppedFramesPerSecond();
+	public native boolean AllowAllProfiles();
 
 	// Static interface.
 	// TODO Allow multiple active PlayerViewController instances.

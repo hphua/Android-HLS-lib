@@ -111,12 +111,18 @@ public class SubtitleHandler implements OnSubtitleParseCompleteListener {
 		{
 			
 			ManifestPlaylist mpl = mManifest.subtitlePlayLists.get(language);
-			if (mpl.manifest.subtitles.size() > 0)
+			if (mpl.manifest != null && mpl.manifest.subtitles.size() > 0)
 				mp = mpl.manifest;
 		}
 		else if (mManifest.subtitles.size() > 0)
 		{
 			mp = mManifest;
+		}
+		
+		if (mp == null)
+		{
+			Log.w("SubtitleHandler", "Could not find subtitle playlist for the current language. Subtitles will not display.");
+			return null;
 		}
 		
 		for (int i = 0; i < mp.subtitles.size(); ++i)
