@@ -198,13 +198,17 @@ void AnotherPacketSource::queueAccessUnit(const sp<ABuffer> &buffer) {
     mBuffers.push_back(buffer);
     mCondition.signal();
 
-    if (!mLatestEnqueuedMeta.get()) {
-        mLatestEnqueuedMeta = buffer->meta();
-    } else {
-        int64_t latestTimeUs = 0;
-        CHECK(mLatestEnqueuedMeta->findInt64("timeUs", &latestTimeUs));
-        if (lastQueuedTimeUs > latestTimeUs) {
+    if(!AVSHIM_HAS_OMXRENDERERPATH)
+    {
+        if (!mLatestEnqueuedMeta.get()) {
             mLatestEnqueuedMeta = buffer->meta();
+        } else {
+            int64_t latestTimeUs = 0;
+            CHECK(mLatestEnqueuedMeta->findInt64("timeUs", &latestTimeUs));
+            if (lastQueuedTimeUs > latestTimeUs) {
+                LOGE("Setting buffer with bad time %d > %d, LEM=%p", lastQueuedTimeUs, latestTimeUs, mLatestEnqueuedMeta.get());
+                mLatestEnqueuedMeta = buffer->meta();
+            }
         }
     }
 }

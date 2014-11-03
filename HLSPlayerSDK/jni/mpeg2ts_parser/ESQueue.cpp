@@ -300,7 +300,7 @@ status_t ElementaryStreamQueue::appendData(
 }
 
 sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnit() {
-    if ((mFlags & kFlag_AlignedData) && mMode == H264) {
+    if ((mFlags & kFlag_AlignedData) && mMode == H264 && !AVSHIM_HAS_OMXRENDERERPATH) {
         if (mRangeInfos.empty()) {
             return NULL;
         }
@@ -329,13 +329,7 @@ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnit() {
         case H264:
             return dequeueAccessUnitH264();
         case AAC:
-            if(AVSHIM_USE_NEWDATASOURCEVTABLE)
-                return dequeueAccessUnitAAC();
-            else
-            {
-                LOGI("Taking 2.3 path for AAC decoding.");
-                return dequeueAccessUnitAAC_23();
-            }
+            return dequeueAccessUnitAAC_23();
         case MPEG_VIDEO:
             return dequeueAccessUnitMPEGVideo();
         case MPEG4_VIDEO:
@@ -462,23 +456,15 @@ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnitAAC_23() {
             mBuffer->size() - offset);
     mBuffer->setRange(0, mBuffer->size() - offset);
 
-    //int64_t timeUs = fetchTimestamp(offset);
-    RangeInfo *info = &*mRangeInfos.begin();
-
-    int64_t timeUs = info->mTimestampUs;
+    int64_t timeUs = fetchTimestamp(offset);
 
     accessUnit->meta()->setInt64("time", timeUs);
     accessUnit->meta()->setInt64("timeUs", timeUs);
 
-    mRangeInfos.erase(mRangeInfos.begin());
-
-//    CHECK_GT(mTimestamps.size(), 0u);
-//    int64_t timeUs = *mTimestamps.begin();
-//    mTimestamps.erase(mTimestamps.begin());
-//    accessUnit->meta()->setInt64("time", timeUs);
     return accessUnit;
 }
 
+// Not currently used in favor of 2.3 path.
 sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnitAAC() {
     if (mBuffer->size() == 0) {
         return NULL;

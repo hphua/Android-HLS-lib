@@ -33,6 +33,9 @@ namespace android {
 static const size_t kTSPacketSize = 188;
 
 struct MPEG2TSSource : public RefBase {
+
+    pthread_mutex_t lock;
+
     MPEG2TSSource(
             const sp<MPEG2TSExtractor> &extractor,
             const sp<AnotherPacketSource> &impl,
@@ -65,23 +68,28 @@ MPEG2TSSource::MPEG2TSSource(
       mSeekable(seekable) 
 {
     LOGI("ctor %p mImpl=%p", this, impl.get());
+    initRecursivePthreadMutex(&lock);
 }
 
 status_t MPEG2TSSource::start(MetaData *params) {
+    AutoLock locker(&lock);
     return mImpl->start(params);
 }
 
 status_t MPEG2TSSource::stop() {
+    AutoLock locker(&lock);
     return mImpl->stop();
 }
 
 sp<MetaData> MPEG2TSSource::getFormat() {
-    LOGI("Getting format this=%p mImpl=%p", this, mImpl.get());
+     AutoLock locker(&lock);
+   LOGI("Getting format this=%p mImpl=%p", this, mImpl.get());
     return mImpl->getFormat();
 }
 
 status_t MPEG2TSSource::read(
         MediaBuffer **out, const android_video_shim::MediaSource::ReadOptions *options) {
+    AutoLock locker(&lock);
     *out = NULL;
 
     int64_t seekTimeUs;
