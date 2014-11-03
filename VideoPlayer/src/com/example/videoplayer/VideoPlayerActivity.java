@@ -50,10 +50,10 @@ OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListene
         	urls.add("http://www.kaltura.com/p/0/playManifest/entryId/1_0i2t7w0i/format/applehttp");
         	urls.add("http://abclive.abcnews.com/i/abc_live4@136330/master.m3u8");
         	urls.add("http://cdnbakmi.kaltura.com/p/243342/sp/24334200/playManifest/entryId/0_uka1msg4/flavorIds/1_vqhfu6uy,1_80sohj7p/format/applehttp/protocol/http/a.m3u8");
-        	urls.add("http://pa-www.kaltura.com/content/shared/erank/multi_audio.m3u8");
         	urls.add("http://devimages.apple.com/iphone/samples/bipbop/bipbopall.m3u8");
         	if (playerView.AllowAllProfiles())
         	{
+            	urls.add("http://pa-www.kaltura.com/content/shared/erank/multi_audio.m3u8");
         		urls.add("http://live.cdn.antel.net.uy/test/hls/teststream1.m3u8");
         	}
         	

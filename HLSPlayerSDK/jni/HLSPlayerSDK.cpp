@@ -376,8 +376,9 @@ extern "C"
 	{
 #ifdef ALLOW_ALL_PROFILES
 		return true;
-#endif
+#else
 		return false;
+#endif
 	}
 
 
