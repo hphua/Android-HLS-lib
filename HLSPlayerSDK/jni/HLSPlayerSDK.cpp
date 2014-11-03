@@ -372,6 +372,14 @@ extern "C"
 		}
 	}
 
+	jboolean Java_com_kaltura_hlsplayersdk_PlayerViewController_AllowAllProfiles(JNIEnv* env, jobject jcaller )
+	{
+#ifdef ALLOW_ALL_PROFILES
+		return true;
+#endif
+		return false;
+	}
+
 
 }
 
