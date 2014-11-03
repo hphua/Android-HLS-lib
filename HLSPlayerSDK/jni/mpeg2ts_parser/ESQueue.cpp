@@ -329,13 +329,7 @@ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnit() {
         case H264:
             return dequeueAccessUnitH264();
         case AAC:
-            if(AVSHIM_USE_NEWDATASOURCEVTABLE)
-                return dequeueAccessUnitAAC_23();
-            else
-            {
-                LOGI("Taking 2.3 path for AAC decoding.");
-                return dequeueAccessUnitAAC_23();
-            }
+            return dequeueAccessUnitAAC_23();
         case MPEG_VIDEO:
             return dequeueAccessUnitMPEGVideo();
         case MPEG4_VIDEO:
@@ -463,35 +457,14 @@ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnitAAC_23() {
     mBuffer->setRange(0, mBuffer->size() - offset);
 
     int64_t timeUs = fetchTimestamp(offset);
-    /*if(mRangeInfos.size())
-    {
-        RangeInfo *info = &*mRangeInfos.begin();
-
-        int64_t timeUs = info->mTimestampUs;
-
-        accessUnit->meta()->setInt64("time", timeUs);
-        accessUnit->meta()->setInt64("timeUs", timeUs);
-
-        mRangeInfos.erase(mRangeInfos.begin());        
-    }
-    else
-    {
-        // Fake it!
-        LOGE("Faking time for AAC access unit.");
-        accessUnit->meta()->setInt64("time", 0);
-        accessUnit->meta()->setInt64("timeUs", 0);
-    }*/
 
     accessUnit->meta()->setInt64("time", timeUs);
     accessUnit->meta()->setInt64("timeUs", timeUs);
 
-//    CHECK_GT(mTimestamps.size(), 0u);
-//    int64_t timeUs = *mTimestamps.begin();
-//    mTimestamps.erase(mTimestamps.begin());
-//    accessUnit->meta()->setInt64("time", timeUs);
     return accessUnit;
 }
 
+// Not currently used in favor of 2.3 path.
 sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnitAAC() {
     if (mBuffer->size() == 0) {
         return NULL;
