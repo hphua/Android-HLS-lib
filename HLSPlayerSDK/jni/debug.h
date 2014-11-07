@@ -21,7 +21,7 @@
 //#define _DEBUG_RUN
 //#define _DEBUG_ATS
 //#define _DEBUG_REFBASE
-//#define _DEBUG_TRACE
+#define _DEBUG_TRACE
 
 //#define _DATA_MINING
 //#define _DEBUG_SCREENINFO

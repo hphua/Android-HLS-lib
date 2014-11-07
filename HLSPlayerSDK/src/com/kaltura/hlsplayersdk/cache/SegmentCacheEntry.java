@@ -41,6 +41,8 @@ public class SegmentCacheEntry {
 	public int bytesDownloaded = 0;
 	public int totalSize = 0;
 	
+	SegmentCacheEntry selfRef = this;
+	
 	public void cancel()
 	{
 		if (running)
@@ -98,23 +100,30 @@ public class SegmentCacheEntry {
 	private SegmentCachedListener mSegmentCachedListener = null;
 	public void registerSegmentCachedListener(SegmentCachedListener listener, Handler callbackHandler)
 	{
-		if (mSegmentCachedListener != listener)
+		synchronized (selfRef)
 		{
-			Log.i("SegmentCacheEntry", "Setting the SegmentCachedListener to a new value: " + listener);
-			mSegmentCachedListener = listener;
-			mCallbackHandler = callbackHandler;
+			if (mSegmentCachedListener != listener)
+			{
+				Log.i("SegmentCacheEntry", "Setting the SegmentCachedListener to a new value: " + listener);
+				mSegmentCachedListener = listener;
+				mCallbackHandler = callbackHandler;
+			}
 		}
 	}
 	
 	public void notifySegmentCached()
 	{
+		
 		waiting = false;
 		if (mSegmentCachedListener != null && mCallbackHandler != null)
 		{
 			mCallbackHandler.post(new Runnable() {
 				public void run()
 				{
-					mSegmentCachedListener.onSegmentCompleted(uri);
+					synchronized (selfRef)
+					{
+						if (mSegmentCachedListener != null) mSegmentCachedListener.onSegmentCompleted(uri);
+					}
 				}
 			});
 		}

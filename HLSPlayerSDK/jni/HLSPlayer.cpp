@@ -150,12 +150,28 @@ void HLSPlayer::Reset()
 		mVideoBuffer->release();
 		mVideoBuffer = NULL;
 	}
-	if (mVideoSource.get()) mVideoSource->stop();
-	if (mVideoSource23.get()) mVideoSource23->stop();
+	//android_video_shim::wp<MediaSource> tmp = NULL;
+	if (mVideoSource.get())
+		{
+
+			mVideoSource->stop();
+			//tmp = mVideoSource;
+		}
+	if (mVideoSource23.get())
+		{
+			mVideoSource23->stop();
+			//tmp = mVideoSource23;
+		}
+
+	//while (tmp.promote() != NULL)
+
 	mOMXRenderer.clear();
 	mVideoSource.clear();
 	mVideoSource23.clear();
-
+	{
+		sched_yield();
+		usleep(500000);
+	}
 	mDataSourceCache.empty();
 
 	//LOGI("Killing the segments");
@@ -167,6 +183,7 @@ void HLSPlayer::Reset()
 	mVideoFrameDelta = 0;
 	mFrameCount = 0;
 	mStartTimeMS = 0;
+
 }
 
 void HLSPlayer::SetSegmentCountTobuffer(int segmentCount)
@@ -1542,14 +1559,16 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
     if (buffer->meta_data()->findInt64(kKeyTime, &timeUs))
     {
 		ANativeWindow_Buffer windowBuffer;
-		if (ANativeWindow_lock(mWindow, &windowBuffer, NULL) == 0)
+		if (mWindow && (ANativeWindow_lock(mWindow, &windowBuffer, NULL) == 0))
 		{
 			// Sanity check on relative dimensions. Disabled for now.
-			if(false && windowBuffer.height < videoBufferHeight)
+			if(windowBuffer.height < videoBufferHeight)
 			{
 				LOGE("Aborting conversion; window too short for video!");
 				ANativeWindow_unlockAndPost(mWindow);
 				sched_yield();
+				mHeight = videoBufferHeight;
+				NoteHWRendererMode(mUseOMXRenderer, mWidth, mHeight, 4);
 				return true;
 			}
 
@@ -1647,6 +1666,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 			}
 			else if(colf == QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka)
 			{
+				LOGV("colf = QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka");
 				// Special case for QCOM tiled format as the shipped decoders seem busted.
 				unsigned char *tmpBuff = (unsigned char*)malloc(videoBufferWidth*videoBufferHeight*3);
 				convert_64x32_to_NV12(videoBits, tmpBuff, videoBufferWidth, videoBufferWidth, videoBufferHeight);
@@ -1662,6 +1682,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 			}
 			else if(colf == OMX_QCOM_COLOR_FormatYUV420PackedSemiPlanar32m4ka)
 			{
+				LOGV("colf = OMX_QCOM_COLOR_FormatYUV420PackedSemiPlanar32m4ka");
 #define ALIGN(x,multiple)    (((x)+(multiple-1))&~(multiple-1))
 				int a = vbCropLeft;
 				int b = vbCropTop;
@@ -1679,6 +1700,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 			}
 			else if(colf == OMX_COLOR_Format16bitRGB565)
 			{
+				LOGV("colf = OMX_COLOR_Format16bitRGB565");
 				// Directly copy 16 bit color.
 				size_t bufSize = buffer->range_length() - buffer->range_offset();
 				
@@ -1717,17 +1739,28 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 			{
 				lcc.convert(videoBufferWidth, videoBufferHeight, videoBits, 0, pixels, windowBuffer.stride * 2);
 			}*/
+			else if(lcc.isValid())
+			{
+				LOGV("Using own converter");
+				if (videoBufferHeight != windowBuffer.height)
+				{
+					LOGI("WindowBuffer && videoBuffer heights do not match: %d vs %d", windowBuffer.height, videoBufferHeight);
+					if (videoBufferHeight > windowBuffer.height)
+						videoBufferHeight = windowBuffer.height;
+				}
+
+				memset(pixels, rand(), windowBuffer.stride * videoBufferHeight * 2);
+				// Use our own converter.
+				lcc.convert(videoBufferWidth, videoBufferHeight, videoBits, 0, pixels, windowBuffer.stride * 2);
+			}
 			else if(cc.isValid())
 			{
+				LOGV("Using system converter");
 				// Use the system converter.
 				cc.convert(videoBits, videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom,
 						pixels, windowBuffer.stride, windowBuffer.height, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom);
 			}
-			else if(lcc.isValid())
-			{
-				// Use our own converter.
-				lcc.convert(videoBufferWidth, videoBufferHeight, videoBits, 0, pixels, windowBuffer.stride * 2);
-			}
+
 			else
 			{
 				LOGE("No conversion possible.");
@@ -1894,6 +1927,7 @@ void HLSPlayer::Stop()
 		SetState(STOPPED);
 		mJAudioTrack->Stop();
 	}
+	usleep(50000);
 }
 
 int32_t HLSPlayer::GetCurrentTimeMS()

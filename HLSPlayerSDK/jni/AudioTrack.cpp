@@ -68,6 +68,7 @@ void AudioTrack::Close()
 			mAudioSource->stop();
 		if(mAudioSource23.get())
 			mAudioSource23->stop();
+		usleep(50000);
 
 		sem_destroy(&semPause);
 	}
@@ -415,7 +416,7 @@ int64_t AudioTrack::GetTimeStamp()
 	if (!gHLSPlayerSDK->GetEnv(&env)) return 0;
 	if(!mTrack)
 	{
-		LOGE("No track! aborting...");
+		LOGI("No track! aborting...");
 		return mTimeStampOffset;
 	}
 

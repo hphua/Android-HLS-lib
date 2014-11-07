@@ -209,7 +209,7 @@ public:
 
     status_t _read(MediaBuffer **buffer, const android_video_shim::MediaSource::ReadOptions *options)
     {
-        LOGV("read");
+        LOGV2("read");
         return realSource->read(buffer, options);
     }
 
