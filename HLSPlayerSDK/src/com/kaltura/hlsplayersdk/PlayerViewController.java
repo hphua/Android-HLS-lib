@@ -292,7 +292,6 @@ public class PlayerViewController extends RelativeLayout implements
 	private int mTimeMS = 0;
 
 	// Thread to run video rendering.
-	private boolean pauseVideoThread = false;
 	private boolean stopVideoThread = false;
 	private int mRenderThreadState = THREAD_STATE_STOPPED;
 	private Thread mRenderThread;
@@ -300,15 +299,6 @@ public class PlayerViewController extends RelativeLayout implements
 		public void run() {
 			mRenderThreadState = THREAD_STATE_RUNNING;
 			while (mRenderThreadState == THREAD_STATE_RUNNING) {
-				if (pauseVideoThread)
-				{
-					try {
-						Thread.sleep(30);
-					} catch (InterruptedException ie) {
-						Log.i("video run", "Video thread sleep interrupted!");
-					}
-					continue;
-				}
 				if (stopVideoThread)
 				{
 					Log.i("videoThread", "Stopping video render thread");
@@ -510,9 +500,6 @@ public class PlayerViewController extends RelativeLayout implements
 			mRenderThread.start();
 		}
 		
-		pauseVideoThread = false;
-
-
 	}
 	
 	@Override
