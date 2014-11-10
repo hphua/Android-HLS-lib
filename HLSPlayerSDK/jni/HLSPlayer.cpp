@@ -1561,7 +1561,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 		ANativeWindow_Buffer windowBuffer;
 		if (mWindow && (ANativeWindow_lock(mWindow, &windowBuffer, NULL) == 0))
 		{
-			// Sanity check on relative dimensions. Disabled for now.
+			// Sanity check on relative dimensions
 			if(windowBuffer.height < videoBufferHeight)
 			{
 				LOGE("Aborting conversion; window too short for video!");
@@ -1739,6 +1739,13 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 			{
 				lcc.convert(videoBufferWidth, videoBufferHeight, videoBits, 0, pixels, windowBuffer.stride * 2);
 			}*/
+			else if(cc.isValid())
+			{
+				LOGV("Using system converter");
+				// Use the system converter.
+				cc.convert(videoBits, videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom,
+						pixels, windowBuffer.stride, windowBuffer.height, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom);
+			}
 			else if(lcc.isValid())
 			{
 				LOGV("Using own converter");
@@ -1749,18 +1756,10 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 						videoBufferHeight = windowBuffer.height;
 				}
 
-				memset(pixels, rand(), windowBuffer.stride * videoBufferHeight * 2);
+				//memset(pixels, rand(), windowBuffer.stride * videoBufferHeight * 2);
 				// Use our own converter.
 				lcc.convert(videoBufferWidth, videoBufferHeight, videoBits, 0, pixels, windowBuffer.stride * 2);
 			}
-			else if(cc.isValid())
-			{
-				LOGV("Using system converter");
-				// Use the system converter.
-				cc.convert(videoBits, videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom,
-						pixels, windowBuffer.stride, windowBuffer.height, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom);
-			}
-
 			else
 			{
 				LOGE("No conversion possible.");
