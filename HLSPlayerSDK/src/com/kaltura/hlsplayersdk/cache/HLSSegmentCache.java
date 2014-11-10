@@ -309,7 +309,8 @@ public class HLSSegmentCache
 		}
 		sce.waiting = false;
 		long timerElapsed = System.currentTimeMillis() - timerStart;
-		Log.i("HLS Cache", "Request finished, " + (sce.data.length/1024) + "kb in " + timerElapsed + "ms");			
+		if (sce.data != null) Log.i("HLS Cache", "Request finished, " + (sce.data.length/1024) + "kb in " + timerElapsed + "ms");
+		else Log.i("HLS Cache", "sce.data is null - request must have been canceled");
 	}
 	
 	static public String readFileAsString(String segmentUri)

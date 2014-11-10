@@ -62,8 +62,7 @@ public class PlayerViewController extends RelativeLayout implements
 	private final int STATE_FOUND_DISCONTINUITY = 6;
 	
 	private final int THREAD_STATE_STOPPED = 0;
-	private final int THREAD_STATE_STOPPING = 1;
-	private final int THREAD_STATE_RUNNING = 2;
+	private final int THREAD_STATE_RUNNING = 1;
 
 	// Native methods
 	private native int GetState();
