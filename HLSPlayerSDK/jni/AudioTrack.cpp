@@ -64,11 +64,26 @@ void AudioTrack::Close()
 		mTrack = NULL;
 		mCAudioTrack = NULL;
 
+		android_video_shim::wp<RefBase> tmp = NULL;
+
 		if(mAudioSource.get())
+		{
+			tmp = mAudioSource;
 			mAudioSource->stop();
+			mAudioSource.clear();
+
+		}
 		if(mAudioSource23.get())
+		{
+			tmp = mAudioSource23;
 			mAudioSource23->stop();
-		usleep(50000);
+			mAudioSource23.clear();
+		}
+
+		while (tmp.promote() != NULL)
+		{
+			usleep(1000);
+		}
 
 		sem_destroy(&semPause);
 	}

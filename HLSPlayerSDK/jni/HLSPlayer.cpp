@@ -150,28 +150,27 @@ void HLSPlayer::Reset()
 		mVideoBuffer->release();
 		mVideoBuffer = NULL;
 	}
-	//android_video_shim::wp<MediaSource> tmp = NULL;
+	android_video_shim::wp<RefBase> tmp = NULL;
 	if (mVideoSource.get())
-		{
-
-			mVideoSource->stop();
-			//tmp = mVideoSource;
-		}
+	{
+		mVideoSource->stop();
+		tmp = mVideoSource;
+	}
 	if (mVideoSource23.get())
-		{
-			mVideoSource23->stop();
-			//tmp = mVideoSource23;
-		}
-
-	//while (tmp.promote() != NULL)
-
+	{
+		mVideoSource23->stop();
+		tmp = mVideoSource23;
+	}
 	mOMXRenderer.clear();
 	mVideoSource.clear();
 	mVideoSource23.clear();
+
+	while (tmp.promote() != NULL)
 	{
 		sched_yield();
-		usleep(500000);
+		usleep(1000);
 	}
+
 	mDataSourceCache.empty();
 
 	//LOGI("Killing the segments");
