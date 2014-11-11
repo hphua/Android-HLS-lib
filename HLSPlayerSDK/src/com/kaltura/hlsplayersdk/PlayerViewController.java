@@ -679,6 +679,12 @@ public class PlayerViewController extends RelativeLayout implements
 	{
 		if (mRenderThreadState == THREAD_STATE_RUNNING)
 			stopVideoThread = true;
+		try {
+			if (mRenderThread != null) mRenderThread.join();
+		} catch (InterruptedException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
 		StopPlayer();
 		ResetPlayer();
 		reset();

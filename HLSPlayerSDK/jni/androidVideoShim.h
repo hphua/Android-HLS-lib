@@ -400,25 +400,6 @@ namespace android_video_shim
                 return lfc(this, id);
             }
 
-            // acquires a weak reference if there is already one.
-            // This is not always safe. see ProcessState.cpp and BpBinder.cpp
-            // for proper use.
-            bool                attemptIncWeak(const void* id);
-
-            //! DEBUGGING ONLY: Get current weak ref count.
-            int32_t             getWeakCount() const;
-
-            //! DEBUGGING ONLY: Print references held on object.
-            void                printRefs() const;
-
-            //! DEBUGGING ONLY: Enable tracking for this object.
-            // enable -- enable/disable tracking
-            // retain -- when tracking is enable, if true, then we save a stack trace
-            //           for each reference and dereference; when retain == false, we
-            //           match up references and dereferences and keep only the
-            //           outstanding ones.
-
-            void                trackMe(bool enable, bool retain);
         };
 
         weakref_type*   createWeak(void* id)

@@ -187,6 +187,11 @@ private:
 	void UpdateDroppedFrameInfo();
 };
 
+//----------------------------
+// template method to clear OMX
+//
+// Requires an sp<MediaSource> or sp<MediaSource23> object
+//
 template<typename T>
 void clearOMX(T& t)
 {

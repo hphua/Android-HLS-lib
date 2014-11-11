@@ -1541,7 +1541,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
     if (buffer->meta_data()->findInt64(kKeyTime, &timeUs))
     {
 		ANativeWindow_Buffer windowBuffer;
-		if (mWindow && (ANativeWindow_lock(mWindow, &windowBuffer, NULL) == 0))
+		if (ANativeWindow_lock(mWindow, &windowBuffer, NULL) == 0)
 		{
 			// Sanity check on relative dimensions
 			if(windowBuffer.height < videoBufferHeight)
@@ -1905,7 +1905,6 @@ void HLSPlayer::Stop()
 		SetState(STOPPED);
 		mJAudioTrack->Stop();
 	}
-	usleep(50000);
 }
 
 int32_t HLSPlayer::GetCurrentTimeMS()
