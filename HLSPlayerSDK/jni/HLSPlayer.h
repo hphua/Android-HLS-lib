@@ -15,6 +15,7 @@
 
 #include <android/native_window.h>
 #include <android/window.h>
+#include <unistd.h>
 
 #include "AudioTrack.h"
 
@@ -185,6 +186,26 @@ private:
 	void DroppedAFrame();
 	void UpdateDroppedFrameInfo();
 };
+
+template<typename T>
+void clearOMX(T& t)
+{
+	if (t.get())
+	{
+		t->stop();
+
+		android_video_shim::wp<android_video_shim::RefBase> tmp = NULL;
+
+		tmp = t;
+
+		t.clear();
+
+		while (tmp.promote() != NULL)
+		{
+			usleep(1000);
+		}
+	}
+}
 
 
 

@@ -64,26 +64,8 @@ void AudioTrack::Close()
 		mTrack = NULL;
 		mCAudioTrack = NULL;
 
-		android_video_shim::wp<RefBase> tmp = NULL;
-
-		if(mAudioSource.get())
-		{
-			tmp = mAudioSource;
-			mAudioSource->stop();
-			mAudioSource.clear();
-
-		}
-		if(mAudioSource23.get())
-		{
-			tmp = mAudioSource23;
-			mAudioSource23->stop();
-			mAudioSource23.clear();
-		}
-
-		while (tmp.promote() != NULL)
-		{
-			usleep(1000);
-		}
+		clearOMX(mAudioSource);
+		clearOMX(mAudioSource23);
 
 		sem_destroy(&semPause);
 	}
@@ -369,19 +351,8 @@ bool AudioTrack::Stop(bool seeking)
 
 	if(seeking)
 	{
-
-		if (mAudioSource.get())
-		{
-			mAudioSource->stop();
-			mAudioSource.clear();
-		}
-
-		if (mAudioSource23.get())
-		{
-			mAudioSource23->stop();
-			mAudioSource23.clear();
-		}
-
+		clearOMX(mAudioSource);
+		clearOMX(mAudioSource23);
 	}
 
 	JNIEnv* env;

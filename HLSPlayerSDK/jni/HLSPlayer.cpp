@@ -10,7 +10,7 @@
 #include "constants.h"
 #include <android/log.h>
 #include <android/native_window_jni.h>
-#include <unistd.h>
+
 
 #include "mpeg2ts_parser/MPEG2TSExtractor.h"
 
@@ -115,6 +115,8 @@ void HLSPlayer::Close(JNIEnv* env)
 	}
 }
 
+
+
 void HLSPlayer::Reset()
 {
 	LOGTRACE("%s", __func__);
@@ -150,31 +152,12 @@ void HLSPlayer::Reset()
 		mVideoBuffer->release();
 		mVideoBuffer = NULL;
 	}
-	android_video_shim::wp<RefBase> tmp = NULL;
-	if (mVideoSource.get())
-	{
-		mVideoSource->stop();
-		tmp = mVideoSource;
-	}
-	if (mVideoSource23.get())
-	{
-		mVideoSource23->stop();
-		tmp = mVideoSource23;
-	}
 	mOMXRenderer.clear();
-	mVideoSource.clear();
-	mVideoSource23.clear();
-
-	while (tmp.promote() != NULL)
-	{
-		sched_yield();
-		usleep(1000);
-	}
+	clearOMX(mVideoSource);
+	clearOMX(mVideoSource23);
 
 	mDataSourceCache.empty();
 
-	//LOGI("Killing the segments");
-	//stlwipe(mSegments);
 	LOGI("Killing the audio & video tracks");
 
 	mLastVideoTimeUs = 0;
@@ -1946,6 +1929,9 @@ void HLSPlayer::StopEverything()
 	LOGTRACE("%s", __func__);
 	AutoLock locker(&lock, __func__);
 
+	// We might need to clear these before we stop (so we don't get stuck waiting)
+	mAudioSource.clear();
+	mAudioSource23.clear();
 	if (mJAudioTrack) mJAudioTrack->Stop(true); // Passing true means we're seeking.
 
 	mAudioTrack.clear();
@@ -1954,8 +1940,6 @@ void HLSPlayer::StopEverything()
 	mVideoTrack23.clear();
 	mExtractor.clear();
 	mAlternateAudioExtractor.clear();
-	mAudioSource.clear();
-	mAudioSource23.clear();
 
 	LOGI("Killing the video buffer");
 	if (mVideoBuffer)
@@ -1963,10 +1947,8 @@ void HLSPlayer::StopEverything()
 		mVideoBuffer->release();
 		mVideoBuffer = NULL;
 	}
-	if (mVideoSource != NULL) mVideoSource->stop();
-	mVideoSource.clear();
-	if (mVideoSource23 != NULL) mVideoSource23->stop();
-	mVideoSource23.clear();
+	clearOMX(mVideoSource);
+	clearOMX(mVideoSource23);
 
 	mLastVideoTimeUs = 0;
 	mSegmentTimeOffset = 0;
