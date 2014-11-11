@@ -78,15 +78,12 @@ public class URLLoader extends AsyncHttpResponseHandler
 		
 		Log.i("URLLoader.success", "Received: " + uri);
 		final URLLoader thisLoader = this;
-		//if (responseData.length > 16 * 1024)
-		{
-			
-			for (int i = 0; i < headers.length; ++i)
-			{
-				Log.i("URLLoader.success", "Header: " + headers[i].getName() + ": " + headers[i].getValue());
-			}
-		}
 
+		for (int i = 0; i < headers.length; ++i)
+		{
+			Log.v("URLLoader.success", "Header: " + headers[i].getName() + ": " + headers[i].getValue());
+		}
+	
 		if (mDownloadEventListener == null) return;
 
 		if (uri.lastIndexOf(".m3u8") == uri.length() - 5)

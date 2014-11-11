@@ -1734,11 +1734,8 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 				if (videoBufferHeight != windowBuffer.height)
 				{
 					LOGI("WindowBuffer && videoBuffer heights do not match: %d vs %d", windowBuffer.height, videoBufferHeight);
-					if (videoBufferHeight > windowBuffer.height)
-						videoBufferHeight = windowBuffer.height;
 				}
 
-				//memset(pixels, rand(), windowBuffer.stride * videoBufferHeight * 2);
 				// Use our own converter.
 				lcc.convert(videoBufferWidth, videoBufferHeight, videoBits, 0, pixels, windowBuffer.stride * 2);
 			}
