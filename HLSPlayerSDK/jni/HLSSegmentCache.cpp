@@ -98,5 +98,7 @@ int64_t HLSSegmentCache::getSize(const char *uri)
 	mJVM->AttachCurrentThread(&env, NULL);
 
 	jstring juri = env->NewStringUTF(uri);
-	return env->CallStaticLongMethod(mClass, mGetSize, juri);
+	int64_t res = env->CallStaticLongMethod(mClass, mGetSize, juri);
+	env->DeleteLocalRef(juri);
+	return res;
 }

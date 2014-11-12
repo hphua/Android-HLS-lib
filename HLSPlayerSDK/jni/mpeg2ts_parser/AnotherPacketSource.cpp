@@ -28,6 +28,8 @@
 //#include <media/stagefright/MetaData.h>
 #include "Vector.h"
 
+
+
 namespace android {
 
 const int64_t kNearEOSMarkUs = 2000000ll; // 2 secs
@@ -73,7 +75,7 @@ status_t AnotherPacketSource::stop() {
 }
 
 sp<MetaData> AnotherPacketSource::getFormat() {
-    LOGV("Entering %p", this);
+    LOGV2("Entering %p", this);
     Mutex::Autolock autoLock(mLock);
     if (mFormat != NULL) {
         LOGV2("Returning existing format %p", mFormat.get());
@@ -192,7 +194,7 @@ void AnotherPacketSource::queueAccessUnit(const sp<ABuffer> &buffer) {
     int64_t lastQueuedTimeUs;
     CHECK(buffer->meta()->findInt64("timeUs", &lastQueuedTimeUs));
     mLastQueuedTimeUs = lastQueuedTimeUs;
-    ALOGV("queueAccessUnit timeUs=%lld us (%.2f secs)", mLastQueuedTimeUs, mLastQueuedTimeUs / 1E6);
+    LOGV2("queueAccessUnit timeUs=%lld us (%.2f secs)", mLastQueuedTimeUs, mLastQueuedTimeUs / 1E6);
 
     Mutex::Autolock autoLock(mLock);
     mBuffers.push_back(buffer);
@@ -206,7 +208,7 @@ void AnotherPacketSource::queueAccessUnit(const sp<ABuffer> &buffer) {
             int64_t latestTimeUs = 0;
             CHECK(mLatestEnqueuedMeta->findInt64("timeUs", &latestTimeUs));
             if (lastQueuedTimeUs > latestTimeUs) {
-                LOGE("Setting buffer with bad time %d > %d, LEM=%p", lastQueuedTimeUs, latestTimeUs, mLatestEnqueuedMeta.get());
+                LOGV2("Setting buffer with bad time %d > %d, LEM=%p", lastQueuedTimeUs, latestTimeUs, mLatestEnqueuedMeta.get());
                 mLatestEnqueuedMeta = buffer->meta();
             }
         }
@@ -326,7 +328,7 @@ bool AnotherPacketSource::isFinished(int64_t duration) const {
     if (duration > 0) {
         int64_t diff = duration - mLastQueuedTimeUs;
         if (diff < kNearEOSMarkUs && diff > -kNearEOSMarkUs) {
-            ALOGV("Detecting EOS due to near end");
+        	LOGV2("Detecting EOS due to near end");
             return true;
         }
     }

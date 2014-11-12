@@ -17,7 +17,8 @@
 //#define LOG_NDEBUG 0
 #define LOG_TAG "ESQueue"
 #include "ADebug.h"
- #define ALOGI LOGI
+ //#define ALOGI LOGI
+#define ALOGI(...)
 
 #include "ESQueue.h"
 
@@ -149,9 +150,7 @@ status_t ElementaryStreamQueue::appendData(
                 }
 
                 if (startOffset > 0) {
-                    ALOGI("found something resembling an H.264/MPEG syncword "
-                          "at offset %ld",
-                          startOffset);
+                    ALOGI("found something resembling an H.264/MPEG syncword at offset %ld", startOffset);
                 }
 
                 data = &ptr[startOffset];

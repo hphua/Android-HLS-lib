@@ -64,10 +64,8 @@ void AudioTrack::Close()
 		mTrack = NULL;
 		mCAudioTrack = NULL;
 
-		if(mAudioSource.get())
-			mAudioSource->stop();
-		if(mAudioSource23.get())
-			mAudioSource23->stop();
+		clearOMX(mAudioSource);
+		clearOMX(mAudioSource23);
 
 		sem_destroy(&semPause);
 	}
@@ -353,19 +351,8 @@ bool AudioTrack::Stop(bool seeking)
 
 	if(seeking)
 	{
-
-		if (mAudioSource.get())
-		{
-			mAudioSource->stop();
-			mAudioSource.clear();
-		}
-
-		if (mAudioSource23.get())
-		{
-			mAudioSource23->stop();
-			mAudioSource23.clear();
-		}
-
+		clearOMX(mAudioSource);
+		clearOMX(mAudioSource23);
 	}
 
 	JNIEnv* env;
@@ -415,7 +402,7 @@ int64_t AudioTrack::GetTimeStamp()
 	if (!gHLSPlayerSDK->GetEnv(&env)) return 0;
 	if(!mTrack)
 	{
-		LOGE("No track! aborting...");
+		LOGI("No track! aborting...");
 		return mTimeStampOffset;
 	}
 

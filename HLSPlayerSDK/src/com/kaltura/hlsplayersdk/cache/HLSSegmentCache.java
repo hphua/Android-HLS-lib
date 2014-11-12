@@ -11,7 +11,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
 
-import com.kaltura.hlsplayersdk.PlayerViewController;
+import com.kaltura.hlsplayersdk.HLSPlayerViewController;
 import com.loopj.android.http.*;
 
 public class HLSSegmentCache 
@@ -136,7 +136,7 @@ public class HLSSegmentCache
 		{
 			Log.i("HLS Cache", "Initializing concurrent hash map.");
 			segmentCache = new ConcurrentHashMap<String, SegmentCacheEntry>();
-			context = PlayerViewController.currentController.getContext();
+			context = HLSPlayerViewController.currentController.getContext();
 			if (context == null) Log.e("HLS Cache", "Context is null!!!");
 		}
 	}
@@ -266,7 +266,7 @@ public class HLSSegmentCache
 			}
 			double pct = totalBytes != 0 ? ((double)curBytes / (double)totalBytes) * 100.0 : 0;
 			lastBufferPct = (float)pct;
-			PlayerViewController.currentController.postProgressUpdate((int)pct);
+			HLSPlayerViewController.currentController.postProgressUpdate((int)pct);
 
 		}
 	}
@@ -309,7 +309,8 @@ public class HLSSegmentCache
 		}
 		sce.waiting = false;
 		long timerElapsed = System.currentTimeMillis() - timerStart;
-		Log.i("HLS Cache", "Request finished, " + (sce.data.length/1024) + "kb in " + timerElapsed + "ms");			
+		if (sce.data != null) Log.i("HLS Cache", "Request finished, " + (sce.data.length/1024) + "kb in " + timerElapsed + "ms");
+		else Log.i("HLS Cache", "sce.data is null - request must have been canceled");
 	}
 	
 	static public String readFileAsString(String segmentUri)
@@ -485,6 +486,7 @@ public static String bytesToHex(ByteBuffer bytes) {
 			
 			// We're over cache target, delete that one.
 			Log.i("HLS Cache", "Purging " + oldestSce.uri + ", freeing " + (oldestSce.data.length/1024) + "kb, age " + (entryAge/1000) + "sec");
+			oldestSce.data = null;
 			segmentCache.remove(oldestSce.uri);
 		}
 	}

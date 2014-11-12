@@ -10,7 +10,7 @@
 #include "constants.h"
 #include <android/log.h>
 #include <android/native_window_jni.h>
-#include <unistd.h>
+
 
 #include "mpeg2ts_parser/MPEG2TSExtractor.h"
 
@@ -115,6 +115,8 @@ void HLSPlayer::Close(JNIEnv* env)
 	}
 }
 
+
+
 void HLSPlayer::Reset()
 {
 	LOGTRACE("%s", __func__);
@@ -150,16 +152,12 @@ void HLSPlayer::Reset()
 		mVideoBuffer->release();
 		mVideoBuffer = NULL;
 	}
-	if (mVideoSource.get()) mVideoSource->stop();
-	if (mVideoSource23.get()) mVideoSource23->stop();
 	mOMXRenderer.clear();
-	mVideoSource.clear();
-	mVideoSource23.clear();
+	clearOMX(mVideoSource);
+	clearOMX(mVideoSource23);
 
 	mDataSourceCache.empty();
 
-	//LOGI("Killing the segments");
-	//stlwipe(mSegments);
 	LOGI("Killing the audio & video tracks");
 
 	mLastVideoTimeUs = 0;
@@ -167,6 +165,7 @@ void HLSPlayer::Reset()
 	mVideoFrameDelta = 0;
 	mFrameCount = 0;
 	mStartTimeMS = 0;
+
 }
 
 void HLSPlayer::SetSegmentCountTobuffer(int segmentCount)
@@ -297,9 +296,9 @@ bool HLSPlayer::EnsureJNI(JNIEnv** env)
 
 	if (mPlayerViewClass == NULL)
 	{
-		jclass c = (*env)->FindClass("com/kaltura/hlsplayersdk/PlayerViewController");
+		jclass c = (*env)->FindClass("com/kaltura/hlsplayersdk/HLSPlayerViewController");
 		if ( (*env)->ExceptionCheck() || c == NULL) {
-			LOGI("Could not find class com/kaltura/hlsplayersdk/PlayerViewController" );
+			LOGI("Could not find class com/kaltura/hlsplayersdk/HLSPlayerViewController" );
 			mPlayerViewClass = NULL;
 			return false;
 		}
@@ -314,7 +313,7 @@ bool HLSPlayer::EnsureJNI(JNIEnv** env)
 		if ((*env)->ExceptionCheck())
 		{
 			mNextSegmentMethodID = NULL;
-			LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerViewController.requestNextSegment()" );
+			LOGI("Could not find method com/kaltura/hlsplayersdk/HLSPlayerViewController.requestNextSegment()" );
 			return false;
 		}
 	}
@@ -325,7 +324,7 @@ bool HLSPlayer::EnsureJNI(JNIEnv** env)
 		if ((*env)->ExceptionCheck())
 		{
 			mSegmentForTimeMethodID = NULL;
-			LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerViewController.requestSegmentForTime()" );
+			LOGI("Could not find method com/kaltura/hlsplayersdk/HLSPlayerViewController.requestSegmentForTime()" );
 			return false;
 		}
 	}
@@ -336,7 +335,7 @@ bool HLSPlayer::EnsureJNI(JNIEnv** env)
 		if ((*env)->ExceptionCheck())
 		{
 			mSetVideoResolutionID = NULL;
-			LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerViewController.setVideoResolution()" );
+			LOGI("Could not find method com/kaltura/hlsplayersdk/HLSPlayerViewController.setVideoResolution()" );
 			return false;
 		}
 	}
@@ -347,7 +346,7 @@ bool HLSPlayer::EnsureJNI(JNIEnv** env)
 		if ((*env)->ExceptionCheck())
 		{
 			mEnableHWRendererModeID = NULL;
-			LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerViewController.enableHWRendererMode()" );
+			LOGI("Could not find method com/kaltura/hlsplayersdk/HLSPlayerViewController.enableHWRendererMode()" );
 			return false;
 		}
 	}
@@ -358,7 +357,7 @@ bool HLSPlayer::EnsureJNI(JNIEnv** env)
 		if ((*env)->ExceptionCheck())
 		{
 			mNotifyFormatChangeComplete = NULL;
-			LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerViewController.notifyFormatChangeComplete()");
+			LOGI("Could not find method com/kaltura/hlsplayersdk/HLSPlayerViewController.notifyFormatChangeComplete()");
 			return false;
 		}
 	}
@@ -369,7 +368,7 @@ bool HLSPlayer::EnsureJNI(JNIEnv** env)
 		if ((*env)->ExceptionCheck())
 		{
 			mNotifyAudioTrackChangeComplete = NULL;
-			LOGI("Could not find method com/kaltura/hlsplayersdk/PlayerViewController.notifyAudioTrackChangeComplete()");
+			LOGI("Could not find method com/kaltura/hlsplayersdk/HLSPlayerViewController.notifyAudioTrackChangeComplete()");
 			return false;
 		}
 	}
@@ -1544,12 +1543,14 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 		ANativeWindow_Buffer windowBuffer;
 		if (ANativeWindow_lock(mWindow, &windowBuffer, NULL) == 0)
 		{
-			// Sanity check on relative dimensions. Disabled for now.
-			if(false && windowBuffer.height < videoBufferHeight)
+			// Sanity check on relative dimensions
+			if(windowBuffer.height < videoBufferHeight)
 			{
 				LOGE("Aborting conversion; window too short for video!");
 				ANativeWindow_unlockAndPost(mWindow);
 				sched_yield();
+				mHeight = videoBufferHeight;
+				NoteHWRendererMode(mUseOMXRenderer, mWidth, mHeight, 4);
 				return true;
 			}
 
@@ -1647,6 +1648,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 			}
 			else if(colf == QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka)
 			{
+				LOGV("colf = QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka");
 				// Special case for QCOM tiled format as the shipped decoders seem busted.
 				unsigned char *tmpBuff = (unsigned char*)malloc(videoBufferWidth*videoBufferHeight*3);
 				convert_64x32_to_NV12(videoBits, tmpBuff, videoBufferWidth, videoBufferWidth, videoBufferHeight);
@@ -1662,6 +1664,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 			}
 			else if(colf == OMX_QCOM_COLOR_FormatYUV420PackedSemiPlanar32m4ka)
 			{
+				LOGV("colf = OMX_QCOM_COLOR_FormatYUV420PackedSemiPlanar32m4ka");
 #define ALIGN(x,multiple)    (((x)+(multiple-1))&~(multiple-1))
 				int a = vbCropLeft;
 				int b = vbCropTop;
@@ -1679,6 +1682,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 			}
 			else if(colf == OMX_COLOR_Format16bitRGB565)
 			{
+				LOGV("colf = OMX_COLOR_Format16bitRGB565");
 				// Directly copy 16 bit color.
 				size_t bufSize = buffer->range_length() - buffer->range_offset();
 				
@@ -1719,12 +1723,19 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 			}*/
 			else if(cc.isValid())
 			{
+				LOGV("Using system converter");
 				// Use the system converter.
 				cc.convert(videoBits, videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom,
 						pixels, windowBuffer.stride, windowBuffer.height, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom);
 			}
 			else if(lcc.isValid())
 			{
+				LOGV("Using own converter");
+				if (videoBufferHeight != windowBuffer.height)
+				{
+					LOGI("WindowBuffer && videoBuffer heights do not match: %d vs %d", windowBuffer.height, videoBufferHeight);
+				}
+
 				// Use our own converter.
 				lcc.convert(videoBufferWidth, videoBufferHeight, videoBits, 0, pixels, windowBuffer.stride * 2);
 			}
@@ -1801,7 +1812,7 @@ void HLSPlayer::RequestNextSegment()
 	env->CallStaticVoidMethod(mPlayerViewClass, mNextSegmentMethodID);
 	if (env->ExceptionCheck())
 	{
-		LOGI("Call to method  com/kaltura/hlsplayersdk/PlayerViewController.requestNextSegment() FAILED" );
+		LOGI("Call to method  com/kaltura/hlsplayersdk/HLSPlayerViewController.requestNextSegment() FAILED" );
 	}
 }
 
@@ -1817,7 +1828,7 @@ double HLSPlayer::RequestSegmentForTime(double time)
 	jdouble segTime = env->CallStaticDoubleMethod(mPlayerViewClass, mSegmentForTimeMethodID, time);
 	if (env->ExceptionCheck())
 	{
-		LOGI("Call to method  com/kaltura/hlsplayersdk/PlayerViewController.requestSegmentForTime() FAILED" );
+		LOGI("Call to method  com/kaltura/hlsplayersdk/HLSPlayerViewController.requestSegmentForTime() FAILED" );
 	}
 	return segTime;
 }
@@ -1835,7 +1846,7 @@ void HLSPlayer::NoteVideoDimensions()
 	env->CallStaticVoidMethod(mPlayerViewClass, mSetVideoResolutionID, mWidth, mHeight);
 	if (env->ExceptionCheck())
 	{
-		LOGI("Call to method  com/kaltura/hlsplayersdk/PlayerViewController.setVideoResolution() FAILED" );
+		LOGI("Call to method  com/kaltura/hlsplayersdk/HLSPlayerViewController.setVideoResolution() FAILED" );
 	}	
 }
 
@@ -1894,6 +1905,7 @@ void HLSPlayer::Stop()
 		SetState(STOPPED);
 		mJAudioTrack->Stop();
 	}
+	usleep(50000);
 }
 
 int32_t HLSPlayer::GetCurrentTimeMS()
@@ -1914,6 +1926,9 @@ void HLSPlayer::StopEverything()
 	LOGTRACE("%s", __func__);
 	AutoLock locker(&lock, __func__);
 
+	// We might need to clear these before we stop (so we don't get stuck waiting)
+	mAudioSource.clear();
+	mAudioSource23.clear();
 	if (mJAudioTrack) mJAudioTrack->Stop(true); // Passing true means we're seeking.
 
 	mAudioTrack.clear();
@@ -1922,8 +1937,6 @@ void HLSPlayer::StopEverything()
 	mVideoTrack23.clear();
 	mExtractor.clear();
 	mAlternateAudioExtractor.clear();
-	mAudioSource.clear();
-	mAudioSource23.clear();
 
 	LOGI("Killing the video buffer");
 	if (mVideoBuffer)
@@ -1931,10 +1944,8 @@ void HLSPlayer::StopEverything()
 		mVideoBuffer->release();
 		mVideoBuffer = NULL;
 	}
-	if (mVideoSource != NULL) mVideoSource->stop();
-	mVideoSource.clear();
-	if (mVideoSource23 != NULL) mVideoSource23->stop();
-	mVideoSource23.clear();
+	clearOMX(mVideoSource);
+	clearOMX(mVideoSource23);
 
 	mLastVideoTimeUs = 0;
 	mSegmentTimeOffset = 0;

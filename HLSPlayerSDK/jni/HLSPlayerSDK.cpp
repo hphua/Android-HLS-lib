@@ -191,7 +191,7 @@ extern "C"
 		return offset + length;
 	}
 
-	void Java_com_kaltura_hlsplayersdk_PlayerViewController_InitNativeDecoder(JNIEnv * env, jobject jcaller)
+	void Java_com_kaltura_hlsplayersdk_HLSPlayerViewController_InitNativeDecoder(JNIEnv * env, jobject jcaller)
 	{
 		android_video_shim::initLibraries();
 		
@@ -221,7 +221,7 @@ extern "C"
 		}
 	}
 
-	void Java_com_kaltura_hlsplayersdk_PlayerViewController_CloseNativeDecoder(JNIEnv* env, jobject jcaller)
+	void Java_com_kaltura_hlsplayersdk_HLSPlayerViewController_CloseNativeDecoder(JNIEnv* env, jobject jcaller)
 	{
 		if (gHLSPlayerSDK != NULL)
 		{
@@ -232,7 +232,7 @@ extern "C"
 		}
 	}
 
-	void Java_com_kaltura_hlsplayersdk_PlayerViewController_ResetPlayer(JNIEnv* env, jobject jcaller)
+	void Java_com_kaltura_hlsplayersdk_HLSPlayerViewController_ResetPlayer(JNIEnv* env, jobject jcaller)
 	{
 		LOGI("Entered");
 		if (gHLSPlayerSDK != NULL && gHLSPlayerSDK->GetPlayer())
@@ -241,7 +241,7 @@ extern "C"
 		}
 	}
 
-	void Java_com_kaltura_hlsplayersdk_PlayerViewController_StopPlayer(JNIEnv* env, jobject jcaller)
+	void Java_com_kaltura_hlsplayersdk_HLSPlayerViewController_StopPlayer(JNIEnv* env, jobject jcaller)
 	{
 		LOGI("Entered");
 		if (gHLSPlayerSDK != NULL && gHLSPlayerSDK->GetPlayer())
@@ -250,7 +250,7 @@ extern "C"
 		}
 	}
 
-	void Java_com_kaltura_hlsplayersdk_PlayerViewController_PlayFile(JNIEnv* env, jobject jcaller)
+	void Java_com_kaltura_hlsplayersdk_HLSPlayerViewController_PlayFile(JNIEnv* env, jobject jcaller)
 	{
 		if (gHLSPlayerSDK != NULL)
 		{
@@ -258,7 +258,7 @@ extern "C"
 		}
 	}
 
-	void Java_com_kaltura_hlsplayersdk_PlayerViewController_TogglePause(JNIEnv* env, jobject jcaller)
+	void Java_com_kaltura_hlsplayersdk_HLSPlayerViewController_TogglePause(JNIEnv* env, jobject jcaller)
 	{
 		if (gHLSPlayerSDK != NULL && gHLSPlayerSDK->GetPlayer())
 		{
@@ -266,7 +266,7 @@ extern "C"
 		}
 	}
 
-	void Java_com_kaltura_hlsplayersdk_PlayerViewController_SetSurface(JNIEnv* env, jobject jcaller, jobject surface)
+	void Java_com_kaltura_hlsplayersdk_HLSPlayerViewController_SetSurface(JNIEnv* env, jobject jcaller, jobject surface)
 	{
 		//LOGI("Entered");
 		if (gHLSPlayerSDK != NULL)
@@ -282,7 +282,7 @@ extern "C"
 		}
 	}
 
-	jint Java_com_kaltura_hlsplayersdk_PlayerViewController_NextFrame(JNIEnv* env, jobject jcaller)
+	jint Java_com_kaltura_hlsplayersdk_HLSPlayerViewController_NextFrame(JNIEnv* env, jobject jcaller)
 	{
 		//LOGI("Entered");
 		if (gHLSPlayerSDK == NULL)
@@ -295,7 +295,7 @@ extern "C"
 		return rval;
 	}
 
-	jint Java_com_kaltura_hlsplayersdk_PlayerViewController_DroppedFramesPerSecond(JNIEnv* env, jobject jcaller)
+	jint Java_com_kaltura_hlsplayersdk_HLSPlayerViewController_DroppedFramesPerSecond(JNIEnv* env, jobject jcaller)
 	{
 		if (gHLSPlayerSDK == NULL)
 			return 0;
@@ -304,7 +304,7 @@ extern "C"
 		return gHLSPlayerSDK->GetPlayer()->DroppedFramesPerSecond();
 	}
 
-	void Java_com_kaltura_hlsplayersdk_PlayerViewController_FeedSegment(JNIEnv* env, jobject jcaller, jstring jurl, jint quality, jint continuityEra, jstring jaltAudioUrl, jint altAudioIndex, jdouble startTime, int cryptoId, int altCryptoId )
+	void Java_com_kaltura_hlsplayersdk_HLSPlayerViewController_FeedSegment(JNIEnv* env, jobject jcaller, jstring jurl, jint quality, jint continuityEra, jstring jaltAudioUrl, jint altAudioIndex, jdouble startTime, int cryptoId, int altCryptoId )
 	{
 		LOGI("Entered");
 		
@@ -334,7 +334,7 @@ extern "C"
 		env->ReleaseStringUTFChars(jurl, url);
 	}
 
-	void Java_com_kaltura_hlsplayersdk_PlayerViewController_SeekTo(JNIEnv* env, jobject jcaller, jdouble time )
+	void Java_com_kaltura_hlsplayersdk_HLSPlayerViewController_SeekTo(JNIEnv* env, jobject jcaller, jdouble time )
 	{
 		LOGI("Entered");
 		if (gHLSPlayerSDK != NULL)
@@ -346,7 +346,7 @@ extern "C"
 		}
 	}
 
-	jint Java_com_kaltura_hlsplayersdk_PlayerViewController_GetState(JNIEnv* env, jobject jcaller, jdouble time )
+	jint Java_com_kaltura_hlsplayersdk_HLSPlayerViewController_GetState(JNIEnv* env, jobject jcaller, jdouble time )
 	{
 		if (gHLSPlayerSDK != NULL && gHLSPlayerSDK->GetPlayer())
 		{
@@ -355,7 +355,7 @@ extern "C"
 		return STOPPED;
 	}
 
-	void Java_com_kaltura_hlsplayersdk_PlayerViewController_ApplyFormatChange(JNIEnv* env, jobject jcaller)
+	void Java_com_kaltura_hlsplayersdk_HLSPlayerViewController_ApplyFormatChange(JNIEnv* env, jobject jcaller)
 	{
 		if (gHLSPlayerSDK != NULL && gHLSPlayerSDK->GetPlayer())
 		{
@@ -364,7 +364,7 @@ extern "C"
 	}
 
 
-	void Java_com_kaltura_hlsplayersdk_PlayerViewController_SetSegmentCountToBuffer(JNIEnv* env, jobject jcaller, jint segCount)
+	void Java_com_kaltura_hlsplayersdk_HLSPlayerViewController_SetSegmentCountToBuffer(JNIEnv* env, jobject jcaller, jint segCount)
 	{
 		if (gHLSPlayerSDK != NULL && gHLSPlayerSDK->GetPlayer())
 		{
@@ -372,7 +372,7 @@ extern "C"
 		}
 	}
 
-	jboolean Java_com_kaltura_hlsplayersdk_PlayerViewController_AllowAllProfiles(JNIEnv* env, jobject jcaller )
+	jboolean Java_com_kaltura_hlsplayersdk_HLSPlayerViewController_AllowAllProfiles(JNIEnv* env, jobject jcaller )
 	{
 #ifdef ALLOW_ALL_PROFILES
 		return true;

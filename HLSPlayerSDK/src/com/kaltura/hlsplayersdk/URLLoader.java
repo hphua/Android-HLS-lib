@@ -24,6 +24,8 @@ public class URLLoader extends AsyncHttpResponseHandler
 	
 	public void get(String url)
 	{
+		uri = url;
+		Log.i("URLLoader", "Getting: " + uri);
 		HLSSegmentCache.httpClient().get(url, this);
 	}
 	
@@ -42,7 +44,12 @@ public class URLLoader extends AsyncHttpResponseHandler
 	
 	public void setDownloadEventListener(DownloadEventListener listener)
 	{
-		mDownloadEventListener = listener;
+		if (mDownloadEventListener != null && listener != null)
+		{
+			Log.e("URLLoader.setDownloadEventListener", "Tried to change the downloadEventListener for " + uri);
+		}
+		else
+			mDownloadEventListener = listener;
 	}
 
 	//////////////////////////////////
@@ -56,7 +63,7 @@ public class URLLoader extends AsyncHttpResponseHandler
 		if (mDownloadEventListener != null)
 		{
 			// Post back to main thread to avoid re-entrancy that breaks OkHTTP.
-			PlayerViewController.GetInterfaceThread().getHandler().post(new Runnable()
+			HLSPlayerViewController.GetInterfaceThread().getHandler().post(new Runnable()
 			{
 				@Override
 				public void run() {
@@ -68,14 +75,35 @@ public class URLLoader extends AsyncHttpResponseHandler
 
 	@Override
 	public void onSuccess(int statusCode, Header[] headers, byte[] responseData) {
+		
+		Log.i("URLLoader.success", "Received: " + uri);
 		final URLLoader thisLoader = this;
+
+		for (int i = 0; i < headers.length; ++i)
+		{
+			Log.v("URLLoader.success", "Header: " + headers[i].getName() + ": " + headers[i].getValue());
+		}
+	
+		if (mDownloadEventListener == null) return;
+
+		if (uri.lastIndexOf(".m3u8") == uri.length() - 5)
+		{
+			for (int i = 0; i < headers.length; ++i)
+			{
+				if (headers[i].getName().equals("Content-Type") && headers[i].getValue().contains("mpegurl") == false)
+				{
+					onFailure(statusCode, headers, responseData, null);
+					return;
+				}
+			}
+		}
 		final String response = new String(responseData);
 		
 				
 		if (mDownloadEventListener != null)
 		{
 			// Post back to main thread to avoid re-entrancy problems
-			PlayerViewController.GetInterfaceThread().getHandler().post(new Runnable()
+			HLSPlayerViewController.GetInterfaceThread().getHandler().post(new Runnable()
 			{
 				@Override
 				public void run() {

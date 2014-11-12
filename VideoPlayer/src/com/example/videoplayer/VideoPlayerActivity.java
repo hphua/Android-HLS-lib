@@ -16,7 +16,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.widget.EditText;
 
-import com.kaltura.hlsplayersdk.PlayerViewController;
+import com.kaltura.hlsplayersdk.HLSPlayerViewController;
 import com.kaltura.hlsplayersdk.subtitles.TextTrackCue;
 import com.kaltura.hlsplayersdk.types.PlayerStates;
 import com.kaltura.playersdk.QualityTrack;
@@ -26,7 +26,7 @@ public class VideoPlayerActivity extends ActionBarActivity implements OnTextTrac
 OnTextTrackTextListener, OnAudioTracksListListener, OnAudioTrackSwitchingListener, 
 OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListener, OnPlayerStateChangeListener, OnProgressListener  {
 
-	PlayerViewController playerView = null;
+	HLSPlayerViewController playerView = null;
 	final Context context = this;
 	String lastUrl = "";
 	
@@ -128,7 +128,7 @@ OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListene
     {
         try
         {
-        	playerView = (PlayerViewController)findViewById(R.id.custom_player);
+        	playerView = (HLSPlayerViewController)findViewById(R.id.custom_player);
         	playerView.addComponents("", this);
         	playerView.registerTextTracksList(this);
         	playerView.registerTextTrackChanged(this);

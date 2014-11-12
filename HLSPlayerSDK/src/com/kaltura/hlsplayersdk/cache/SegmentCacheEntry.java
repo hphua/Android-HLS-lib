@@ -3,7 +3,7 @@ package com.kaltura.hlsplayersdk.cache;
 import android.os.Handler;
 import android.util.Log;
 
-import com.kaltura.hlsplayersdk.PlayerViewController;
+import com.kaltura.hlsplayersdk.HLSPlayerViewController;
 import com.kaltura.playersdk.events.OnErrorListener;
 import com.loopj.android.http.*;
 
@@ -40,6 +40,8 @@ public class SegmentCacheEntry {
 	
 	public int bytesDownloaded = 0;
 	public int totalSize = 0;
+	
+	SegmentCacheEntry selfRef = this;
 	
 	public void cancel()
 	{
@@ -98,23 +100,30 @@ public class SegmentCacheEntry {
 	private SegmentCachedListener mSegmentCachedListener = null;
 	public void registerSegmentCachedListener(SegmentCachedListener listener, Handler callbackHandler)
 	{
-		if (mSegmentCachedListener != listener)
+		synchronized (selfRef)
 		{
-			Log.i("SegmentCacheEntry", "Setting the SegmentCachedListener to a new value: " + listener);
-			mSegmentCachedListener = listener;
-			mCallbackHandler = callbackHandler;
+			if (mSegmentCachedListener != listener)
+			{
+				Log.i("SegmentCacheEntry", "Setting the SegmentCachedListener to a new value: " + listener);
+				mSegmentCachedListener = listener;
+				mCallbackHandler = callbackHandler;
+			}
 		}
 	}
 	
 	public void notifySegmentCached()
 	{
+		
 		waiting = false;
 		if (mSegmentCachedListener != null && mCallbackHandler != null)
 		{
 			mCallbackHandler.post(new Runnable() {
 				public void run()
 				{
-					mSegmentCachedListener.onSegmentCompleted(uri);
+					synchronized (selfRef)
+					{
+						if (mSegmentCachedListener != null) mSegmentCachedListener.onSegmentCompleted(uri);
+					}
 				}
 			});
 		}
@@ -140,7 +149,7 @@ public class SegmentCacheEntry {
 			running = false;
 			if (mSegmentCachedListener != null)
 				mSegmentCachedListener.onSegmentFailed(uri, statusCode);
-			PlayerViewController.currentController.postError(OnErrorListener.MEDIA_ERROR_IO, uri + "(" + statusCode + ")");
+			HLSPlayerViewController.currentController.postError(OnErrorListener.MEDIA_ERROR_IO, uri + "(" + statusCode + ")");
 		}
 	}
 	
@@ -156,7 +165,7 @@ public class SegmentCacheEntry {
 		{
 			if (mSegmentCachedListener != null)
 				mSegmentCachedListener.onSegmentFailed(uri, statusCode);
-			PlayerViewController.currentController.postError(OnErrorListener.MEDIA_ERROR_IO, uri + "(" + statusCode + ")");
+			HLSPlayerViewController.currentController.postError(OnErrorListener.MEDIA_ERROR_IO, uri + "(" + statusCode + ")");
 		}
 	}
 	

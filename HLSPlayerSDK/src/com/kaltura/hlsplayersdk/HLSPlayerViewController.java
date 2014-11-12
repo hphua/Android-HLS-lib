@@ -50,7 +50,7 @@ import com.kaltura.playersdk.events.OnTextTracksListListener;
  * with the Java APIs and interfaces. This is the central point for HLS
  * video playback!
  */
-public class PlayerViewController extends RelativeLayout implements
+public class HLSPlayerViewController extends RelativeLayout implements
 		VideoPlayerInterface, URLLoader.DownloadEventListener, OnParseCompleteListener, 
 		TextTracksInterface, AlternateAudioTracksInterface, QualityTracksInterface, SegmentCachedListener {
 
@@ -60,6 +60,9 @@ public class PlayerViewController extends RelativeLayout implements
 	private final int STATE_PLAYING = 3;
 	private final int STATE_SEEKING = 4;
 	private final int STATE_FOUND_DISCONTINUITY = 6;
+	
+	private final int THREAD_STATE_STOPPED = 0;
+	private final int THREAD_STATE_RUNNING = 1;
 
 	// Native methods
 	private native int GetState();
@@ -80,7 +83,7 @@ public class PlayerViewController extends RelativeLayout implements
 
 	// Static interface.
 	// TODO Allow multiple active PlayerViewController instances.
-	public static PlayerViewController currentController = null;
+	public static HLSPlayerViewController currentController = null;
 	private static int mQualityLevel = 0;
 	private static int mSubtitleLanguage = 0;
 	private static int mAltAudioLanguage = 0;
@@ -161,6 +164,7 @@ public class PlayerViewController extends RelativeLayout implements
 		currentController.mActivity.runOnUiThread(new Runnable() {
 			@Override
 			public void run() {
+				currentController.SetSurface(null);
 				
 				if (currentController.mPlayerView != null) {
 					currentController.removeView(currentController.mPlayerView);
@@ -288,10 +292,19 @@ public class PlayerViewController extends RelativeLayout implements
 	private int mTimeMS = 0;
 
 	// Thread to run video rendering.
+	private boolean stopVideoThread = false;
+	private int mRenderThreadState = THREAD_STATE_STOPPED;
 	private Thread mRenderThread;
-	private Runnable runnable = new Runnable() {
+	private Runnable renderRunnable = new Runnable() {
 		public void run() {
-			while (true) {
+			mRenderThreadState = THREAD_STATE_RUNNING;
+			while (mRenderThreadState == THREAD_STATE_RUNNING) {
+				if (stopVideoThread)
+				{
+					Log.i("videoThread", "Stopping video render thread");
+					mRenderThreadState = THREAD_STATE_STOPPED;
+					continue;
+				}
 				int state = GetState();
 				if (state == STATE_PLAYING || state == STATE_FOUND_DISCONTINUITY) {
 					int rval = NextFrame();
@@ -339,6 +352,7 @@ public class PlayerViewController extends RelativeLayout implements
 				}
 
 			}
+			stopVideoThread = false;
 		}
 	};
 	
@@ -355,15 +369,15 @@ public class PlayerViewController extends RelativeLayout implements
 		);
 	}
 
-	public PlayerViewController(Context context) {
+	public HLSPlayerViewController(Context context) {
 		super(context);
 	}
 
-	public PlayerViewController(Context context, AttributeSet attrs) {
+	public HLSPlayerViewController(Context context, AttributeSet attrs) {
 		super(context, attrs);
 	}
 
-	public PlayerViewController(Context context, AttributeSet attrs,
+	public HLSPlayerViewController(Context context, AttributeSet attrs,
 			int defStyle) {
 		super(context, attrs, defStyle);
 	}
@@ -384,9 +398,6 @@ public class PlayerViewController extends RelativeLayout implements
 		// Note the active controller.
 		currentController = this;
 
-		// Kick off render thread.
-		mRenderThread = new Thread(runnable, "RenderThread");
-		mRenderThread.start();
 	}
 
 	/**
@@ -481,8 +492,14 @@ public class PlayerViewController extends RelativeLayout implements
 			FeedSegment(seg.uri, seg.quality, seg.continuityEra, null, -1, seg.startTime, seg.cryptoId, -1);
 			HLSSegmentCache.precache(seg.uri, seg.cryptoId, this, GetInterfaceThread().getHandler());
 		}
-
-
+		
+		// Kick off render thread.
+		if (mRenderThreadState == THREAD_STATE_STOPPED);
+		{
+			mRenderThread = new Thread(renderRunnable, "RenderThread");
+			mRenderThread.start();
+		}
+		
 	}
 	
 	@Override
@@ -656,17 +673,43 @@ public class PlayerViewController extends RelativeLayout implements
 	    	Log.i("PlayerViewController.isOnline()", "This is possibly because the permission 'android.permission.ACCESS_NETWORK_STATE' is missing from the manifest.");
 	    }
 	    return (networkInfo != null && networkInfo.isConnected());
-	}  
+	}
+	
+	public void stopAndReset()
+	{
+		if (mRenderThreadState == THREAD_STATE_RUNNING)
+			stopVideoThread = true;
+		try {
+			if (mRenderThread != null) mRenderThread.join();
+		} catch (InterruptedException e1) {
+			// TODO Auto-generated catch block
+			e1.printStackTrace();
+		}
+		StopPlayer();
+		ResetPlayer();
+		reset();
+		try {
+			Thread.yield();
+			Thread.sleep(1000);
+		} catch (InterruptedException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
 	
 	public void setVideoUrl(String url) {
 		Log.i("PlayerView.setVideoUrl", url);
+		if (manifestLoader != null)
+		{
+			manifestLoader.setDownloadEventListener(null);
+			manifestLoader = null;
+		}
+
 		HLSSegmentCache.cancelAllCacheEvents();
 		HLSSegmentCache.cancelDownloads();
 		targetSeekMS = 0;
 		targetSeekSet = false;
-		StopPlayer();
-		ResetPlayer();
-		reset();
+		stopAndReset();
 
 		postPlayerStateChange(PlayerStates.START);
 

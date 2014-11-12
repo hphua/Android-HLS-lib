@@ -11,11 +11,11 @@ import android.view.SurfaceView;
  * the Surface it manages to the controller and handle layout.
  */
 public class PlayerView extends SurfaceView implements SurfaceHolder.Callback {
-	public PlayerViewController mOwner;
+	public HLSPlayerViewController mOwner;
 	public int mVideoWidth = 640, mVideoHeight = 480;
 
 	// Class Methods
-	public PlayerView(Context context, PlayerViewController owner,
+	public PlayerView(Context context, HLSPlayerViewController owner,
 			boolean wantPushBuffers) {
 		super(context);
 
