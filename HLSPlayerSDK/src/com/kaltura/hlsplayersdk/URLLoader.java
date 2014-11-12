@@ -63,7 +63,7 @@ public class URLLoader extends AsyncHttpResponseHandler
 		if (mDownloadEventListener != null)
 		{
 			// Post back to main thread to avoid re-entrancy that breaks OkHTTP.
-			PlayerViewController.GetInterfaceThread().getHandler().post(new Runnable()
+			HLSPlayerViewController.GetInterfaceThread().getHandler().post(new Runnable()
 			{
 				@Override
 				public void run() {
@@ -103,7 +103,7 @@ public class URLLoader extends AsyncHttpResponseHandler
 		if (mDownloadEventListener != null)
 		{
 			// Post back to main thread to avoid re-entrancy problems
-			PlayerViewController.GetInterfaceThread().getHandler().post(new Runnable()
+			HLSPlayerViewController.GetInterfaceThread().getHandler().post(new Runnable()
 			{
 				@Override
 				public void run() {

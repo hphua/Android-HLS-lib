@@ -50,7 +50,7 @@ import com.kaltura.playersdk.events.OnTextTracksListListener;
  * with the Java APIs and interfaces. This is the central point for HLS
  * video playback!
  */
-public class PlayerViewController extends RelativeLayout implements
+public class HLSPlayerViewController extends RelativeLayout implements
 		VideoPlayerInterface, URLLoader.DownloadEventListener, OnParseCompleteListener, 
 		TextTracksInterface, AlternateAudioTracksInterface, QualityTracksInterface, SegmentCachedListener {
 
@@ -83,7 +83,7 @@ public class PlayerViewController extends RelativeLayout implements
 
 	// Static interface.
 	// TODO Allow multiple active PlayerViewController instances.
-	public static PlayerViewController currentController = null;
+	public static HLSPlayerViewController currentController = null;
 	private static int mQualityLevel = 0;
 	private static int mSubtitleLanguage = 0;
 	private static int mAltAudioLanguage = 0;
@@ -369,15 +369,15 @@ public class PlayerViewController extends RelativeLayout implements
 		);
 	}
 
-	public PlayerViewController(Context context) {
+	public HLSPlayerViewController(Context context) {
 		super(context);
 	}
 
-	public PlayerViewController(Context context, AttributeSet attrs) {
+	public HLSPlayerViewController(Context context, AttributeSet attrs) {
 		super(context, attrs);
 	}
 
-	public PlayerViewController(Context context, AttributeSet attrs,
+	public HLSPlayerViewController(Context context, AttributeSet attrs,
 			int defStyle) {
 		super(context, attrs, defStyle);
 	}
