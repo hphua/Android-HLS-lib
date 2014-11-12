@@ -486,6 +486,7 @@ public static String bytesToHex(ByteBuffer bytes) {
 			
 			// We're over cache target, delete that one.
 			Log.i("HLS Cache", "Purging " + oldestSce.uri + ", freeing " + (oldestSce.data.length/1024) + "kb, age " + (entryAge/1000) + "sec");
+			oldestSce.data = null;
 			segmentCache.remove(oldestSce.uri);
 		}
 	}

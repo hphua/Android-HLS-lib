@@ -1905,6 +1905,7 @@ void HLSPlayer::Stop()
 		SetState(STOPPED);
 		mJAudioTrack->Stop();
 	}
+	usleep(50000);
 }
 
 int32_t HLSPlayer::GetCurrentTimeMS()
