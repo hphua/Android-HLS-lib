@@ -793,21 +793,21 @@ bool HLSPlayer::InitSources()
 
 	if(AVSHIM_USE_NEWMEDIASOURCE)
 	{
-		LOGV("   - taking 4.x path");
-		LOGV("OMXCodec::Create - format=%p track=%p", vidFormat.get(), mVideoTrack.get());
+		LOGI("   - taking 4.x path");
+		LOGI("OMXCodec::Create - format=%p track=%p videoSource=%p", vidFormat.get(), mVideoTrack.get(), mVideoSource.get());
 		mVideoSource = OMXCodec::Create(iomx, vidFormat, false, mVideoTrack, NULL, 0);
-		LOGV("   - got %p back", mVideoSource.get());
+		LOGI("   - got %p back", mVideoSource.get());
 	}
 	else
 	{
 		LOGV("   - taking 2.3 path");
 
-		LOGV("OMXCodec::Create - format=%p track=%p", vidFormat.get(), mVideoTrack23.get());
+		LOGV("OMXCodec::Create - format=%p track=%p videoSource=%p", vidFormat.get(), mVideoTrack23.get(), mVideoSource23.get());
 		mVideoSource23 = OMXCodec::Create23(iomx, vidFormat, false, mVideoTrack23, NULL, 0);
 		LOGV("   - got %p back", mVideoSource23.get());
 	}
 	
-	LOGI("OMXCodec::Create() (video) returned 4x=-%p 23=%p", mVideoSource.get(), mVideoSource23.get());
+	LOGI("OMXCodec::Create() (video) returned 4x=%p 23=%p", mVideoSource.get(), mVideoSource23.get());
 
 	sp<MetaData> meta;
 	if(AVSHIM_USE_NEWMEDIASOURCE)
@@ -833,7 +833,7 @@ bool HLSPlayer::InitSources()
 	}
 
 	JNIEnv *env = NULL;
-	mJvm->AttachCurrentThread(&env, NULL);
+	EnsureJNI(&env);
 	LOGV(" env=%p", env);
 
 	// HAX for hw renderer path
@@ -890,6 +890,7 @@ bool HLSPlayer::InitSources()
 
 		RUNDEBUG(audioFormat->dumpToLog());
 
+		LOGI("Creating audio sources (OMXCodec)");
 		if(AVSHIM_USE_NEWMEDIASOURCE)
 			mAudioSource = OMXCodec::Create(iomx, audioFormat, false, mAudioTrack, NULL, 0);
 		else
@@ -908,8 +909,8 @@ bool HLSPlayer::InitSources()
 	}
 	else
 	{
-		mAudioSource.clear();
-		mAudioSource23.clear();
+		clearOMX(mAudioSource);
+		clearOMX(mAudioSource23);
 	}
 
 	meta.clear();
@@ -946,6 +947,10 @@ bool HLSPlayer::Play()
 	{
 		LOGI("Video Track failed to start: %s : %d", strerror(-err), __LINE__);
 		return false;
+	}
+	else
+	{
+		LOGI("Video Source Started");
 	}
 
 	if (!CreateAudioPlayer())
@@ -1905,7 +1910,6 @@ void HLSPlayer::Stop()
 		SetState(STOPPED);
 		mJAudioTrack->Stop();
 	}
-	usleep(50000);
 }
 
 int32_t HLSPlayer::GetCurrentTimeMS()

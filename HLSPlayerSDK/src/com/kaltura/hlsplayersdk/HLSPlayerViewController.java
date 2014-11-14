@@ -518,6 +518,12 @@ public class HLSPlayerViewController extends RelativeLayout implements
 
 	@Override
 	public void onDownloadComplete(URLLoader loader, String response) {
+		if (mManifest != null)
+		{
+			Log.e("PlayerViewController.onDownloadComplete", "Manifest is not NULL! Killing the old one and starting a new one.");
+			mManifest.setOnParseCompleteListener(null);
+			mManifest = null;
+		}
 		mManifest = new ManifestParser();
 		mManifest.setOnParseCompleteListener(this);
 		mManifest.parse(response, loader.getRequestURI().toString());
@@ -704,6 +710,13 @@ public class HLSPlayerViewController extends RelativeLayout implements
 			manifestLoader.setDownloadEventListener(null);
 			manifestLoader = null;
 		}
+		if (mManifest != null)
+		{
+			Log.i("PlayerViewController.setVideoURL", "Manifest is not NULL. Killing the old one and starting a new one.");
+			mManifest.setOnParseCompleteListener(null);
+			mManifest = null;
+		}
+
 
 		HLSSegmentCache.cancelAllCacheEvents();
 		HLSSegmentCache.cancelDownloads();

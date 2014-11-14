@@ -197,6 +197,7 @@ void clearOMX(T& t)
 {
 	if (t.get())
 	{
+		LOGI("Stopping && Clearing OMX %p", t.get());
 		t->stop();
 
 		android_video_shim::wp<android_video_shim::RefBase> tmp = NULL;
