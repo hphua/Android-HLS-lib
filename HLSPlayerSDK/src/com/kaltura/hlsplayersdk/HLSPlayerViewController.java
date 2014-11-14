@@ -89,6 +89,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	private static int mAltAudioLanguage = 0;
 	
 	private static boolean noMoreSegments = false;
+	private static int videoPlayId = 0;
 
 
 	/**
@@ -430,6 +431,10 @@ public class HLSPlayerViewController extends RelativeLayout implements
 			postError(OnErrorListener.MEDIA_ERROR_NOT_VALID, "No Valid Manifest");
 			return;
 		}
+		
+		// If we're not on the currently requested video play - bail out. No need to start anything up.
+		if (parser.videoPlayId != videoPlayId) return;
+		
 		noMoreSegments = false;
 		Log.i(this.getClass().getName() + ".onParserComplete", "Entered");
 		mStreamHandler = new StreamHandler(parser);
@@ -518,6 +523,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 
 	@Override
 	public void onDownloadComplete(URLLoader loader, String response) {
+		if (loader.videoPlayId != videoPlayId) return;
 		if (mManifest != null)
 		{
 			Log.e("PlayerViewController.onDownloadComplete", "Manifest is not NULL! Killing the old one and starting a new one.");
@@ -525,7 +531,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 			mManifest = null;
 		}
 		mManifest = new ManifestParser();
-		mManifest.setOnParseCompleteListener(this);
+		mManifest.setOnParseCompleteListener(this, loader.videoPlayId);
 		mManifest.parse(response, loader.getRequestURI().toString());
 	}
 
@@ -703,6 +709,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		}
 	}
 	
+	
 	public void setVideoUrl(String url) {
 		Log.i("PlayerView.setVideoUrl", url);
 		if (manifestLoader != null)
@@ -735,8 +742,13 @@ public class HLSPlayerViewController extends RelativeLayout implements
 
 		postPlayerStateChange(PlayerStates.LOAD);
 
+		// Incrementing the videoPlayId. This will keep us from starting videos delayed
+		// by slow manifest downloads when the user tries to start a new video (meaning
+		// that we'll only start the latest request once the parsers are finished).
+		++videoPlayId;
+		
 		// Init loading.
-		manifestLoader = new URLLoader(this, null);
+		manifestLoader = new URLLoader(this, null, videoPlayId);
 		manifestLoader.get(url);
 	}
 

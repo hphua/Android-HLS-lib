@@ -182,8 +182,11 @@ OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListene
     
     void setVideoUrl(String url)
     {
-    	playerView.setVideoUrl(url);
-    	playerView.setVisibility(View.VISIBLE);
+    	if (playerView != null)
+		{
+    		playerView.setVideoUrl(url);
+        	playerView.setVisibility(View.VISIBLE);
+		}
     }
 
     @Override

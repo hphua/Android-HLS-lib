@@ -40,7 +40,7 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 	public boolean goodManifest = true;
 	private int mReloadFailureCount = 0;
 	
-	
+	public int videoPlayId = 0; // Used for tracking which video play we're on. Only the base manifest parser will have this set to anything other than 0.
 	
 	public int continuityEra = 0;
 	private int _subtitlesLoading = 0;
@@ -507,6 +507,13 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 	// Event Listeners
 	public void setOnParseCompleteListener(OnParseCompleteListener listener)
 	{
+		mOnParseCompleteListener = listener;
+	}
+	
+	
+	public void setOnParseCompleteListener(OnParseCompleteListener listener, int playId)
+	{
+		videoPlayId = playId;
 		mOnParseCompleteListener = listener;
 	}
 	private OnParseCompleteListener mOnParseCompleteListener;
