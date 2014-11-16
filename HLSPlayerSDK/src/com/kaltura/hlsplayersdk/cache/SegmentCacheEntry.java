@@ -4,7 +4,7 @@ import android.os.Handler;
 import android.util.Log;
 
 import com.kaltura.hlsplayersdk.HLSPlayerViewController;
-import com.kaltura.playersdk.events.OnErrorListener;
+import com.kaltura.hlsplayersdk.events.OnErrorListener;
 import com.loopj.android.http.*;
 
 public class SegmentCacheEntry {

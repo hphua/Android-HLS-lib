@@ -9,8 +9,8 @@ import android.util.EventLog.Event;
 import com.kaltura.hlsplayersdk.HLSPlayerViewController;
 import com.kaltura.hlsplayersdk.URLLoader;
 import com.kaltura.hlsplayersdk.subtitles.*;
+import com.kaltura.hlsplayersdk.events.OnErrorListener;
 import com.kaltura.hlsplayersdk.manifest.events.*;
-import com.kaltura.playersdk.events.OnErrorListener;
 
 public class ManifestParser implements OnParseCompleteListener, URLLoader.DownloadEventListener {
 	public static final String DEFAULT = "DEFAULT";
