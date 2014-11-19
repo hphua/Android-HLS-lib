@@ -185,6 +185,7 @@ OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListene
 		{
     		playerView.setVideoUrl(url);
         	playerView.setVisibility(View.VISIBLE);
+        	playerView.play();
 		}
     }
 
@@ -423,6 +424,7 @@ OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListene
 	@Override
 	public void onProgressUpdate(int progress) {
 		Log.i("OnProgressUpdate", "Download Progress: " + progress);
+		
 		
 	}
 }

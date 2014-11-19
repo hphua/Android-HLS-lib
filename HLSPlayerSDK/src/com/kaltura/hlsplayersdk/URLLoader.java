@@ -35,6 +35,7 @@ public class URLLoader extends AsyncHttpResponseHandler
 	{
 		uri = url;
 		Log.i("URLLoader", "Getting: " + uri);
+		HLSSegmentCache.httpClient().setEnableRedirects(true);
 		HLSSegmentCache.httpClient().get(url, this);
 	}
 	
@@ -68,6 +69,14 @@ public class URLLoader extends AsyncHttpResponseHandler
 	public void onFailure(int statusCode, Header[] headers, byte[] responseBody, Throwable error) {
 		final URLLoader thisLoader = this;
 		final int sc = statusCode;
+		String m = "";
+		if (error != null)
+		{
+			m = error.getMessage();
+			if (m == null && error.getCause() != null)
+				m = error.getCause().getMessage();
+		}
+		final String msg = m;
 		
 		if (mDownloadEventListener != null)
 		{
@@ -76,7 +85,7 @@ public class URLLoader extends AsyncHttpResponseHandler
 			{
 				@Override
 				public void run() {
-					mDownloadEventListener.onDownloadFailed(thisLoader, "Failure: " + sc);				
+					mDownloadEventListener.onDownloadFailed(thisLoader, "Failure: " + msg + "(" + sc + ")");				
 				}
 			});
 		}
@@ -106,7 +115,17 @@ public class URLLoader extends AsyncHttpResponseHandler
 				}
 			}
 		}
-		final String response = new String(responseData);
+		
+		String s = null;
+		try
+		{
+			s = new String(responseData);
+		}
+		catch (Exception e)
+		{
+			onFailure(statusCode, headers, responseData, null);
+		}
+		final String response = s;
 		
 				
 		if (mDownloadEventListener != null)

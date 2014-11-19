@@ -29,6 +29,8 @@ AudioTrack::AudioTrack(JavaVM* jvm) : mJvm(jvm), mAudioTrack(NULL), mGetMinBuffe
 
 	int err = pthread_mutex_init(&updateMutex, NULL);
 	LOGI(" AudioTrack mutex err = %d", err);
+	err = pthread_mutex_init(&lock, NULL);
+
 }
 
 AudioTrack::~AudioTrack() {
@@ -223,6 +225,7 @@ bool AudioTrack::UpdateFormatInfo()
 bool AudioTrack::Start()
 {
 	LOGTRACE("%s", __func__);
+	AutoLock locker(&lock);
 	LOGI("Setting buffer = NULL");
 	buffer = NULL;
 
@@ -406,6 +409,7 @@ int64_t AudioTrack::GetTimeStamp()
 		return mTimeStampOffset;
 	}
 
+	AutoLock locker(&lock);
 	double frames = env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mGetPlaybackHeadPosition);
 	double secs = frames / (double)mSampleRate;
 	LOGTIMING("TIMESTAMP: secs = %f | mTimeStampOffset = %f", secs, mTimeStampOffset);

@@ -19,6 +19,7 @@
 #include "ADebug.h"
  //#define ALOGI LOGI
 #define ALOGI(...)
+#define ALOGV(...) LOGV2(...)
 
 #include "ESQueue.h"
 

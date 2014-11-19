@@ -88,6 +88,7 @@ private:
 
 	sem_t semPause;
     pthread_mutex_t updateMutex;
+    pthread_mutex_t lock;
 
 };
 
