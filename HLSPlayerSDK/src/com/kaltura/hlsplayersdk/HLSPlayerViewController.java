@@ -63,6 +63,12 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	
 	private final int THREAD_STATE_STOPPED = 0;
 	private final int THREAD_STATE_RUNNING = 1;
+	
+	private final int STARTUP_STATE_STARTED = 0;
+	private final int STARTUP_STATE_LOADING = 1;
+	private final int STARTUP_STATE_LOADED = 2;
+	private final int STARTUP_STATE_PLAY_QUEUED = 3;
+	private final int STARTUP_STATE_WAITING_TO_START = 4;
 
 	// Native methods
 	private native int GetState();
@@ -291,6 +297,8 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	// Video state.
 	public int mVideoWidth = 640, mVideoHeight = 480;
 	private int mTimeMS = 0;
+	
+	private int mStartupState = STARTUP_STATE_WAITING_TO_START;
 
 	// Thread to run video rendering.
 	private boolean stopVideoThread = false;
@@ -511,13 +519,17 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	public void onSegmentCompleted(String uri) {
 		HLSSegmentCache.cancelCacheEvent(uri);
 		
-		play();	
+		if (mStartupState == STARTUP_STATE_PLAY_QUEUED)
+			initiatePlay();
+		else
+			setStartupState(STARTUP_STATE_LOADED);
 	}
 
 	@Override
 	public void onSegmentFailed(String uri, int responseCode) {
 
 		HLSSegmentCache.cancelCacheEvent(uri);
+		setStartupState(STARTUP_STATE_WAITING_TO_START);
 		
 	}
 
@@ -601,10 +613,20 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	public String getVideoUrl() {
 		return "Not Implemented";
 	}
-
-	public void play() {
+	
+	private void initiatePlay()
+	{
+		setStartupState(STARTUP_STATE_STARTED);
 		PlayFile();
 		postPlayerStateChange(PlayerStates.PLAY);
+		
+	}
+
+	public void play() {
+		if (mStartupState == STARTUP_STATE_LOADED)
+			initiatePlay();
+		else
+			setStartupState(STARTUP_STATE_PLAY_QUEUED);
 	}
 
 	public void pause() {
@@ -709,6 +731,29 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		}
 	}
 	
+	private String getStartupStateText(int state)
+	{
+		switch (state)
+		{
+		case STARTUP_STATE_STARTED:
+			return "STARTUP_STATE_STARTED";
+		case STARTUP_STATE_LOADING:
+			return "STARTUP_STATE_LOADING";
+		case STARTUP_STATE_LOADED:
+			return "STARTUP_STATE_LOADED";
+		case STARTUP_STATE_PLAY_QUEUED:
+			return "STARTUP_STATE_PLAY_QUEUED";
+		case STARTUP_STATE_WAITING_TO_START:
+			return "STARTUP_STATE_WATING_TO_START";
+		}
+		return "Unknown";
+	}
+	
+	public void setStartupState(int newState)
+	{
+		Log.i("PlayerViewController.setStartupState", "Old State=" + getStartupStateText(mStartupState) + " New State=" + getStartupStateText(newState));
+		mStartupState = newState;
+	}
 	
 	public void setVideoUrl(String url) {
 		Log.i("PlayerView.setVideoUrl", url);
@@ -740,6 +785,8 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		}
 		
 
+		setStartupState(STARTUP_STATE_LOADING);
+		
 		postPlayerStateChange(PlayerStates.LOAD);
 
 		// Incrementing the videoPlayId. This will keep us from starting videos delayed

@@ -424,6 +424,7 @@ OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListene
 	@Override
 	public void onProgressUpdate(int progress) {
 		Log.i("OnProgressUpdate", "Download Progress: " + progress);
+		if (progress >= 99) playerView.play();
 		
 	}
 }

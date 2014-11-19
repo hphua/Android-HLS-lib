@@ -187,7 +187,10 @@ public class HLSSegmentCache
 			sce.registerSegmentCachedListener(segmentCachedListener, callbackHandler);
 			sce.waiting = true;
 			if (!sce.running)
+			{
+				HLSSegmentCache.postProgressUpdate(true);
 				sce.notifySegmentCached();
+			}
 				
 		}
 	}
@@ -243,9 +246,9 @@ public class HLSSegmentCache
 	}
 	
 	private static long lastTime = System.currentTimeMillis();
-	public static void postProgressUpdate()
+	public static void postProgressUpdate(boolean force)
 	{
-		if (System.currentTimeMillis() - 200 > lastTime)
+		if (System.currentTimeMillis() - 10 > lastTime || force)
 		{
 			lastTime = System.currentTimeMillis();
 
@@ -299,7 +302,7 @@ public class HLSSegmentCache
 		while(sce.running)
 		{
 
-			postProgressUpdate();
+			postProgressUpdate(false);
 			try {
 				Thread.sleep(30);
 				Thread.yield();

@@ -108,6 +108,11 @@ public class SegmentCacheEntry {
 				mSegmentCachedListener = listener;
 				mCallbackHandler = callbackHandler;
 			}
+			
+			if (mCallbackHandler == null)
+			{
+				Log.i("SegmentCacheEntry.registerSegmentCahcedListener", "CallbackHandler == null");
+			}
 		}
 	}
 	
@@ -178,7 +183,7 @@ public class SegmentCacheEntry {
 		// in a wait state in the SegmentCache
 		if (mCallbackHandler != null)
 		{
-			HLSSegmentCache.postProgressUpdate();
+			HLSSegmentCache.postProgressUpdate(bytesWritten == totalBytesExpected);
 		}
 	}
 
