@@ -17,10 +17,9 @@ import android.view.View;
 import android.widget.EditText;
 
 import com.kaltura.hlsplayersdk.HLSPlayerViewController;
-import com.kaltura.hlsplayersdk.subtitles.TextTrackCue;
 import com.kaltura.hlsplayersdk.types.PlayerStates;
-import com.kaltura.playersdk.QualityTrack;
-import com.kaltura.playersdk.events.*;
+import com.kaltura.hlsplayersdk.QualityTrack;
+import com.kaltura.hlsplayersdk.events.*;
 
 public class VideoPlayerActivity extends ActionBarActivity implements OnTextTracksListListener, OnTextTrackChangeListener, 
 OnTextTrackTextListener, OnAudioTracksListListener, OnAudioTrackSwitchingListener, 

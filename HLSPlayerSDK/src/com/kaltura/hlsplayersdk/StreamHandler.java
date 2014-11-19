@@ -14,8 +14,7 @@ import com.kaltura.hlsplayersdk.manifest.ManifestParser;
 import com.kaltura.hlsplayersdk.manifest.ManifestPlaylist;
 import com.kaltura.hlsplayersdk.manifest.ManifestSegment;
 import com.kaltura.hlsplayersdk.manifest.ManifestStream;
-import com.kaltura.playersdk.QualityTrack;
-import com.kaltura.playersdk.types.TrackType;
+import com.kaltura.hlsplayersdk.types.TrackType;
 
 
 // This is the confusingly named "HLSIndexHandler" from the flash HLSPlugin

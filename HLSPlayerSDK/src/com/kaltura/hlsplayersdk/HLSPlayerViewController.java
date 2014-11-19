@@ -19,6 +19,17 @@ import android.widget.Toast;
 
 import com.kaltura.hlsplayersdk.cache.HLSSegmentCache;
 import com.kaltura.hlsplayersdk.cache.SegmentCachedListener;
+import com.kaltura.hlsplayersdk.events.OnAudioTrackSwitchingListener;
+import com.kaltura.hlsplayersdk.events.OnAudioTracksListListener;
+import com.kaltura.hlsplayersdk.events.OnErrorListener;
+import com.kaltura.hlsplayersdk.events.OnPlayerStateChangeListener;
+import com.kaltura.hlsplayersdk.events.OnPlayheadUpdateListener;
+import com.kaltura.hlsplayersdk.events.OnProgressListener;
+import com.kaltura.hlsplayersdk.events.OnQualitySwitchingListener;
+import com.kaltura.hlsplayersdk.events.OnQualityTracksListListener;
+import com.kaltura.hlsplayersdk.events.OnTextTrackChangeListener;
+import com.kaltura.hlsplayersdk.events.OnTextTrackTextListener;
+import com.kaltura.hlsplayersdk.events.OnTextTracksListListener;
 import com.kaltura.hlsplayersdk.events.OnToggleFullScreenListener;
 import com.kaltura.hlsplayersdk.manifest.ManifestParser;
 import com.kaltura.hlsplayersdk.manifest.ManifestSegment;
@@ -26,22 +37,6 @@ import com.kaltura.hlsplayersdk.manifest.events.OnParseCompleteListener;
 import com.kaltura.hlsplayersdk.subtitles.SubtitleHandler;
 import com.kaltura.hlsplayersdk.subtitles.TextTrackCue;
 import com.kaltura.hlsplayersdk.types.PlayerStates;
-import com.kaltura.playersdk.AlternateAudioTracksInterface;
-import com.kaltura.playersdk.QualityTrack;
-import com.kaltura.playersdk.QualityTracksInterface;
-import com.kaltura.playersdk.TextTracksInterface;
-import com.kaltura.playersdk.VideoPlayerInterface;
-import com.kaltura.playersdk.events.OnAudioTrackSwitchingListener;
-import com.kaltura.playersdk.events.OnAudioTracksListListener;
-import com.kaltura.playersdk.events.OnErrorListener;
-import com.kaltura.playersdk.events.OnPlayerStateChangeListener;
-import com.kaltura.playersdk.events.OnPlayheadUpdateListener;
-import com.kaltura.playersdk.events.OnProgressListener;
-import com.kaltura.playersdk.events.OnQualitySwitchingListener;
-import com.kaltura.playersdk.events.OnQualityTracksListListener;
-import com.kaltura.playersdk.events.OnTextTrackChangeListener;
-import com.kaltura.playersdk.events.OnTextTrackTextListener;
-import com.kaltura.playersdk.events.OnTextTracksListListener;
 
 /**
  * Main class for HLS video playback on the Java side.
