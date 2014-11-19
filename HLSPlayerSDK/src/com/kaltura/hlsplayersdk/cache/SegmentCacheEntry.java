@@ -111,7 +111,7 @@ public class SegmentCacheEntry {
 			
 			if (mCallbackHandler == null)
 			{
-				Log.i("SegmentCacheEntry.registerSegmentCahcedListener", "CallbackHandler == null");
+				Log.i("SegmentCacheEntry.registerSegmentCachedListener", "CallbackHandler == null");
 			}
 		}
 	}
