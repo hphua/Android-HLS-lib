@@ -72,7 +72,7 @@ OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListene
 				);
 				
 				try {
-					Thread.sleep((long)(Math.random() * 15000.0) + 10000);
+					Thread.sleep((long)(Math.random() * 15000.0) + 5000);
 				} catch (InterruptedException ie) {
 					Log.i("video run", "Video thread sleep interrupted!");
 				}
@@ -181,8 +181,11 @@ OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListene
     
     void setVideoUrl(String url)
     {
-    	playerView.setVideoUrl(url);
-    	playerView.setVisibility(View.VISIBLE);
+    	if (playerView != null)
+		{
+    		playerView.setVideoUrl(url);
+        	playerView.setVisibility(View.VISIBLE);
+		}
     }
 
     @Override

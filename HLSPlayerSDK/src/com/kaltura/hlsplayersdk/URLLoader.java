@@ -14,11 +14,20 @@ public class URLLoader extends AsyncHttpResponseHandler
 {	
 	public BaseManifestItem manifestItem = null;
 	public String uri;
+	public int videoPlayId = 0; // Used for tracking which video play we're on. See HLSPlayerViewController.setVideoURL()
 	
 	public URLLoader(DownloadEventListener eventListener, BaseManifestItem item)
 	{
 		Log.i("URLLoader.URLLoader()", "Constructing" );
 		setDownloadEventListener( eventListener );
+		manifestItem = item;
+	}
+	
+	public URLLoader(DownloadEventListener eventListener, BaseManifestItem item, int playId)
+	{
+		Log.i("URLLoader.URLLoader()", "Constructing" );
+		setDownloadEventListener( eventListener );
+		videoPlayId = playId;
 		manifestItem = item;
 	}
 	

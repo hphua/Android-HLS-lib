@@ -375,7 +375,7 @@ public static String bytesToHex(ByteBuffer bytes) {
 			if(offset + size > sce.data.length)
 			{
 				long newSize = sce.data.length - offset;
-				Log.i("HLS Cache", "Adjusting size to " + newSize + " from " + size + " offset=" + offset);
+				Log.i("HLS Cache", "Adjusting size to " + newSize + " from " + size + " offset=" + offset + " data.length=" + sce.data.length + " for file:" + sce.uri);
 				size = newSize;
 				adjusted = true;
 			}
