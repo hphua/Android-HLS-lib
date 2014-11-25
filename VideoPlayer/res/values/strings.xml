@@ -10,6 +10,7 @@
     <string name="testURL">djing</string>
     <string name="OpenURL">Open URL</string>
     <string name="url_label">Video URL</string>
-    <string name="play_pause">Play/Pause</string>
+    <string name="play">Play</string>
+    <string name="pause">Pause</string>
 
 </resources>

@@ -250,19 +250,19 @@ extern "C"
 		}
 	}
 
-	void Java_com_kaltura_hlsplayersdk_HLSPlayerViewController_PlayFile(JNIEnv* env, jobject jcaller)
+	void Java_com_kaltura_hlsplayersdk_HLSPlayerViewController_PlayFile(JNIEnv* env, jobject jcaller, jdouble time)
 	{
 		if (gHLSPlayerSDK != NULL)
 		{
-			gHLSPlayerSDK->PlayFile();
+			gHLSPlayerSDK->PlayFile(time);
 		}
 	}
 
-	void Java_com_kaltura_hlsplayersdk_HLSPlayerViewController_TogglePause(JNIEnv* env, jobject jcaller)
+	void Java_com_kaltura_hlsplayersdk_HLSPlayerViewController_Pause(JNIEnv* env, jobject jcaller, jboolean pause)
 	{
 		if (gHLSPlayerSDK != NULL && gHLSPlayerSDK->GetPlayer())
 		{
-			gHLSPlayerSDK->GetPlayer()->TogglePause();
+			gHLSPlayerSDK->GetPlayer()->Pause(pause);
 		}
 	}
 
@@ -437,7 +437,7 @@ HLSPlayer* HLSPlayerSDK::GetPlayer()
 	return mPlayer;
 }
 
-void HLSPlayerSDK::PlayFile()
+void HLSPlayerSDK::PlayFile(double time)
 {
 	LOGI("::PlayFile()");
 	if (!mPlayer && !CreateDecoder()) 
@@ -446,7 +446,7 @@ void HLSPlayerSDK::PlayFile()
 		return;
 	}
 
-	if (mPlayer->Play())
+	if (mPlayer->Play(time))
 	{
 //	Not sure what the point of this was... commenting out for testing purposes
 //		while (mPlayer->Update() == 0)

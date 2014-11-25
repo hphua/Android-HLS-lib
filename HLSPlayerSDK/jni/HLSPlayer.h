@@ -44,7 +44,7 @@ public:
 	android_video_shim::status_t FeedSegment(const char* path, int32_t quality, int continuityEra, const char* altAudioPath, int audioIndex, double time, int cryptoId, int altCryptoId );
 	void SetSegmentCountTobuffer(int segmentCount);
 
-	bool Play();
+	bool Play(double time);
 	void Stop();
 	int Update();
 
@@ -54,7 +54,7 @@ public:
 
 	void SetJavaVM(JavaVM* jvm);
 
-	void TogglePause();
+	void Pause(bool pause);
 
 	int GetState();
 	int32_t GetCurrentTimeMS();

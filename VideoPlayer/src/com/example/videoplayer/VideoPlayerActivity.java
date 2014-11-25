@@ -151,7 +151,8 @@ OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListene
     {
     	if (playerView != null)
     	{
-            playerView.close();
+    		playerView.setStartingPoint(mLastTimeMS);
+            playerView.release();
             playerView = null;
     	}
     	super.onStop();
@@ -162,6 +163,7 @@ OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListene
     {
     	if (playerView == null)
     		initPlayerView();
+    	playerView.recoverRelease();
     	super.onRestart();
     }
 
@@ -267,10 +269,15 @@ OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListene
         	setVideoUrl(lastUrl);
         	return true;
         }
-        else if (id == R.id.play_pause)
+        else if (id == R.id.pause)
         {
         	Log.i("VideoPlayer UI", " -----> Pause");
         	playerView.pause();
+        }
+        else if (id == R.id.play)
+        {
+        	Log.i("VideoPlayer UI", " -----> Play");
+        	playerView.play();
         }
         else if (id == R.id.quality_up)
         {

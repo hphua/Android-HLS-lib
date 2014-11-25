@@ -927,7 +927,7 @@ bool HLSPlayer::InitSources()
 //		Tells the player to play the current stream. Requires that
 //		segments have already been fed to the player.
 //
-bool HLSPlayer::Play()
+bool HLSPlayer::Play(double time)
 {
 	LOGTRACE("%s", __func__);
 	LOGI("Entered");
@@ -935,6 +935,9 @@ bool HLSPlayer::Play()
 	if (!InitSources()) return false;
 
 	AutoLock locker(&lock, __func__);
+
+	double segTime = mDataSource->getStartTime();
+	mStartTimeMS = segTime * 1000;
 
 	status_t err = OK;
 	
@@ -957,6 +960,13 @@ bool HLSPlayer::Play()
 	{
 		LOGI("Failed to create audio player : %d", __LINE__);
 		return false;
+	}
+
+
+	if (time > 0)
+	{
+		ReadUntilTime(time - segTime);
+		if (mJAudioTrack) mJAudioTrack->ReadUntilTime(time - segTime);
 	}
 
 	LOGI("Starting audio playback");
@@ -1880,22 +1890,23 @@ int HLSPlayer::GetState()
 	return mStatus;
 }
 
-void HLSPlayer::TogglePause()
+void HLSPlayer::Pause(bool pause)
 {
 	LOGTRACE("%s", __func__);
 	AutoLock locker(&lock);
 
 	LogState();
-	if (GetState() == PAUSED)
-	{
-		SetState(PLAYING);
-		mJAudioTrack->Play();
-	}
-	else if (GetState() == PLAYING)
+	if (pause && GetState() == PLAYING)
 	{
 		SetState(PAUSED);
 		mJAudioTrack->Pause();
 	}
+	else if (!pause && GetState() == PAUSED)
+	{
+		SetState(PLAYING);
+		mJAudioTrack->Play();
+	}
+
 }
 
 void HLSPlayer::Stop()

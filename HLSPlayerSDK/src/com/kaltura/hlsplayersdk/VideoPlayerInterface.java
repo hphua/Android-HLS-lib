@@ -42,4 +42,14 @@ public interface VideoPlayerInterface {
      */
     public void setStartingPoint(int point);
     
+    /**
+     * Some players require release when application goes to background
+     */
+    public void release();
+    
+    /**
+     * Recover from release
+     */
+    public void recoverRelease();
+    
 }
