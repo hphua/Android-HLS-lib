@@ -90,7 +90,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	public static HLSPlayerViewController currentController = null;
 	private static int mQualityLevel = 0;
 	private static int mSubtitleLanguage = 0;
-	private static int mAltAudioLanguage = 0;
+	private static int mAltAudioIndex = 0;
 	
 	private static boolean noMoreSegments = false;
 	private static int videoPlayId = 0;
@@ -299,9 +299,11 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	// Restart details
 	private String mLastUrl = "";
 	private int mStartingMS = 0;
+	private int mInitialPlayState = 0;
 	private int mInitialQualityLevel = 0;
 	private int mInitialAudioTrack = 0;
 	private int mInitialSubtitleTrack = 0;
+	private boolean mRestoringState = false;
 	
 	// Startup details
 	private int mStartupState = STARTUP_STATE_WAITING_TO_START;
@@ -435,7 +437,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		spe.putString("lasturl", mLastUrl);
 		spe.putInt("playstate", GetState());
 		spe.putInt("startms", mStartingMS);
-		spe.putInt("initialquality", mStreamHandler.lastQuality);
+		spe.putInt("initialquality", mQualityLevel);
 		spe.putInt("initialaudiotrack", mStreamHandler.altAudioIndex);
 		spe.putInt("initialsubtitletrack", mSubtitleLanguage);
 		spe.commit();
@@ -449,10 +451,16 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		// Deserialize postion, playstate, and url
 		SharedPreferences sp = mActivity.getSharedPreferences("hlsplayersdk", Context.MODE_PRIVATE);
 		mLastUrl = sp.getString("lasturl", "");
-		int lastPlayState = sp.getInt("playstate", 0);
+		mInitialPlayState = sp.getInt("playstate", 0);
 		mStartingMS = sp.getInt("startms", 0);
+		mInitialQualityLevel = sp.getInt("initialquality", 0);
+		mInitialAudioTrack = sp.getInt("initialaudiotrack", 0);
+		mInitialSubtitleTrack = sp.getInt("initialsubtitletrack", 0);
 		
-		if (lastPlayState == STATE_PLAYING && mStartingMS > 0)
+		if (mStartingMS > 0)
+			mRestoringState = true;
+		
+		if (mRestoringState)
 		{
 			// we need to resume, somehow
 			mActivity.runOnUiThread(new Runnable()
@@ -464,7 +472,6 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		            setVideoUrl(mLastUrl);
 		        	setVisibility(View.VISIBLE);
 		        	play();
-		        	seek(mStartingMS);
 				}
 				
 			});
@@ -504,9 +511,19 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		mStreamHandler = new StreamHandler(parser);
 		mSubtitleHandler = new SubtitleHandler(parser);
 		
-		// getStreamHandler().setAltAudioTrack(newAudioIndex); 
+		double startTime = 0;
+		int subtitleIndex = 0;
+		int qualityLevel = 0;
+		int textTrackIndex = mSubtitleHandler.hasSubtitles() ? mSubtitleHandler.getDefaultLanguageIndex() : 0;
+		if (mRestoringState)
+		{
+			getStreamHandler().setAltAudioTrack(mAltAudioIndex);
+			startTime = (double)mStartingMS / 1000.0;
+			qualityLevel = mInitialQualityLevel;
+			textTrackIndex = mInitialSubtitleTrack;
+		}
 		
-		ManifestSegment seg = getStreamHandler().getFileForTime((double)mStartingMS / 1000.0, 0);
+		ManifestSegment seg = getStreamHandler().getFileForTime(startTime, qualityLevel);
 		if (seg == null)
 		{
 			postError(OnErrorListener.MEDIA_ERROR_NOT_VALID, "Manifest is not valid. There aren't any segments.");
@@ -520,10 +537,10 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		
 		if (mSubtitleHandler.hasSubtitles())
 		{
-			postTextTracksList(mSubtitleHandler.getLanguageList(), mSubtitleHandler.getDefaultLanguageIndex());
+			postTextTracksList(mSubtitleHandler.getLanguageList(), textTrackIndex);
 			
-			mSubtitleLanguage = mSubtitleHandler.getDefaultLanguageIndex();
-			mSubtitleHandler.precacheSegmentAtTime(0, mSubtitleLanguage );
+			mSubtitleLanguage = textTrackIndex;
+			mSubtitleHandler.precacheSegmentAtTime(startTime, mSubtitleLanguage );
 			postTextTrackChanged(mSubtitleLanguage);
 		}
 		else
@@ -676,8 +693,21 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	{
 		setStartupState(STARTUP_STATE_STARTED);
 		PlayFile(((double)mStartingMS) / 1000.0f);
-		mStartingMS = 0; // Reset so that the next video doesn't start in the middle
 		postPlayerStateChange(PlayerStates.PLAY);
+
+		if (mRestoringState)
+		{
+			if (this.mInitialPlayState == STATE_PAUSED)
+			{
+				pause();
+			}
+			
+			// Reset so that the next video doesn't start in the middle
+			mStartingMS = 0; 
+			mRestoringState = false;
+		}
+
+		
 		
 	}
 

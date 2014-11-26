@@ -123,7 +123,7 @@ void HLSPlayer::Reset()
 	AutoLock locker(&lock, __func__);
 
 	LOGI("Entered");
-	mStatus = STOPPED;
+	Stop();
 	LogState();
 
 	ClearScreen();
