@@ -22,7 +22,7 @@ public:
 	void Close(JNIEnv* env);
 
 	bool CreateDecoder();
-	void PlayFile();
+	void PlayFile(double time);
 
 	//HLSDecoder* GetDecoder();
 	HLSPlayer* GetPlayer();
