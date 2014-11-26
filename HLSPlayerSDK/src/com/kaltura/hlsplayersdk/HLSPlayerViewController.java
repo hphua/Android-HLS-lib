@@ -511,6 +511,9 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		mStreamHandler = new StreamHandler(parser);
 		mSubtitleHandler = new SubtitleHandler(parser);
 		
+		postPlayerStateChange(PlayerStates.START);
+
+		
 		double startTime = 0;
 		int subtitleIndex = 0;
 		int qualityLevel = 0;
@@ -727,9 +730,10 @@ public class HLSPlayerViewController extends RelativeLayout implements
 			return;			
 		}
 		
+		
 		if (mStartupState == STARTUP_STATE_LOADED)
 			initiatePlay();
-		else
+		else if (mStartupState != STARTUP_STATE_STARTED)
 			setStartupState(STARTUP_STATE_PLAY_QUEUED);
 	}
 
@@ -882,7 +886,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		
 		mLastUrl = url;
 
-		postPlayerStateChange(PlayerStates.START);
+		postPlayerStateChange(PlayerStates.LOAD);
 
 		// Confirm network is ready to go.
 		if(!isOnline())
@@ -893,7 +897,6 @@ public class HLSPlayerViewController extends RelativeLayout implements
 
 		setStartupState(STARTUP_STATE_LOADING);
 		
-		postPlayerStateChange(PlayerStates.LOAD);
 
 		// Incrementing the videoPlayId. This will keep us from starting videos delayed
 		// by slow manifest downloads when the user tries to start a new video (meaning
