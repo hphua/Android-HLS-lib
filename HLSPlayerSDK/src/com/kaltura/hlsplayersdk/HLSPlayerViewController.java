@@ -511,9 +511,6 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		mStreamHandler = new StreamHandler(parser);
 		mSubtitleHandler = new SubtitleHandler(parser);
 		
-//		postPlayerStateChange(PlayerStates.START);
-
-		
 		double startTime = 0;
 		int subtitleIndex = 0;
 		int qualityLevel = 0;
