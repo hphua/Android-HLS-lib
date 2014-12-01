@@ -511,9 +511,6 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		mStreamHandler = new StreamHandler(parser);
 		mSubtitleHandler = new SubtitleHandler(parser);
 		
-		postPlayerStateChange(PlayerStates.START);
-
-		
 		double startTime = 0;
 		int subtitleIndex = 0;
 		int qualityLevel = 0;
@@ -596,6 +593,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	@Override
 	public void onSegmentCompleted(String uri) {
 		HLSSegmentCache.cancelCacheEvent(uri);
+		postPlayerStateChange(PlayerStates.START);
 		
 		if (mStartupState == STARTUP_STATE_PLAY_QUEUED)
 			initiatePlay();
