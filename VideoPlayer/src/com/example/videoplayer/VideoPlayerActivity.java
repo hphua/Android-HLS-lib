@@ -430,7 +430,7 @@ OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListene
 
 	@Override
 	public void onProgressUpdate(int progress) {
-		Log.i("OnProgressUpdate", "Download Progress: " + progress);
+		Log.i("VideoPlayer.OnProgressUpdate", "Download Progress: " + progress);
 		
 		
 	}

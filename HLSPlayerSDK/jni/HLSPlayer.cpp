@@ -156,7 +156,7 @@ void HLSPlayer::Reset()
 	clearOMX(mVideoSource);
 	clearOMX(mVideoSource23);
 
-	mDataSourceCache.empty();
+	mDataSourceCache.clear();
 
 	LOGI("Killing the audio & video tracks");
 
@@ -1455,7 +1455,6 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 	if (!buffer) { LOGI("the MediaBuffer is NULL"); return true; }
 
 	//RUNDEBUG(buffer->meta_data()->dumpToLog());
-	buffer->meta_data()->dumpToLog();
 	LOGI("Buffer size=%d | range_offset=%d | range_length=%d", buffer->size(), buffer->range_offset(), buffer->range_length());
 
 	// Get the frame's width and height.
@@ -1583,7 +1582,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 #endif
 
 			unsigned char *videoBits = (unsigned char*)buffer->data() + buffer->range_offset();
-			LOGI("Saw some source pixels: %x", *(int*)videoBits);
+			LOGV("Saw some source pixels: %x", *(int*)videoBits);
 
 			LOGV("mWidth=%d | mHeight=%d | mCropWidth=%d | mCropHeight=%d | buffer.width=%d | buffer.height=%d | buffer.stride=%d | videoBits=%p",
 							mWidth, mHeight, mCropWidth, mCropHeight, windowBuffer.width, windowBuffer.height, windowBuffer.stride, videoBits);
