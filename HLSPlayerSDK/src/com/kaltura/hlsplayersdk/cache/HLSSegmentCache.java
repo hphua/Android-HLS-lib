@@ -191,7 +191,6 @@ public class HLSSegmentCache
 				HLSSegmentCache.postProgressUpdate(true);
 				sce.notifySegmentCached();
 			}
-				
 		}
 	}
 	
