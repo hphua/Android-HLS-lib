@@ -271,7 +271,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Segmen
 			
 			ManifestParser currentManifest = reloadingQuality != -1 ? getManifestForQuality(reloadingQuality) : null;
 			
-			long timerOnErrorDelay = (long)(currentManifest.targetDuration * 1000  / 2);
+			long timerOnErrorDelay = (long)(newManifest.targetDuration * 1000  / 2);
 			
 			// If we're not switching quality
 			if (reloadingQuality == lastQuality)
