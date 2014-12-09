@@ -363,7 +363,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 						Log.i("video run", "Video thread sleep interrupted!");
 					}
 					
-					Log.i("PlayerViewController", "Dropped Frames Per Sec: " + DroppedFramesPerSecond());
+					//Log.i("PlayerViewController", "Dropped Frames Per Sec: " + DroppedFramesPerSecond());
 
 				} 
 				else {

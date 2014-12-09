@@ -315,6 +315,8 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Segmen
 	@Override
 	public void onReloadFailed(ManifestParser parser) 
 	{
+		Log.i("StreamHandler.onReloadFailed", "Manifest reload failed: " + parser.fullUrl);
+		
 		mIsRecovering = true;
 		lastBadManifestUri = parser.fullUrl;
 
@@ -335,6 +337,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Segmen
 	
 	private void attemptRecovery()
 	{
+		Log.i("StreamHandler.attemptRecovery", "Attempting Recovery");
 		mIsRecovering = false;
 		
 		if (!mErrorSurrenderTimer.isRunning())
@@ -823,6 +826,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Segmen
 	@Override
 	public void onSegmentFailed(String uri, int errorCode) {
 		HLSSegmentCache.cancelCacheEvent(uri);
+		Log.i("StreamHandler.onSegmentFailed", "Failed Download - attempting recovery: " + errorCode + " " + uri);
 		attemptRecovery();
 		
 	}
