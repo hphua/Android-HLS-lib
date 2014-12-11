@@ -169,23 +169,6 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Segmen
 	{
 		return manifest.playLists.size() > 0;
 	}
-	private TimerTask reloadTimerComplete = new TimerTask()
-	{
-		public void run()
-		{
-			Log.i("reloadTimerComplete.run", "Reload Timer Complete!");
-			if (mIsRecovering)
-			{
-				attemptRecovery();
-			}
-			else if (targetQuality != lastQuality)
-				reload(targetQuality);
-			else
-				reload(lastQuality);
-//			postDelayed(runnable, frameDelay);
-		}
-		
-	};
 	
 	public List<QualityTrack> getQualityTrackList()
 	{
@@ -218,16 +201,11 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Segmen
 	
 	public void initialize()
 	{
-		postRatesReady();
-		postIndexReady();
-		updateTotalDuration();
-		
 		ManifestParser man = getManifestForQuality(lastQuality);
 		if (man != null && !man.streamEnds && man.segments.size() > 0)
 		{
 			mTimerDelay = (long) man.segments.get(man.segments.size() - 1).duration * 1000;
-			reloadTimer = new Timer();
-			reloadTimer.schedule(reloadTimerComplete, mTimerDelay);
+			startReloadTimer();
 		}
 	}
 	
@@ -253,7 +231,30 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Segmen
 	
 	private void startReloadTimer()
 	{
-		if (reloadTimer != null) reloadTimer.schedule(reloadTimerComplete, mTimerDelay);
+		if (reloadTimer != null)
+		{
+			reloadTimer.cancel();
+			reloadTimer = null;
+		}
+		
+		reloadTimer = new Timer();
+		reloadTimer.schedule(new TimerTask()
+		{
+			public void run()
+			{
+				Log.i("reloadTimerComplete.run", "Reload Timer Complete!");
+				if (mIsRecovering)
+				{
+					attemptRecovery();
+				}
+				else if (targetQuality != lastQuality)
+					reload(targetQuality);
+				else
+					reload(lastQuality);
+//				postDelayed(runnable, frameDelay);
+			}
+			
+		}, mTimerDelay);
 	}
 	
 	@Override
@@ -264,7 +265,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Segmen
 		if (newManifest != null)
 		{
 			// Set the timer delay to the most likely possible delay
-			if (reloadTimer != null) mTimerDelay = (long)(newManifest.segments.get(newManifest.segments.size() - 1).duration * 1000);
+			mTimerDelay = (long)(newManifest.segments.get(newManifest.segments.size() - 1).duration * 1000);
 			
 			// remove the reload completed listener since this might become the new manifest
 			newManifest.setReloadEventListener(null);
@@ -288,7 +289,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Segmen
 				{
 					// the media sequence is earlier than the one we currently have, which isn't
 					// allowed by the spec, or there are no changes. So do nothing, but check again as quickly as allowed
-					if (reloadTimer != null) mTimerDelay = timerOnErrorDelay;
+					mTimerDelay = timerOnErrorDelay;
 				}
 			}
 			else if (reloadingQuality == targetQuality || reloadingQuality == -1)
@@ -596,17 +597,6 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Segmen
 		getManifestForQuality(quality).streamEnds = newManifest.streamEnds;
 		manifest.streamEnds = newManifest.streamEnds;
 
-		updateTotalDuration();		
-	}
-	
-	public void postRatesReady() // 
-	{
-		
-	}
-	
-	public void postIndexReady()
-	{
-		
 	}
 	
 	private int getWorkingQuality(int requestedQuality)
@@ -759,11 +749,6 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Segmen
 		}
 		
 		return (int) (accum * 1000);
-		
-	}
-	
-	private void updateTotalDuration()
-	{
 		
 	}
 	

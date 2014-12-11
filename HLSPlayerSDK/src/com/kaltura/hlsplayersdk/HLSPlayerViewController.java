@@ -699,6 +699,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	private void initiatePlay()
 	{
 		setStartupState(STARTUP_STATE_STARTED);
+		mStreamHandler.initialize();
 		PlayFile(((double)mStartingMS) / 1000.0f);
 		postPlayerStateChange(PlayerStates.PLAY);
 
