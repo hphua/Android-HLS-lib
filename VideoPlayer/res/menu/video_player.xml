@@ -9,7 +9,7 @@
     <item android:id="@+id/pause" android:title="@string/pause" android:orderInCategory="3"></item>
     <item android:id="@+id/seekFwd" android:title="@string/seekFwd" android:orderInCategory="4" android:visible="true"></item>
     <item android:id="@+id/seekBwd" android:title="@string/seekBackward" android:orderInCategory="5" android:visible="true"></item>
-    <item android:id="@+id/testUrl" android:title="@string/testURL" android:orderInCategory="7" android:visible="false"></item>
+    <item android:id="@+id/seekFront" android:title="@string/seekFront" android:orderInCategory="6" android:visible="true"></item>
     <item android:id="@+id/quality_up" android:title="Quality Up" android:orderInCategory="7"></item>
     <item android:id="@+id/quality_down" android:title="Quality Down" android:orderInCategory="8"></item>
     <item android:id="@+id/audio_up" android:title="AltAudio Up" android:orderInCategory="9"></item>
@@ -28,6 +28,7 @@
     		<item android:id="@+id/bipbop" android:title="Bibbop" android:orderInCategory="6"></item>
     		<item android:id="@+id/aes_vod" android:title="AES VOD" android:orderInCategory="7"></item>
     		<item android:id="@+id/soak" android:title="Soak" android:orderInCategory="8"></item>
+    		<item android:id="@+id/testUrl" android:title="@string/testURL" android:orderInCategory="9" android:visible="true"></item>
         </menu>
     </item>
 

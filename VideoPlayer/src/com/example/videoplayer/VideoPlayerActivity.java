@@ -247,6 +247,7 @@ OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListene
         	Log.i("VideoPlayer UI", " -----> Soak");
         	mSoakThread = new Thread(soakRunnable);
         	mSoakThread.start();
+        	return true;
         	
         }        
         else if (id == R.id.seekFwd)
@@ -261,10 +262,16 @@ OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListene
         	playerView.seek(mLastTimeMS -15000);
         	return true;
         }
+        else if (id == R.id.seekFront)
+        {
+        	Log.i("VideoPlayer UI", " -----> Seek Front");
+        	playerView.seek(playerView.getDuration());
+        	return true;
+        }
         else if (id == R.id.testUrl)
         {
-        	//playerView.setVideoUrl("https://dl.dropboxusercontent.com/u/41430608/TestStream/index_500_av-p.m3u8");
         	lastUrl = "http://www.djing.com/tv/live.m3u8";
+        	//lastUrl = "http://kapxvideo-a.akamaihd.net/dc-1/m/ny-live-publish21/kLive/smil:0_5zs2oadx_all.smil/playlist.m3u8?DVR";
         	Log.i("VideoPlayer UI", " -----> Play " + lastUrl);
         	setVideoUrl(lastUrl);
         	return true;

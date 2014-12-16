@@ -209,15 +209,28 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Segmen
 		}
 	}
 	
+	public void close()
+	{
+		killTimer(); 
+	}
+	
 	private void reload(int quality)
 	{
 		reload(quality, null);
 	}
 	
-	private void reload(int quality, ManifestParser manifest )
+	private void killTimer()
 	{
 		if (reloadTimer != null)
-			reloadTimer.cancel(); // In case the timer is active - don't want to do another reload in the middle of it
+		{
+			reloadTimer.cancel();
+			reloadTimer = null;
+		}
+	}
+	
+	private void reload(int quality, ManifestParser manifest )
+	{
+		killTimer(); // In case the timer is active - don't want to do another reload in the middle of it
 		
 		reloadingQuality = quality;
 		
@@ -231,11 +244,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Segmen
 	
 	private void startReloadTimer()
 	{
-		if (reloadTimer != null)
-		{
-			reloadTimer.cancel();
-			reloadTimer = null;
-		}
+		killTimer(); 
 		
 		reloadTimer = new Timer();
 		reloadTimer.schedule(new TimerTask()

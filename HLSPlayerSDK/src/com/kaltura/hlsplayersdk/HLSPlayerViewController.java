@@ -431,6 +431,11 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		mRenderThread.interrupt();
 		mInterfaceThread.interrupt();
 		CloseNativeDecoder();
+		if (mStreamHandler != null)
+		{
+			mStreamHandler.close();
+			mStreamHandler = null;
+		}
 		
 	}
 	
@@ -773,6 +778,23 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	private int targetSeekMS = 0;
 	private boolean targetSeekSet = false;
 	
+	
+	/***
+	 * seekToCurrentPosition()
+	 * 
+	 * It's pretty obvious what it does. However, why it exists
+	 * probably isn't clear.
+	 * 
+	 * When we switch between backup streams, we need to seek to the
+	 * last known position instead of waiting for the player to just run
+	 * into the new segment, due to the chance that the new segment from
+	 * the alternate stream might not match exactly with the original stream.
+	 * 
+	 * Unfortunately, because backup streams are of the same quality level as
+	 * the primary stream, the native player won't notice a discontinuity, and
+	 * won't reset everything for the new stream unless we do the seek.
+	 * 
+	 */
 	public void seekToCurrentPosition()
 	{
 		seek(mTimeMS);
@@ -783,6 +805,14 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		
 		targetSeekSet = true;
 		targetSeekMS = msec;	
+		if (mStreamHandler != null)
+		{
+			if (targetSeekMS > (mStreamHandler.getDuration() - (int)(1.5 * mManifest.targetDuration * 1000)))
+			{
+				targetSeekMS = mStreamHandler.getDuration() - (int)(1.5 * mManifest.targetDuration * 1000);
+			}
+					
+		}
 				
 		GetInterfaceThread().getHandler().post( new Runnable() {
 			public void run()
