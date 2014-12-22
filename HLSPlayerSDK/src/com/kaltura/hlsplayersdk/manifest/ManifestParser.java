@@ -254,8 +254,14 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 					segments.add((ManifestSegment)lastHint);
 					lastHint = segments.get(segments.size()-1);
 					String [] valueSplit = tagParams.split(",");
-					((ManifestSegment)lastHint).duration =  Double.parseDouble(valueSplit[0]);
+					
+					if (valueSplit.length > 0) 
+						((ManifestSegment)lastHint).duration =  Double.parseDouble(valueSplit[0]);
+					else 
+						((ManifestSegment)lastHint).duration = targetDuration;
+					
 					((ManifestSegment)lastHint).continuityEra = continuityEra;
+					
 					if(valueSplit.length > 1)
 					{
 						((ManifestSegment)lastHint).title = valueSplit[1];

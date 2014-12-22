@@ -57,7 +57,10 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	private final int STATE_PAUSED = 2;
 	private final int STATE_PLAYING = 3;
 	private final int STATE_SEEKING = 4;
+	private final int STATE_FORMAT_CHANGING = 5;
 	private final int STATE_FOUND_DISCONTINUITY = 6;
+	private final int STATE_WAITING_FOR_DATA = 7;
+	private final int STATE_CUE_STOP = 8;
 	
 	private final int THREAD_STATE_STOPPED = 0;
 	private final int THREAD_STATE_RUNNING = 1;
@@ -106,7 +109,9 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		ManifestSegment seg = currentController.getStreamHandler().getNextFile(mQualityLevel);
 		if(seg == null)
 		{
-			noMoreSegments = true;
+			if (currentController.getStreamHandler().streamEnds() == true)
+				noMoreSegments = true;
+			
 			return;
 		}
 			
@@ -329,10 +334,16 @@ public class HLSPlayerViewController extends RelativeLayout implements
 					continue;
 				}
 				int state = GetState();
-				if (state == STATE_PLAYING || state == STATE_FOUND_DISCONTINUITY) {
+				if (state == STATE_PLAYING || state == STATE_FOUND_DISCONTINUITY || state == STATE_WAITING_FOR_DATA) {
 					int rval = NextFrame();
 					if (rval >= 0) mTimeMS = rval;
-					if (rval < 0) Log.i("videoThread", "NextFrame() returned " + rval);
+					if (rval < 0)
+					{
+						Log.i("videoThread", "NextFrame() returned " + rval + " : state = " + 
+								(state == STATE_PLAYING ? "STATE_PLAYING" : 
+								(state == STATE_FOUND_DISCONTINUITY ? "STATE_FOUND_DISCONTINUITY" : 
+								(state == STATE_WAITING_FOR_DATA ? "STATE_WAITING_FOR_DATA" : "UNKNOWN STATE"))));
+					}
 					if (rval == -1 && noMoreSegments) currentController.stop();
 					if (rval == -1013) // INFO_DISCONTINUITY
 					{
@@ -366,7 +377,12 @@ public class HLSPlayerViewController extends RelativeLayout implements
 					//Log.i("PlayerViewController", "Dropped Frames Per Sec: " + DroppedFramesPerSecond());
 
 				} 
-				else {
+				else if (state == STATE_CUE_STOP)
+				{
+					stop();
+				}
+				else
+				{
 					try {
 						Thread.sleep(30);
 					} catch (InterruptedException ie) {
@@ -761,6 +777,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 
 	public void stop() {
 		HLSSegmentCache.cancelDownloads();
+		if (mStreamHandler != null) mStreamHandler.close();
 		StopPlayer();
 		try {
 			Thread.sleep(100);
