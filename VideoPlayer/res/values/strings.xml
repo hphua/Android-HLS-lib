@@ -12,5 +12,6 @@
     <string name="url_label">Video URL</string>
     <string name="play">Play</string>
     <string name="pause">Pause</string>
+    <string name="seekFront">Seek Front</string>
 
 </resources>

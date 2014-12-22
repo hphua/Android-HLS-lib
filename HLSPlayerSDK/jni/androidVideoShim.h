@@ -2268,9 +2268,6 @@ namespace android_video_shim
             // Small memory leak, look out.
             uri = strdup(uri);
 
-            // Queue cache to load it.
-            HLSSegmentCache::precache(uri, cryptoId);
-
             // Stick it in our sources.
             mSources.push_back(uri);
 

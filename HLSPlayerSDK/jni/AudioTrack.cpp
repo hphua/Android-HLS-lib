@@ -58,6 +58,7 @@ void AudioTrack::Close()
 		if (env)
 		{
 			env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mStop);
+			env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mRelease);
 			env->DeleteGlobalRef(buffer);
 			env->DeleteGlobalRef(mTrack);
 			env->DeleteGlobalRef(mCAudioTrack);
@@ -226,12 +227,18 @@ bool AudioTrack::Start()
 {
 	LOGTRACE("%s", __func__);
 	AutoLock locker(&lock);
-	LOGI("Setting buffer = NULL");
-	buffer = NULL;
 
 	LOGI("Attaching to current java thread");
 	JNIEnv* env;
 	if (!gHLSPlayerSDK->GetEnv(&env)) return false;
+
+	LOGI("Setting buffer = NULL");
+	if (buffer)
+	{
+		env->DeleteGlobalRef(buffer);
+		buffer = NULL;
+	}
+
 
 	LOGI("Updating Format Info");
 	// Refresh our format information.
@@ -277,6 +284,7 @@ bool AudioTrack::Start()
 	if(mTrack)
 	{
 		LOGI("Releasing old java AudioTrack");
+		env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mRelease);
 		env->DeleteGlobalRef(mTrack);
 		mTrack = NULL;
 	}
