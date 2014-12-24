@@ -279,8 +279,8 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Segmen
 	
 	@Override
 	public void onReloadComplete(ManifestParser parser) {
+		Log.i("StreamHandler.onReloadComplete", "onReloadComplete last/reload/target: " + lastQuality + "/" + reloadingQuality + "/" + targetQuality);
 		if (closed) return;
-		Log.i("StreamHandler.onReloadComplete", "last/reload/target: " + lastQuality + "/" + reloadingQuality + "/" + targetQuality);
 		ManifestParser newManifest = parser;
 		mFailureCount = 0; // reset the failure count since we had a success
 		if (newManifest == null || newManifest.segments.size() == 0)
@@ -342,7 +342,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Segmen
 	public void onReloadFailed(ManifestParser parser) 
 	{
 		if (closed) return;
-		Log.i("StreamHandler.onReloadFailed", "Manifest reload failed: " + parser.fullUrl);
+		Log.i("StreamHandler.onReloadFailed", "onReloadFailed Manifest reload failed: " + parser.fullUrl);
 		
 		mIsRecovering = true;
 		lastBadManifestUri = parser.fullUrl;
@@ -393,6 +393,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Segmen
 		
 		if (stream.backupStream != null)
 		{
+			Log.i("StreamHandler.swapBackupStream", "Swapping to backupstream: " + stream.backupStream.uri);
 			primaryStream = stream;
 			reload( -1, stream.backupStream.manifest );
 			return true;

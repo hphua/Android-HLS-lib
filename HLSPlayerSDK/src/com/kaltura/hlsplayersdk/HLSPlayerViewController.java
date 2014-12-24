@@ -324,6 +324,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	private int mRenderThreadState = THREAD_STATE_STOPPED;
 	private Thread mRenderThread;
 	private Runnable renderRunnable = new Runnable() {
+		private int lastState = STATE_STOPPED;
 		public void run() {
 			mRenderThreadState = THREAD_STATE_RUNNING;
 			while (mRenderThreadState == THREAD_STATE_RUNNING) {
@@ -337,13 +338,14 @@ public class HLSPlayerViewController extends RelativeLayout implements
 				if (state == STATE_PLAYING || state == STATE_FOUND_DISCONTINUITY || state == STATE_WAITING_FOR_DATA) {
 					int rval = NextFrame();
 					if (rval >= 0) mTimeMS = rval;
-					if (rval < 0)
+					if (rval < 0 && state != lastState)
 					{
-						Log.i("videoThread", "NextFrame() returned " + rval + " : state = " + 
+						Log.i("videoThread", "State Changed -- NextFrame() returned " + rval + " : state = " + 
 								(state == STATE_PLAYING ? "STATE_PLAYING" : 
 								(state == STATE_FOUND_DISCONTINUITY ? "STATE_FOUND_DISCONTINUITY" : 
 								(state == STATE_WAITING_FOR_DATA ? "STATE_WAITING_FOR_DATA" : "UNKNOWN STATE"))));
 					}
+					lastState = state;
 					if (rval == -1 && noMoreSegments) currentController.stop();
 					if (rval == -1013) // INFO_DISCONTINUITY
 					{

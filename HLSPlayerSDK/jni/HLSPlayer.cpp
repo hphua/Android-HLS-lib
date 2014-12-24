@@ -1485,7 +1485,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 	if (!buffer) { LOGI("the MediaBuffer is NULL"); return true; }
 
 	//RUNDEBUG(buffer->meta_data()->dumpToLog());
-	LOGI("Buffer size=%d | range_offset=%d | range_length=%d", buffer->size(), buffer->range_offset(), buffer->range_length());
+	LOGV("Buffer size=%d | range_offset=%d | range_length=%d", buffer->size(), buffer->range_offset(), buffer->range_length());
 
 	// Get the frame's width and height.
 	int videoBufferWidth = 0, videoBufferHeight = 0, vbCropTop = 0, vbCropLeft = 0, vbCropBottom = 0, vbCropRight = 0;
