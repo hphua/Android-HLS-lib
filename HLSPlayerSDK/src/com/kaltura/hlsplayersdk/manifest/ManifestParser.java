@@ -128,7 +128,7 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 			
 			if (i == 0 && !curLine.contains("#EXTM3U"))
 			{
-				Log.i(this.type + ".parse()", "Bad Stream! #EXTM3U is missing from the first line");
+				Log.i("ManifestParser.parse()", "Bad Stream! #EXTM3U is missing from the first line");
 				goodManifest = false;
 				HLSPlayerViewController.currentController.postError(OnErrorListener.MEDIA_ERROR_MALFORMED, "#EXTM3U is missing from the first line. " + this.fullUrl);
 				break;
@@ -465,7 +465,7 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 	
 	private void announceIfComplete()
 	{
-		Log.i(this.getClass().getName() + ".announceIfComplete()", "_subtitles = " + _subtitlesLoading);
+		Log.i("ManifestParser.announceIfComplete()", "_subtitles = " + _subtitlesLoading);
 		if (manifestParsers.size() == 0 && manifestLoaders.size() == 0)
 		{
 			verifyManifestItemIntegrity();

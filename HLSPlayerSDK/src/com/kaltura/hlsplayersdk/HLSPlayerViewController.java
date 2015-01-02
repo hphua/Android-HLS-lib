@@ -111,9 +111,11 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		{
 			if (currentController.getStreamHandler().streamEnds() == true)
 				noMoreSegments = true;
-			
+			Log.i("HLSPlayerViewController.requestNextSegment", "---- Did not receive a valid segment ----- ");
 			return;
 		}
+		
+		Log.i("HLSPlayerViewController.requestNextSegment", "---- Feeding segment '" + seg.uri + "'");
 			
 
 		if (seg.altAudioSegment != null)
@@ -540,14 +542,14 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		mStreamHandler = new StreamHandler(parser);
 		mSubtitleHandler = new SubtitleHandler(parser);
 		
-		double startTime = 0;
+		double startTime = StreamHandler.USE_DEFAULT_START; // This is a trigger to let getFileForTime know to start a live stream 
 		int subtitleIndex = 0;
 		int qualityLevel = 0;
 		int textTrackIndex = mSubtitleHandler.hasSubtitles() ? mSubtitleHandler.getDefaultLanguageIndex() : 0;
 		if (mRestoringState)
 		{
 			getStreamHandler().setAltAudioTrack(mAltAudioIndex);
-			startTime = (double)mStartingMS / 1000.0;
+			startTime = mStreamHandler.streamEnds() ? (double)mStartingMS / 1000.0 : StreamHandler.USE_DEFAULT_START; // Always go to the end on a live stream, even when we resume
 			qualityLevel = mInitialQualityLevel;
 			textTrackIndex = mInitialSubtitleTrack;
 		}
@@ -560,10 +562,12 @@ public class HLSPlayerViewController extends RelativeLayout implements
 			return;
 		}
 		
-		int precacheCount = SetSegmentsToBuffer(); // Make sure the segments to buffer count
-												   // is set correctly in case it was changed
-												   // before starting playback
+		if (startTime == StreamHandler.USE_DEFAULT_START) startTime = seg.startTime; // If our time isn't set for us (ie. on a resume), 
+																					 // we'll be starting at the front of the segment, 
+																					 // so use that time when feeding the segment and
+																					 // getting text tracks.
 		
+	
 		if (mSubtitleHandler.hasSubtitles())
 		{
 			postTextTracksList(mSubtitleHandler.getLanguageList(), textTrackIndex);
