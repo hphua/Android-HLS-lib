@@ -83,6 +83,7 @@ public class HLSSegmentCache
 	
 	private static void initiateDownload(final SegmentCacheEntry sce)
 	{
+		Log.i("HLS Cache", "initiateDownload: " + sce.uri);
 		sce.running = true;
 		sce.lastTouchedMillis = System.currentTimeMillis();
 		sce.downloadStartTime = sce.lastTouchedMillis;
@@ -92,7 +93,8 @@ public class HLSSegmentCache
 		Thread t = new Thread()		
 		{		
 			public void run() {
-				sce.request = httpClient().get(context, sce.uri, new SegmentBinaryResponseHandler(sce));						
+				httpClient().setMaxRetriesAndTimeout(0, httpClient().getConnectTimeout());
+				sce.request = httpClient().get(context, sce.uri, new SegmentBinaryResponseHandler(sce));
 			}		
 		};		
 		t.start();		
@@ -117,6 +119,7 @@ public class HLSSegmentCache
 			if (sce.data != null)
 			{
 				Log.i("HLS Cache", "Segment already has data. Ignoring new data.");
+				data = null;
 				return;
 			}
 			
@@ -156,6 +159,7 @@ public class HLSSegmentCache
 		} catch (InterruptedException e) {
 			// Don't care.
 		}
+		Log.i("HLS Cache", "retry: " + sce.uri);
 		initiateDownload(sce);
 	}
 	
@@ -301,13 +305,12 @@ public class HLSSegmentCache
 		if(!sce.running)
 			return;
 		
-		Log.i("HLS Cache", "Waiting on request.");
+		Log.i("HLS Cache", "Waiting on request: " + sce.uri);
 		long timerStart = System.currentTimeMillis();
 
 		sce.waiting = true;
 		while(sce.running)
 		{
-
 			postProgressUpdate(false);
 			try {
 				Thread.sleep(30);
@@ -435,17 +438,17 @@ public static String bytesToHex(ByteBuffer bytes) {
 			// Copy the available bytes.
 			output.put(sce.data, (int)offset, (int)size);
 			
-			if(adjusted)
-			{
-				try
-				{
-					Log.i("HLS Cache", "Saw bytes: " + bytesToHex(output));
-				}
-				catch(Exception e)
-				{
-					Log.i("HLS Cache", "Failed to dump hex bytes");
-				}
-			}
+//			if(adjusted)
+//			{
+//				try
+//				{
+//					Log.i("HLS Cache", "Saw bytes: " + bytesToHex(output));
+//				}
+//				catch(Exception e)
+//				{
+//					Log.i("HLS Cache", "Failed to dump hex bytes");
+//				}
+//			}
 
 			// Return how much we read.
 			return size;			

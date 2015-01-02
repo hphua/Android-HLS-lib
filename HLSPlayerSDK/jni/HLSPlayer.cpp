@@ -1028,7 +1028,7 @@ int HLSPlayer::Update()
 		else
 		{
 			LOGI("Found Discontinuity: Out Of Sources!");
-			SetState(STOPPED);
+			SetState(WAITING_ON_DATA);
 			return -1;
 		}
 	}
@@ -1047,6 +1047,39 @@ int HLSPlayer::Update()
 		{
 			return 0; // keep going!
 		}
+	}
+	else if (GetState() == WAITING_ON_DATA)
+	{
+		if (mDataSource != NULL)
+		{
+			int segCount = ((HLSDataSource*) mDataSource.get())->getPreloadedSegmentCount();
+			if (segCount < SEGMENTS_TO_BUFFER) // (current segment + 2)
+			{
+				if (mDataSourceCache.size() > 0)
+				{
+					DATASRC_CACHE::iterator cur = mDataSourceCache.begin();
+					DATASRC_CACHE::iterator end = mDataSourceCache.end();
+					while (cur != end)
+					{
+						segCount += (*cur).dataSource->getPreloadedSegmentCount();
+						++cur;
+					}
+				}
+			}
+
+			if (segCount < SEGMENTS_TO_BUFFER)
+			{
+				LOGI("**** WAITING_ON_DATA: Requesting next segment...");
+				RequestNextSegment();
+			}
+
+		}
+		else
+		{
+			LOGI("**** WAITING_ON_DATA: No DataSource : Requesting next segment...");
+			RequestNextSegment();
+		}
+		return -1;
 	}
 	else if (GetState() != PLAYING)
 	{
@@ -1121,17 +1154,13 @@ int HLSPlayer::Update()
 					SetState(FORMAT_CHANGING);
 					mDataSource->logContinuityInfo();
 					LOGI("End Of Stream: Detected additional sources.");
-					 //ApplyFormatChange();
 					return INFO_DISCONTINUITY;
 				}
-				//SetState(STOPPED);
-				//PlayNextSegment();
+				SetState(WAITING_ON_DATA);
 				return -1;
-				//LOGI("Saw end of stream but who really cares about that?");
-				//return 0;
 				break;
 			default:
-				SetState(STOPPED);
+				SetState(WAITING_ON_DATA);
 				// deal with any errors
 				// in the sample code, they're sending the video event, anyway
 				return -1;
@@ -1145,7 +1174,7 @@ int HLSPlayer::Update()
 			if (!rval)
 			{
 				LOGI("Frame did not have time value: STOPPING");
-				SetState(STOPPED);
+				SetState(CUE_STOP);
 				return -1;
 			}
 
@@ -1164,6 +1193,7 @@ int HLSPlayer::Update()
 			}
 			else if (timeUs < mLastVideoTimeUs)
 			{
+				LogState();
 				LOGE("timeUs = %lld | mLastVideoTimeUs = %lld :: Why did this happen? Were we seeking?", timeUs, mLastVideoTimeUs);
 			}
 
@@ -1202,7 +1232,7 @@ int HLSPlayer::Update()
 				else
 				{
 					LOGI("Render Buffer returned false: STOPPING");
-					SetState(STOPPED);
+					SetState(CUE_STOP);
 					rval=-1;
 				}
 				mVideoBuffer->release();
@@ -1455,7 +1485,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 	if (!buffer) { LOGI("the MediaBuffer is NULL"); return true; }
 
 	//RUNDEBUG(buffer->meta_data()->dumpToLog());
-	LOGI("Buffer size=%d | range_offset=%d | range_length=%d", buffer->size(), buffer->range_offset(), buffer->range_length());
+	LOGV("Buffer size=%d | range_offset=%d | range_length=%d", buffer->size(), buffer->range_offset(), buffer->range_length());
 
 	// Get the frame's width and height.
 	int videoBufferWidth = 0, videoBufferHeight = 0, vbCropTop = 0, vbCropLeft = 0, vbCropBottom = 0, vbCropRight = 0;
@@ -1810,6 +1840,13 @@ void HLSPlayer::LogState()
 	case FOUND_DISCONTINUITY:
 		LOGI("State = FOUND_DISCONTINUITY");
 		break;
+	case WAITING_ON_DATA:
+		LOGI("State = WAITING_ON_DATA");
+		break;
+	case CUE_STOP:
+		LOGI("State = CUE_STOP");
+		break;
+
 	}
 }
 
@@ -2025,6 +2062,7 @@ void HLSPlayer::ApplyFormatChange()
 	if (!InitSources())
 	{
 		LOGE("InitSources failed!");
+		SetState(CUE_STOP);
 		return;
 	}
 
@@ -2112,7 +2150,7 @@ void HLSPlayer::Seek(double time)
 
 	if (!mDataSource.get())
 	{
-		Stop();
+		SetState(CUE_STOP);
 		return;
 	}
 	mDataSource->logContinuityInfo();

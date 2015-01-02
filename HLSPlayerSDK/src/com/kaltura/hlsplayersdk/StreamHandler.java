@@ -80,6 +80,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Segmen
 	private Timer reloadTimer = null;
 	private int sequenceSkips = 0;
 	private boolean stalled = false;
+	private boolean closed = false;
 	private HashMap<String, Integer> badManifestMap = new HashMap<String, Integer>();
 	private static final int maxFailedManifestTries = 3; // The number of retries a manifest may occur before we give up on it and remove it from our manifest list.
 	private static final int isTooFarBehind = 5; // How far behind a stream can be before we log a message warning of significant delays
@@ -211,7 +212,14 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Segmen
 	
 	public void close()
 	{
-		killTimer(); 
+		closed = true;
+		if (reloadingManifest != null)
+		{
+			reloadingManifest.setReloadEventListener(null);
+			reloadingManifest = null;
+		}
+		killTimer();
+		
 	}
 	
 	private void reload(int quality)
@@ -230,7 +238,9 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Segmen
 	
 	private void reload(int quality, ManifestParser manifest )
 	{
+		if (closed) return;
 		killTimer(); // In case the timer is active - don't want to do another reload in the middle of it
+		
 		
 		reloadingQuality = quality;
 		
@@ -244,6 +254,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Segmen
 	
 	private void startReloadTimer()
 	{
+		if (closed) return;
 		killTimer(); 
 		
 		reloadTimer = new Timer();
@@ -268,10 +279,15 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Segmen
 	
 	@Override
 	public void onReloadComplete(ManifestParser parser) {
-		Log.i("StreamHandler.onReloadComplete", "last/reload/target: " + lastQuality + "/" + reloadingQuality + "/" + targetQuality);
+		Log.i("StreamHandler.onReloadComplete", "onReloadComplete last/reload/target: " + lastQuality + "/" + reloadingQuality + "/" + targetQuality);
+		if (closed) return;
 		ManifestParser newManifest = parser;
 		mFailureCount = 0; // reset the failure count since we had a success
-		if (newManifest != null)
+		if (newManifest == null || newManifest.segments.size() == 0)
+		{
+			Log.e("StreamHandler.onReloadComplete", "newManifest = " + newManifest + " newManifest.segements.size == " + newManifest.segments.size());
+		}
+		if (newManifest != null && newManifest.segments.size() > 0)
 		{
 			// Set the timer delay to the most likely possible delay
 			mTimerDelay = (long)(newManifest.segments.get(newManifest.segments.size() - 1).duration * 1000);
@@ -325,7 +341,8 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Segmen
 	@Override
 	public void onReloadFailed(ManifestParser parser) 
 	{
-		Log.i("StreamHandler.onReloadFailed", "Manifest reload failed: " + parser.fullUrl);
+		if (closed) return;
+		Log.i("StreamHandler.onReloadFailed", "onReloadFailed Manifest reload failed: " + parser.fullUrl);
 		
 		mIsRecovering = true;
 		lastBadManifestUri = parser.fullUrl;
@@ -347,6 +364,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Segmen
 	
 	private void attemptRecovery()
 	{
+		if (closed) return;
 		Log.i("StreamHandler.attemptRecovery", "Attempting Recovery");
 		mIsRecovering = false;
 		
@@ -375,6 +393,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Segmen
 		
 		if (stream.backupStream != null)
 		{
+			Log.i("StreamHandler.swapBackupStream", "Swapping to backupstream: " + stream.backupStream.uri);
 			primaryStream = stream;
 			reload( -1, stream.backupStream.manifest );
 			return true;
@@ -608,6 +627,11 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Segmen
 
 	}
 	
+	public boolean isStalled()
+	{
+		return stalled;
+	}
+	
 	private int getWorkingQuality(int requestedQuality)
 	{
 		// Note that this method always returns lastQuality. It triggers a reload if it needs to, and
@@ -676,6 +700,11 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Segmen
 		return null;
 	}
 	
+	public boolean streamEnds()
+	{
+		int quality = getWorkingQuality(lastQuality);
+		return getManifestForQuality(quality).streamEnds;
+	}
 
 	public ManifestSegment getNextFile(int quality)
 	{
