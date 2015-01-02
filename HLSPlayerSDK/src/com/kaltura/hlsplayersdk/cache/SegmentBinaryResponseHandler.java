@@ -28,6 +28,7 @@ public class SegmentBinaryResponseHandler extends AsyncHttpResponseHandler {
 			else
 			{
 				Log.e("SegmentBinaryResponseHandler.onFailure", "Request has succeded, but then called onFailure. Status Code = " + statusCode);
+				HLSSegmentCache.resetHTTPLibrary();
 			}
 			return; // This is a hack because sometimes, loopj likes to call onFailure after it's called onSuccess
 		}

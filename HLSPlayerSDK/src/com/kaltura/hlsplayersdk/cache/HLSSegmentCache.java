@@ -30,9 +30,21 @@ public class HLSSegmentCache
 	
 	public static AsyncHttpClient httpClient()
 	{
-		if (Looper.myLooper() == null)
-			return syncHttpClient;
-		return asyncHttpClient;
+		synchronized (asyncHttpClient)
+		{
+			if (Looper.myLooper() == null)
+				return syncHttpClient;
+			return asyncHttpClient;
+		}
+	}
+	
+	public static void resetHTTPLibrary()
+	{
+		synchronized(asyncHttpClient)
+		{
+			asyncHttpClient = new AsyncHttpClient();
+			syncHttpClient = new SyncHttpClient();
+		}
 	}
 	
 	static public int getCryptoId(final String segmentUri)
