@@ -783,7 +783,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 
 	public void stop() {
 		HLSSegmentCache.cancelDownloads();
-		if (mStreamHandler != null) mStreamHandler.close();
+		if (mStreamHandler != null) mStreamHandler.stopReloads();
 		StopPlayer();
 		try {
 			Thread.sleep(100);
@@ -851,9 +851,15 @@ public class HLSPlayerViewController extends RelativeLayout implements
 					SeekTo(((double)tsms) / 1000.0f);
 					postPlayerStateChange(PlayerStates.SEEKED);
 				}
-				else if (state == STATE_STOPPED)
+				else if (tss && state == STATE_STOPPED && mRenderThreadState == THREAD_STATE_RUNNING)
 				{
-					Log.i("PlayerViewController.Seek().Runnable()", "Seek halted - player is stopped.");
+					Log.i("PlayerViewController.Seek().Runnable()", "Seeking while player is stopped.");
+					mStreamHandler.initialize(); // Need to restart the reload manifest process
+					postPlayerStateChange(PlayerStates.SEEKING);
+					targetSeekSet = false;
+					targetSeekMS = 0;
+					SeekTo(((double)tsms) / 1000.0f);
+					postPlayerStateChange(PlayerStates.SEEKED);
 				}
 				else
 				{
