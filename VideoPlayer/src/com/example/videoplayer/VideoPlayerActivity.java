@@ -253,7 +253,7 @@ OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListene
         else if (id == R.id.seekFwd)
         {
         	Log.i("VideoPlayer UI", " -----> Seek Fwd");
-			playerView.setVisibility(View.VISIBLE);
+            playerView.setVisibility(View.VISIBLE);
             playerView.seek(mLastTimeMS + 15000);
 
         	return true;
@@ -261,14 +261,14 @@ OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListene
         else if (id == R.id.seekBwd)
         {
         	Log.i("VideoPlayer UI", " -----> Seek Bwd");
-			playerView.setVisibility(View.VISIBLE);
+            playerView.setVisibility(View.VISIBLE);
         	playerView.seek(mLastTimeMS -15000);
         	return true;
         }
         else if (id == R.id.seekFront)
         {
         	Log.i("VideoPlayer UI", " -----> Seek Front");
-			playerView.setVisibility(View.VISIBLE);
+            playerView.setVisibility(View.VISIBLE);
         	playerView.seek(playerView.getDuration());
         	return true;
         }
