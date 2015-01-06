@@ -211,16 +211,20 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Segmen
 		}
 	}
 	
-	public void close()
+	public void stopReloads()
 	{
-		closed = true;
 		if (reloadingManifest != null)
 		{
 			reloadingManifest.setReloadEventListener(null);
 			reloadingManifest = null;
 		}
-		killTimer();
-		
+		killTimer();		
+	}
+	
+	public void close()
+	{
+		closed = true;
+		stopReloads();
 	}
 	
 	private void reload(int quality)

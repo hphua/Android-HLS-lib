@@ -338,7 +338,7 @@ void AudioTrack::Play()
 bool AudioTrack::Stop(bool seeking)
 {
 	LOGTRACE("%s", __func__);
-	if (mPlayState == STOPPED) return true;
+	if (mPlayState == STOPPED && seeking == false) return true;
 
 	int lastPlayState = mPlayState;
 
