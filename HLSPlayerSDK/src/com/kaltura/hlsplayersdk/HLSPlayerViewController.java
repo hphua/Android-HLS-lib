@@ -262,6 +262,20 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		}
 	}
 	
+	/**
+	 * Provides a method for the native code to notify us of errors
+	 * 
+	 * @param error - These are the codes from the OnErrorListener
+	 * @param msg
+	 */
+	public static void postNativeError(int error, String msg)
+	{
+		if (currentController != null)
+		{
+			currentController.postError(error, msg);
+		}
+	}
+	
 	// Interface thread
 	static class InterfaceThread extends HandlerThread
 	{

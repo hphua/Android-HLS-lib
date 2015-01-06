@@ -75,7 +75,7 @@ mSegmentTimeOffset(0), mVideoFrameDelta(0), mLastVideoTimeUs(0),
 mSegmentForTimeMethodID(NULL), mFrameCount(0), mDataSource(NULL), audioThread(0),
 mScreenHeight(0), mScreenWidth(0), mJAudioTrack(NULL), mStartTimeMS(0), mUseOMXRenderer(true),
 mNotifyFormatChangeComplete(NULL), mNotifyAudioTrackChangeComplete(NULL),
-mDroppedFrameIndex(0), mDroppedFrameLastSecond(0)
+mDroppedFrameIndex(0), mDroppedFrameLastSecond(0), mPostErrorID(NULL)
 {
 	LOGTRACE("%s", __func__);
 	status_t status = mClient.connect();
@@ -369,6 +369,17 @@ bool HLSPlayer::EnsureJNI(JNIEnv** env)
 		{
 			mNotifyAudioTrackChangeComplete = NULL;
 			LOGI("Could not find method com/kaltura/hlsplayersdk/HLSPlayerViewController.notifyAudioTrackChangeComplete()");
+			return false;
+		}
+	}
+
+	if (mPostErrorID == NULL)
+	{
+		mPostErrorID = (*env)->GetStaticMethodID(mPlayerViewClass, "postNativeError", "(ILjava/lang/String;)V");
+		if ((*env)->ExceptionCheck())
+		{
+			mPostErrorID = NULL;
+			LOGI("Could not find method com/kaltura/hlsplayersdk/HLSPlayerViewController.postNativeError()");
 			return false;
 		}
 	}
@@ -668,6 +679,7 @@ bool HLSPlayer::InitTracks()
 
 	if (!haveVideo)
 	{
+		PostError(MEDIA_ERROR_UNSUPPORTED, "Stream does not appear to have video." );
 		LOGE("Error initializing tracks!");
 		return UNKNOWN_ERROR;
 	}
@@ -780,6 +792,7 @@ bool HLSPlayer::InitSources()
 		if(level > 66)
 		{
 			LOGE("Tried to play video that exceeded baseline profile (%d > 66), aborting!", level);
+			PostError(MEDIA_INCOMPATIBLE_PROFILE, "Tried to play video that exceeded baseline profile. Aborting.");
 			return false;
 		}
 #endif
@@ -2090,6 +2103,17 @@ void HLSPlayer::ApplyFormatChange()
 	}
 
 	NotifyFormatChange(curQuality, newQuality, curAudioTrack, newAudioTrack);
+}
+
+void HLSPlayer::PostError(int error, const char* msg)
+{
+	LOGE("Posting error %d : %s", error, msg);
+	JNIEnv* env = NULL;
+	if (!EnsureJNI(&env)) return;
+
+	jstring jmsg = env->NewStringUTF(msg);
+	env->CallStaticVoidMethod(mPlayerViewClass, mPostErrorID, error, jmsg);
+	env->DeleteLocalRef(jmsg); // Cleaning up
 }
 
 void HLSPlayer::NotifyFormatChange(int curQuality, int newQuality, int curAudio, int newAudio)
