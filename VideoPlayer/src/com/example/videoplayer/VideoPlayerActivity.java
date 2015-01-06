@@ -15,6 +15,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.Toast;
 
 import com.kaltura.hlsplayersdk.HLSPlayerViewController;
 import com.kaltura.hlsplayersdk.types.PlayerStates;
@@ -23,7 +24,8 @@ import com.kaltura.hlsplayersdk.events.*;
 
 public class VideoPlayerActivity extends ActionBarActivity implements OnTextTracksListListener, OnTextTrackChangeListener, 
 OnTextTrackTextListener, OnAudioTracksListListener, OnAudioTrackSwitchingListener, 
-OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListener, OnPlayerStateChangeListener, OnProgressListener  {
+OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListener, OnPlayerStateChangeListener, 
+OnProgressListener, OnErrorListener  {
 
 	HLSPlayerViewController playerView = null;
 	final Context context = this;
@@ -139,6 +141,7 @@ OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListene
         	playerView.registerPlayheadUpdate(this);
         	playerView.registerPlayerStateChange(this);
         	playerView.registerProgressUpdate(this);
+        	playerView.registerError(this);
         }
         catch (Exception e)
         {
@@ -323,6 +326,8 @@ OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListene
         	alertDialogBuilder.setView(urlInputView );
 
         	final EditText input = (EditText)urlInputView.findViewById(R.id.userInput);
+        	
+        	input.setText("http://qakalturavod-f.akamaihd.net/i/p/1091/sp/109100/serveFlavor/entryId/0_yihjwv0j/v/2/flavorId/0_,hsru0n6c,h1ppjmxl,174k75ll,/name/a.mp4.csmil/master.m3u8");
 
         	// set up a dialog window
         	alertDialogBuilder
@@ -422,10 +427,12 @@ OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListene
 		
 	}
 
+	
 	@Override
 	public void onPlayheadUpdated(int msec) {
 		mLastTimeMS = msec;
-		if (msec % 1000 == 0) Log.i("OnPlayheadUpdated", "Time = " + msec);
+		//if (msec % 1000 == 0) 
+			Log.i("OnPlayheadUpdated", "Time = " + msec);
 	}
 
 	@Override
@@ -443,6 +450,13 @@ OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListene
 	public void onProgressUpdate(int progress) {
 		Log.i("VideoPlayer.OnProgressUpdate", "Download Progress: " + progress);
 		
+		
+	}
+
+	@Override
+	public void onError(int errorCode, String errorMessage)
+	{
+		Toast.makeText(context, errorMessage + "(" + errorCode + ")", Toast.LENGTH_LONG).show();
 		
 	}
 }

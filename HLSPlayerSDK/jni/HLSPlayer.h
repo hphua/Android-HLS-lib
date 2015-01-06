@@ -65,6 +65,9 @@ public:
 	void SetState(int status);
 
 	bool ReadUntilTime(double timeSecs);
+
+	void PostError(int error, const char* msg);
+
 private:
 	bool EnsureJNI(JNIEnv** env);
 	void SetNativeWindow(ANativeWindow* window);
@@ -114,6 +117,7 @@ private:
 	jmethodID mEnableHWRendererModeID;
 	jmethodID mNotifyFormatChangeComplete;
 	jmethodID mNotifyAudioTrackChangeComplete;
+	jmethodID mPostErrorID;
 	jclass mPlayerViewClass;
 
 	jobject mSurface;
