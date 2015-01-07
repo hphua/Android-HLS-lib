@@ -1172,13 +1172,20 @@ public class HLSPlayerViewController extends RelativeLayout implements
 			return; // We haven't started yet
 		}
 		
-		postAudioTrackSwitchingStart( getStreamHandler().getAltAudioCurrentIndex(), newAudioIndex);
+		final int newIndex = newAudioIndex;
 		
-		boolean success = getStreamHandler().setAltAudioTrack(newAudioIndex);
-		
-		seekToCurrentPosition();
+		GetInterfaceThread().getHandler().post(new Runnable() {
+			public void run()
+			{
+				postAudioTrackSwitchingStart( getStreamHandler().getAltAudioCurrentIndex(), newIndex);
+				
+				boolean success = getStreamHandler().setAltAudioTrack(newIndex);
+				
+				seekToCurrentPosition();
 
-		postAudioTrackSwitchingEnd( getStreamHandler().getAltAudioCurrentIndex());
+				postAudioTrackSwitchingEnd( getStreamHandler().getAltAudioCurrentIndex());
+			}
+		});
 		
 	}
 	
