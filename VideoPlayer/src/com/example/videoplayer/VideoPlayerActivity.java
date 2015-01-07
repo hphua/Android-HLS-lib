@@ -130,7 +130,7 @@ OnProgressListener, OnErrorListener  {
         try
         {
         	playerView = (HLSPlayerViewController)findViewById(R.id.custom_player);
-        	playerView.addComponents("", this);
+        	playerView.initialize();
         	playerView.registerTextTracksList(this);
         	playerView.registerTextTrackChanged(this);
         	playerView.registerTextTrackText(this);
