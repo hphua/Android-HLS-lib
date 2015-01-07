@@ -1166,13 +1166,29 @@ public class HLSPlayerViewController extends RelativeLayout implements
 
 	@Override
 	public void hardSwitchAudioTrack(int newAudioIndex) {
-		postError(OnErrorListener.MEDIA_ERROR_UNSUPPORTED, "hardSwitchAudioTrack");
+		if (getStreamHandler() == null)
+		{
+			postError(OnErrorListener.MEDIA_ERROR_NOT_VALID, "The media is not yet ready.");
+			return; // We haven't started yet
+		}
+		
+		postAudioTrackSwitchingStart( getStreamHandler().getAltAudioCurrentIndex(), newAudioIndex);
+		
+		boolean success = getStreamHandler().setAltAudioTrack(newAudioIndex);
+		
+		seekToCurrentPosition();
+
+		postAudioTrackSwitchingEnd( getStreamHandler().getAltAudioCurrentIndex());
 		
 	}
 	
 	@Override
 	public void softSwitchAudioTrack(int newAudioIndex) {
-		if (getStreamHandler() == null) return; // We haven't started anything yet.
+		if (getStreamHandler() == null)
+		{
+			postError(OnErrorListener.MEDIA_ERROR_NOT_VALID, "The media is not yet ready.");
+			return; // We haven't started yet
+		}
 
 		postAudioTrackSwitchingStart( getStreamHandler().getAltAudioCurrentIndex(), newAudioIndex);
 		
