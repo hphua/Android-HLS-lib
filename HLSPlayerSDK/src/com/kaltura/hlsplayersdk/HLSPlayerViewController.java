@@ -179,7 +179,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		
 		Log.i("PlayerViewController", "Initializing hw surface.");
 		
-		currentController.mActivity.runOnUiThread(new Runnable() {
+		currentController.post(new Runnable() {
 			@Override
 			public void run() {
 				currentController.SetSurface(null);
@@ -193,7 +193,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 						ViewGroup.LayoutParams.FILL_PARENT);
 				lp.addRule(RelativeLayout.CENTER_IN_PARENT, RelativeLayout.TRUE);
 				currentController.mPlayerView = new PlayerView(
-						currentController.mActivity, currentController,
+						currentController.getContext(), currentController,
 						epb);
 				currentController.addView(currentController.mPlayerView, lp);
 		
@@ -219,7 +219,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		final int hh = h;
 		if (currentController != null) 
 		{
-			currentController.mActivity.runOnUiThread(new Runnable() {
+			currentController.post(new Runnable() {
 				@Override
 				public void run() {
 					currentController.mVideoWidth = ww;
@@ -306,7 +306,6 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	}
 
 	// Instance members.
-	private Activity mActivity;
 	private PlayerView mPlayerView;
 
 	// This is our root manifest
@@ -416,7 +415,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	// Handle discontinuity/format change
 	public void HandleFormatChange()
 	{
-		mActivity.runOnUiThread(new Runnable()
+		post(new Runnable()
 			{
 				public void run() {
 					Log.i("HandleFormatChange", "UI Thread calling ApplyFormatChange()");
@@ -470,13 +469,14 @@ public class HLSPlayerViewController extends RelativeLayout implements
 			mStreamHandler.close();
 			mStreamHandler = null;
 		}
+		currentController = null;
 		
 	}
 	
 	@Override
 	public void release() {
 		
-		SharedPreferences sp = mActivity.getSharedPreferences("hlsplayersdk", Context.MODE_PRIVATE);
+		SharedPreferences sp = getContext().getSharedPreferences("hlsplayersdk", Context.MODE_PRIVATE);
 		Editor spe = sp.edit();
 		spe.clear();
 		spe.putString("lasturl", mLastUrl);
@@ -494,7 +494,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	@Override
 	public void recoverRelease() {
 		// Deserialize postion, playstate, and url
-		SharedPreferences sp = mActivity.getSharedPreferences("hlsplayersdk", Context.MODE_PRIVATE);
+		SharedPreferences sp = getContext().getSharedPreferences("hlsplayersdk", Context.MODE_PRIVATE);
 		mLastUrl = sp.getString("lasturl", "");
 		mInitialPlayState = sp.getInt("playstate", 0);
 		mStartingMS = sp.getInt("startms", 0);
@@ -508,7 +508,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		if (mRestoringState)
 		{
 			// we need to resume, somehow
-			mActivity.runOnUiThread(new Runnable()
+			post(new Runnable()
 			{
 				@Override
 				public void run() {
@@ -687,8 +687,8 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		return GetState() == STATE_PLAYING;
 	}
 
-	public void addComponents(String iframeUrl, Activity activity) {
-		mActivity = activity;
+	public void initialize() {
+		//mActivity = activity;
 		setBackgroundColor(0xFF000000);
 		initializeNative();
 	}
@@ -1003,7 +1003,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	{
 		if (mPlayerStateChangeListener != null)
 		{
-			mActivity.runOnUiThread(new Runnable()
+			post(new Runnable()
 			{
 
 				@Override
@@ -1024,7 +1024,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	{
 		if (mPlayheadUpdateListener != null)
 		{
-			mActivity.runOnUiThread(new Runnable()
+			post(new Runnable()
 			{
 				@Override
 				public void run() {
@@ -1045,7 +1045,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	{
 		if (mOnProgressListener != null)
 		{
-			mActivity.runOnUiThread(new Runnable()
+			post(new Runnable()
 			{
 				@Override
 				public void run() {
@@ -1067,7 +1067,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	{
 		if (mErrorListener != null)
 		{
-			mActivity.runOnUiThread(new Runnable()
+			post(new Runnable()
 			{
 				@Override
 				public void run() {
@@ -1104,7 +1104,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	{
 		if (mSubtitleTextListener != null)
 		{
-			mActivity.runOnUiThread(new Runnable()
+			post(new Runnable()
 			{
 				@Override
 				public void run() {
@@ -1132,7 +1132,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	{
 		if (mOnTextTracksListListener != null)
 		{
-			mActivity.runOnUiThread(new Runnable()
+			post(new Runnable()
 			{
 				@Override
 				public void run() {
@@ -1150,7 +1150,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	{
 		if (mOnTextTrackChangeListener != null)
 		{
-			mActivity.runOnUiThread(new Runnable()
+			post(new Runnable()
 			{
 				@Override
 				public void run() {
@@ -1166,13 +1166,36 @@ public class HLSPlayerViewController extends RelativeLayout implements
 
 	@Override
 	public void hardSwitchAudioTrack(int newAudioIndex) {
-		postError(OnErrorListener.MEDIA_ERROR_UNSUPPORTED, "hardSwitchAudioTrack");
+		if (getStreamHandler() == null)
+		{
+			postError(OnErrorListener.MEDIA_ERROR_NOT_VALID, "The media is not yet ready.");
+			return; // We haven't started yet
+		}
+		
+		final int newIndex = newAudioIndex;
+		
+		GetInterfaceThread().getHandler().post(new Runnable() {
+			public void run()
+			{
+				postAudioTrackSwitchingStart( getStreamHandler().getAltAudioCurrentIndex(), newIndex);
+				
+				boolean success = getStreamHandler().setAltAudioTrack(newIndex);
+				
+				seekToCurrentPosition();
+
+				postAudioTrackSwitchingEnd( getStreamHandler().getAltAudioCurrentIndex());
+			}
+		});
 		
 	}
 	
 	@Override
 	public void softSwitchAudioTrack(int newAudioIndex) {
-		if (getStreamHandler() == null) return; // We haven't started anything yet.
+		if (getStreamHandler() == null)
+		{
+			postError(OnErrorListener.MEDIA_ERROR_NOT_VALID, "The media is not yet ready.");
+			return; // We haven't started yet
+		}
 
 		postAudioTrackSwitchingStart( getStreamHandler().getAltAudioCurrentIndex(), newAudioIndex);
 		
@@ -1190,7 +1213,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	{
 		if (mOnAudioTracksListListener != null)
 		{
-			mActivity.runOnUiThread(new Runnable()
+			post(new Runnable()
 			{
 				@Override
 				public void run() {
@@ -1210,7 +1233,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	{
 		if (mOnAudioTrackSwitchingListener != null)
 		{
-			mActivity.runOnUiThread(new Runnable()
+			post(new Runnable()
 			{
 				@Override
 				public void run() {
@@ -1224,7 +1247,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	{
 		if (mOnAudioTrackSwitchingListener != null)
 		{
-			mActivity.runOnUiThread(new Runnable()
+			post(new Runnable()
 			{
 				@Override
 				public void run() {
@@ -1271,7 +1294,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	{
 		if (mOnQualityTracksListListener != null)
 		{
-			mActivity.runOnUiThread(new Runnable()
+			post(new Runnable()
 			{
 				@Override
 				public void run() {
@@ -1292,7 +1315,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	{
 		if (mOnQualitySwitchingListener != null)
 		{
-			mActivity.runOnUiThread(new Runnable()
+			post(new Runnable()
 			{
 				@Override
 				public void run() {
@@ -1306,7 +1329,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	{
 		if (mOnQualitySwitchingListener != null)
 		{
-			mActivity.runOnUiThread(new Runnable()
+			post(new Runnable()
 			{
 				@Override
 				public void run() {

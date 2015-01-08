@@ -619,16 +619,6 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Segmen
 			Log.i("StreamHandler.updateManifestSegments", "Did not find any new segments");
 		}
 		
-//		// kill all the segments from the new list that match what we already have
-//		newManifest.segments.splice(0, i + 1);
-//		
-//		// append the remaining segments to the existing segment list
-//		for (k = 0; k < newManifest.segments.length; ++k)
-//		{
-//			segments.push(newManifest.segments[k]);
-//		}
-
-		// TODO: Verifiy that *this below* does what the commented section does above
 		// append the remaining segments to the existing segment list
 		int lastSize = segments.size();
 		for (k = i+1; k < newManifest.segments.size(); ++k)

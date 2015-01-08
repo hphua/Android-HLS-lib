@@ -130,7 +130,7 @@ OnProgressListener, OnErrorListener  {
         try
         {
         	playerView = (HLSPlayerViewController)findViewById(R.id.custom_player);
-        	playerView.addComponents("", this);
+        	playerView.initialize();
         	playerView.registerTextTracksList(this);
         	playerView.registerTextTrackChanged(this);
         	playerView.registerTextTrackText(this);
@@ -306,7 +306,7 @@ OnProgressListener, OnErrorListener  {
         else if (id == R.id.audio_up)
         {
         	Log.i("VideoPlayer UI", " -----> Audio Track Up");
-        	playerView.softSwitchAudioTrack(curAltAudioTrack + 1);
+        	playerView.hardSwitchAudioTrack(curAltAudioTrack + 1);
         }
         else if (id == R.id.audio_down)
         {
@@ -327,7 +327,7 @@ OnProgressListener, OnErrorListener  {
 
         	final EditText input = (EditText)urlInputView.findViewById(R.id.userInput);
         	
-        	input.setText("http://qakalturavod-f.akamaihd.net/i/p/1091/sp/109100/serveFlavor/entryId/0_yihjwv0j/v/2/flavorId/0_,hsru0n6c,h1ppjmxl,174k75ll,/name/a.mp4.csmil/master.m3u8");
+        	input.setText("http://apache-testing.dev.kaltura.com/p/1091/sp/109100/playManifest/entryId/0_ue0n7lmw/format/applehttp/protocol/http/uiConfId/15088771/a.m3u8?referrer=aHR0cDovL2V4dGVybmFsdGVzdHMuZGV2LmthbHR1cmEuY29t");
 
         	// set up a dialog window
         	alertDialogBuilder
