@@ -842,14 +842,6 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		
 		targetSeekSet = true;
 		targetSeekMS = msec;	
-//		if (mStreamHandler != null)
-//		{
-//			if (targetSeekMS > (mStreamHandler.getDuration() - (int)(1.5 * mManifest.targetDuration * 1000)))
-//			{
-//				targetSeekMS = mStreamHandler.getDuration() - (int)(1.5 * mManifest.targetDuration * 1000);
-//			}
-//					
-//		}
 				
 		GetInterfaceThread().getHandler().post( new Runnable() {
 			public void run()
