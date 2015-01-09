@@ -461,8 +461,8 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	 */
 	public void close() {
 		Log.i("PlayerViewController", "Closing resources.");
-		mRenderThread.interrupt();
-		mInterfaceThread.interrupt();
+		if (mRenderThread != null) mRenderThread.interrupt();
+		if (mInterfaceThread != null) mInterfaceThread.interrupt();
 		CloseNativeDecoder();
 		if (mStreamHandler != null)
 		{
@@ -483,7 +483,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		spe.putInt("playstate", GetState());
 		spe.putInt("startms", mStartingMS);
 		spe.putInt("initialquality", mQualityLevel);
-		spe.putInt("initialaudiotrack", mStreamHandler.altAudioIndex);
+		spe.putInt("initialaudiotrack", mStreamHandler != null ? mStreamHandler.altAudioIndex : 0);
 		spe.putInt("initialsubtitletrack", mSubtitleLanguage);
 		spe.commit();
 		
@@ -842,14 +842,6 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		
 		targetSeekSet = true;
 		targetSeekMS = msec;	
-		if (mStreamHandler != null)
-		{
-			if (targetSeekMS > (mStreamHandler.getDuration() - (int)(1.5 * mManifest.targetDuration * 1000)))
-			{
-				targetSeekMS = mStreamHandler.getDuration() - (int)(1.5 * mManifest.targetDuration * 1000);
-			}
-					
-		}
 				
 		GetInterfaceThread().getHandler().post( new Runnable() {
 			public void run()
