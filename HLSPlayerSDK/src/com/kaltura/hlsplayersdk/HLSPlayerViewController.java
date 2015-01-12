@@ -541,7 +541,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	 * actually start.
 	 */
 	public void onParserComplete(ManifestParser parser) {
-		if (parser == null)
+		if (parser == null || parser.hasSegments() == false)
 		{
 			Log.w("PlayerViewController", "Manifest is null. Ending playback.");
 			postError(OnErrorListener.MEDIA_ERROR_NOT_VALID, "No Valid Manifest");

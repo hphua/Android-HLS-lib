@@ -99,6 +99,16 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 		}
 
 	private Object lastHint = null;
+	
+	public boolean hasSegments()
+	{
+		if (segments.size() > 0) return true;
+		for (int i = 0; i < streams.size(); ++i)
+		{
+			if (streams.get(i).manifest != null && streams.get(i).manifest.hasSegments()) return true;
+		}
+		return false;
+	}
 
 	public void parse(String input, String _fullUrl)
 	{
@@ -115,6 +125,11 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 		// process each line
 		
 		int nextByteRangeStart = 0;
+		
+		if (lines.length == 0)
+		{
+			goodManifest = false;
+		}
 		
 		int i = 0;
 		for ( i = 0; i < lines.length; ++i)
