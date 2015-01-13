@@ -688,7 +688,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Segmen
 		
 		if (time == USE_DEFAULT_START && !streamEnds())
 		{
-			lastSegmentIndex = segments.size() - 2;
+			lastSegmentIndex = Math.max(segments.size() - 2, 0);
 			return getSegmentForIndex(segments, lastSegmentIndex, quality);
 		}
 		else if (time == USE_DEFAULT_START)
