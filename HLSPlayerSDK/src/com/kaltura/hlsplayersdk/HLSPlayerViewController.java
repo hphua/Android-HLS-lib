@@ -904,6 +904,10 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		}
 		StopPlayer();
 		ResetPlayer();
+		if (mStreamHandler != null)
+		{
+			mStreamHandler.close();
+		}
 		reset();
 		try {
 			Thread.yield();
