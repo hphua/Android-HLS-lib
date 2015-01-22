@@ -22,8 +22,22 @@ namespace android_video_shim
     int gAPILevel = -1;
 
     // Libraries to search, in priority order.
-    static const int gLibCount = 14;
+    static const int gLibCount = 28;
     static const char *gLibName[] = {
+		"/system/lib/arm/libstagefright.so",
+		"/system/lib/arm/libandroid.so",
+		"/system/lib/arm/libandroid_runtime.so",
+		"/system/lib/arm/libstagefright_hw.so",
+		"/system/lib/arm/libstagefrighthw.so",
+		"/system/lib/arm/libstagefright_omx.so",
+		"/system/lib/arm/libstagefright_avc_common.so",
+		"/system/lib/arm/libstagefright_color_conversion.so",
+		"/system/lib/arm/libutils.so",
+		"/system/lib/arm/libmedia.so",
+		"/system/lib/arm/libstlport.so",
+		"/system/lib/arm/libsurfaceflinger.so",
+		"/system/lib/arm/libsurfaceflinger_client.so",
+		"/system/lib/arm/libI420colorconvert.so",
         "libandroid.so",
         "libandroid_runtime.so",
         "libstagefright.so",
