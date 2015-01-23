@@ -457,9 +457,10 @@ public class HLSPlayerViewController extends RelativeLayout implements
 			System.loadLibrary("HLSPlayerSDK");
 			InitNativeDecoder();
 			mInterfaceThread = new InterfaceThread();
+			
 
 		} catch (Exception e) {
-			Log.i("PlayerViewController", "Failed to initialize native video library.");
+			Log.e("PlayerViewController", "Failed to initialize native video library.");
 		}
 		
 		// Note the active controller.
@@ -472,8 +473,16 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	 */
 	public void close() {
 		Log.i("PlayerViewController", "Closing resources.");
-		if (mRenderThread != null) mRenderThread.interrupt();
-		if (mInterfaceThread != null) mInterfaceThread.interrupt();
+		if (mRenderThread != null)
+		{
+			mRenderThread.interrupt();
+			mRenderThread = null;
+		}
+		if (mInterfaceThread != null) 
+		{ 
+			mInterfaceThread.interrupt();
+			mInterfaceThread = null;
+		}
 		CloseNativeDecoder();
 		if (mStreamHandler != null)
 		{
@@ -918,6 +927,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		if (mStreamHandler != null)
 		{
 			mStreamHandler.close();
+			mStreamHandler = null;
 		}
 		reset();
 		try {
@@ -994,7 +1004,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		++videoPlayId;
 		
 		// Init loading.
-		manifestLoader = new URLLoader(this, null, videoPlayId);
+		manifestLoader = new URLLoader("HLSPlayerViewController.setVideoUrl", this, null, videoPlayId);
 		manifestLoader.get(url);
 	}
 
@@ -1072,6 +1082,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	
 	public void postFatalError(final int errorCode, final String errorMessage)
 	{
+		Log.e("HLSPlayerSDK.FatalError", "(" + errorCode + ")" + errorMessage);
 		if (mErrorListener != null)
 		{
 			post(new Runnable()
@@ -1082,11 +1093,11 @@ public class HLSPlayerViewController extends RelativeLayout implements
 				}
 			});
 		}
-		
 	}
 	
 	public void postError(final int errorCode, final String errorMessage)
 	{
+		Log.e("HLSPlayerSDK.Error", "(" + errorCode + ")" + errorMessage);
 		if (mErrorListener != null)
 		{
 			post(new Runnable()
