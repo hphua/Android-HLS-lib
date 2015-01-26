@@ -66,7 +66,7 @@ public:
 
 	bool ReadUntilTime(double timeSecs);
 
-	void PostError(int error, const char* msg);
+	void PostError(int error, bool fatal, const char* msg);
 
 private:
 	bool EnsureJNI(JNIEnv** env);

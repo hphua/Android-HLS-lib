@@ -459,4 +459,11 @@ OnProgressListener, OnErrorListener  {
 		Toast.makeText(context, errorMessage + "(" + errorCode + ")", Toast.LENGTH_LONG).show();
 		
 	}
+
+	@Override
+	public void onFatalError(int errorCode, String errorMessage)
+	{
+		Toast.makeText(context, "FATAL: " + errorMessage + "(" + errorCode + ")", Toast.LENGTH_LONG).show();
+		
+	}
 }

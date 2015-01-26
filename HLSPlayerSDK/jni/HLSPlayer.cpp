@@ -375,7 +375,7 @@ bool HLSPlayer::EnsureJNI(JNIEnv** env)
 
 	if (mPostErrorID == NULL)
 	{
-		mPostErrorID = (*env)->GetStaticMethodID(mPlayerViewClass, "postNativeError", "(ILjava/lang/String;)V");
+		mPostErrorID = (*env)->GetStaticMethodID(mPlayerViewClass, "postNativeError", "(IZLjava/lang/String;)V");
 		if ((*env)->ExceptionCheck())
 		{
 			mPostErrorID = NULL;
@@ -679,7 +679,7 @@ bool HLSPlayer::InitTracks()
 
 	if (!haveVideo)
 	{
-		PostError(MEDIA_ERROR_UNSUPPORTED, "Stream does not appear to have video." );
+		PostError(MEDIA_ERROR_UNSUPPORTED, true, "Stream does not appear to have video." );
 		LOGE("Error initializing tracks!");
 		return UNKNOWN_ERROR;
 	}
@@ -792,7 +792,7 @@ bool HLSPlayer::InitSources()
 		if(level > 66)
 		{
 			LOGE("Tried to play video that exceeded baseline profile (%d > 66), aborting!", level);
-			PostError(MEDIA_INCOMPATIBLE_PROFILE, "Tried to play video that exceeded baseline profile. Aborting.");
+			PostError(MEDIA_INCOMPATIBLE_PROFILE, true, "Tried to play video that exceeded baseline profile. Aborting.");
 			return false;
 		}
 #endif
@@ -2105,14 +2105,14 @@ void HLSPlayer::ApplyFormatChange()
 	NotifyFormatChange(curQuality, newQuality, curAudioTrack, newAudioTrack);
 }
 
-void HLSPlayer::PostError(int error, const char* msg)
+void HLSPlayer::PostError(int error, bool fatal, const char* msg)
 {
 	LOGE("Posting error %d : %s", error, msg);
 	JNIEnv* env = NULL;
 	if (!EnsureJNI(&env)) return;
 
 	jstring jmsg = env->NewStringUTF(msg);
-	env->CallStaticVoidMethod(mPlayerViewClass, mPostErrorID, error, jmsg);
+	env->CallStaticVoidMethod(mPlayerViewClass, mPostErrorID, error, fatal, jmsg);
 	env->DeleteLocalRef(jmsg); // Cleaning up
 }
 
