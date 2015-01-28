@@ -30,6 +30,7 @@
 //#define _TIMING
 
 //#define _BLITTEST
+#define _FRAME_DUMP 25
 
 //#define _VERBOSE
 
