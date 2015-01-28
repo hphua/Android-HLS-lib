@@ -22,6 +22,11 @@
 #include "cmath"
 
 
+#ifdef _FRAME_DUMP
+#include <sys/system_properties.h>
+#endif
+
+
 extern HLSPlayerSDK* gHLSPlayerSDK;
 
 using namespace android_video_shim;
@@ -1472,6 +1477,70 @@ bool checkI420Converter()
     return true;
 }
 
+#ifdef _FRAME_DUMP
+struct FrameHeader
+{
+	int32_t width;
+	int32_t height;
+	int32_t stride;
+	int32_t format;
+	int32_t cropleft;
+	int32_t croptop;
+	int32_t cropright;
+	int32_t cropbottom;
+	int32_t datasize;
+	int32_t i420;
+	char deviceString[1024];
+};
+
+void dumpFrame(FrameHeader& header, unsigned char* buffer)
+{
+	memset(header.deviceString, 0, 1024 ); // zero the device string - just to be sure
+	char model_string[PROP_VALUE_MAX + 1];
+	char name_string[PROP_VALUE_MAX + 1];
+	char device_string[PROP_VALUE_MAX + 1];
+	char build_string[PROP_VALUE_MAX + 1];
+	char mfr_string[PROP_VALUE_MAX + 1];
+
+	__system_property_get("ro.product.model", model_string);
+	__system_property_get("ro.product.name", name_string);
+	__system_property_get("ro.product.device", device_string);
+	__system_property_get("ro.build.version.release", build_string);
+	__system_property_get("ro.product.manufacturer", mfr_string);
+
+	snprintf(header.deviceString, 1024, "mfr=%s model=%s name=%s device=%s build=%s", mfr_string, name_string, model_string, device_string, build_string);
+
+
+	LOGI("Dumping Frame to /sdcard/vidbuffer.raw");
+	FILE* frameFile = fopen("/sdcard/vidbuffer.raw", "wb+");
+	if (frameFile != NULL)
+	{
+		LOGI("Writing Frame Header: { %d, %d, %d, 0x%0x, %d, %d, %d, %d, %d, %d, %s }", header.width, header.height, header.stride, header.format, header.cropleft, header.croptop, header.cropright, header.cropbottom, header.datasize, header.i420, header.deviceString);
+		int res = fwrite(&header, sizeof(header), 1, frameFile);
+
+		if (int err = ferror(frameFile) != 0)
+		{
+			LOGI("Error saving frame header: %d bytes written, err = %d", res, err);
+		}
+		LOGI("Wrote %d element", res);
+		res = fwrite(buffer, sizeof(char), header.datasize, frameFile);
+		if (int err = ferror(frameFile) != 0)
+		{
+			LOGI("Error saving frame data: %d bytes written, err = %d", res, err);
+		}
+		LOGI("Wrote %d bytes of %d", res, header.datasize);
+
+		fclose(frameFile);
+
+	}
+	else
+	{
+		LOGI("Error opening Frame Dump File");
+	}
+}
+
+#endif
+
 bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 {
 	LOGTRACE("%s", __func__);
@@ -1574,7 +1643,13 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 
 	// We need to unswizzle certain formats for maximum proper behavior.
 	if(checkI420Converter())
-		internalColf = OMX_COLOR_FormatYUV420Planar;
+	{
+		if (colf == 0x7fa30c04 || colf == QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka)
+			internalColf = OMX_COLOR_FormatYUV420Planar;
+		else
+			internalColf = colf;
+
+	}
 	else if(colf == QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka)
 		internalColf = OMX_COLOR_FormatYUV420SemiPlanar;
 	else if(colf == OMX_QCOM_COLOR_FormatYUV420PackedSemiPlanar32m4ka)
@@ -1582,17 +1657,28 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 	else
 		internalColf = colf;
 
-	LOGV("Found Frame Color Format: %s colf=%x internalColf=%x", res ? "true" : "false", colf, internalColf);
+#ifdef _FRAME_DUMP
+	static int frameCount = 0;
+	++frameCount;
+	LOGI("Frame Dump Frame Count = %d", frameCount);
+	if (frameCount == _FRAME_DUMP && !checkI420Converter())
+	{
+		FrameHeader f = { videoBufferWidth, videoBufferHeight, stride, internalColf, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom, buffer->range_length() - buffer->range_offset(), 0 };
+		dumpFrame(f, (unsigned char*)buffer->data() + buffer->range_offset());
+	}
+#endif
+
+	LOGV("Found Frame Color Format: %s colf=0x%x internalColf=0x%x", res ? "true" : "false", colf, internalColf);
 
 	const char *omxCodecString = "";
 	res = vidFormat->findCString(kKeyDecoderComponent, &omxCodecString);
 	LOGV("Found Frame decoder component: %s %s", res ? "true" : "false", omxCodecString);
 
 	ColorConverter_Local lcc((OMX_COLOR_FORMATTYPE)internalColf, OMX_COLOR_Format16bitRGB565);
-	LOGV("Local ColorConversion from %x is valid: %s", internalColf, lcc.isValid() ? "true" : "false" );
+	LOGV("Local ColorConversion from 0x%x is valid: %s", internalColf, lcc.isValid() ? "true" : "false" );
 
 	ColorConverter cc((OMX_COLOR_FORMATTYPE)internalColf, OMX_COLOR_Format16bitRGB565); // Should be getting these from the formats, probably
-	LOGV("System ColorConversion from %x is valid: %s", internalColf, cc.isValid() ? "true" : "false" );
+	LOGV("System ColorConversion from 0x%x is valid: %s", internalColf, cc.isValid() ? "true" : "false" );
 
 	int64_t timeUs;
     if (buffer->meta_data()->findInt64(kKeyTime, &timeUs))
@@ -1647,6 +1733,10 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 			LOGI("offset = %d", offset);
 #endif
 
+#ifdef _FRAME_DUMP
+			int tmpBuffSize = buffer->range_length() - buffer->range_offset();
+			int isi420 = 1;
+#endif
 			// If it's a packed format round the size appropriately.
 			if(checkI420Converter())
 			{
@@ -1656,6 +1746,11 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 				{
 					LOGV("Alloc'ing tmp buffer due to decoder format %x.", gICFM->getDecoderOutputFormat());
 					tmpBuff = (unsigned char*)malloc(videoBufferWidth*videoBufferHeight*4);
+
+#ifdef _FRAME_DUMP
+					tmpBuffSize = videoBufferWidth*videoBufferHeight*4;
+					isi420 = 2;
+#endif
 
 					LOGV("Converting to tmp buffer due to decoder format %x with func=%p videoBits=%p tmpBuff=%p.", 
 						gICFM->getDecoderOutputFormat(), (void*)gICFM->convertDecoderOutputToI420, videoBits, tmpBuff);
@@ -1672,10 +1767,19 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 					tmpBuff = videoBits;
 				}
 
+#ifdef _FRAME_DUMP
+	if (frameCount == _FRAME_DUMP)
+	{
+		FrameHeader f = { videoBufferWidth, videoBufferHeight, stride, internalColf, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom, tmpBuffSize, isi420 };
+		dumpFrame(f, tmpBuff);
+	}
+#endif
+
+
 				if(cc.isValid())
 				{
 					LOGV("Doing system color conversion...");
-					
+
 					int a = vbCropLeft;
 					int b = vbCropTop;
 					int c = vbCropRight;
@@ -1686,14 +1790,19 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 				else if(lcc.isValid())
 				{
 					// We could use the local converter but the system one seems to work properly.
-					LOGV("Doing YUV420 conversion %dx%d %p %d %p %d",videoBufferWidth, videoBufferHeight, 
-						tmpBuff, 0, 
+					LOGV("Doing local conversion %dx%d %p %d %p %d",videoBufferWidth, videoBufferHeight,
+						tmpBuff, 0,
 						pixels, windowBuffer.stride * 2);
 
-					lcc.convertYUV420Planar(videoBufferWidth, videoBufferHeight, 
-						tmpBuff, 0, 
-						pixels, windowBuffer.stride * 2);
+			//					lcc.convertYUV420Planar(videoBufferWidth, videoBufferHeight,
+			//						tmpBuff, 0,
+			//						pixels, windowBuffer.stride * 2);
 
+					int a = vbCropLeft;
+					int b = vbCropTop;
+					int c = vbCropRight;
+					int d = vbCropBottom;
+					lcc.convert(videoBufferWidth, videoBufferHeight, tmpBuff, 0, pixels, windowBuffer.stride * 2);
 				}
 
 
