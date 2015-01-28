@@ -15,3 +15,8 @@ VideoPlayer/gen/
 KalturaPlayerRobotium/bin/
 KalturaPlayerRobotium/gen/
 KalturaPlayerTests/local.properties
+Tools/ColorConversionTest/Debug/
+Tools/ColorConversionTest/ColorConversionTest/Debug/
+*.suo
+*.sdf
+*.vcxproj.user
