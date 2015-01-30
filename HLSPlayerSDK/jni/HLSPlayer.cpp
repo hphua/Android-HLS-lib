@@ -18,6 +18,7 @@
 #include "HLSSegment.h"
 
 #include "androidVideoShim_ColorConverter.h"
+#include "androidVideoShim_ColorConverter444.h"
 #include "HLSPlayerSDK.h"
 #include "cmath"
 
@@ -1680,6 +1681,9 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 	ColorConverter cc((OMX_COLOR_FORMATTYPE)internalColf, OMX_COLOR_Format16bitRGB565); // Should be getting these from the formats, probably
 	LOGV("System ColorConversion from 0x%x is valid: %s", internalColf, cc.isValid() ? "true" : "false" );
 
+	ColorConverter444 cc444((OMX_COLOR_FORMATTYPE)internalColf, OMX_COLOR_Format16bitRGB565); // Should be getting these from the formats, probably
+	LOGV("444 ColorConversion from 0x%x is valid: %s", internalColf, cc444.isValid() ? "true" : "false" );
+
 	int64_t timeUs;
     if (buffer->meta_data()->findInt64(kKeyTime, &timeUs))
     {
@@ -1733,8 +1737,9 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 			LOGI("offset = %d", offset);
 #endif
 
-#ifdef _FRAME_DUMP
 			int tmpBuffSize = buffer->range_length() - buffer->range_offset();
+
+#ifdef _FRAME_DUMP
 			int isi420 = 1;
 #endif
 			// If it's a packed format round the size appropriately.
@@ -1776,7 +1781,18 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 #endif
 
 
-				if(cc.isValid())
+				if(cc444.isValid())
+				{
+					LOGV("Doing 444 color conversion...");
+
+					int a = vbCropLeft;
+					int b = vbCropTop;
+					int c = vbCropRight;
+					int d = vbCropBottom;
+					cc444.convert(tmpBuff, tmpBuffSize, videoBufferWidth,    videoBufferHeight,    a, b, c,   d,
+						       pixels,  windowBuffer.stride, windowBuffer.height,  0, 0, c-a, d-b);
+				}
+				else if(cc.isValid())
 				{
 					LOGV("Doing system color conversion...");
 
@@ -1887,6 +1903,14 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 			{
 				lcc.convert(videoBufferWidth, videoBufferHeight, videoBits, 0, pixels, windowBuffer.stride * 2);
 			}*/
+			else if (cc444.isValid())
+			{
+				LOGV("Using 444 converter");
+				// Use the system converter.
+				cc444.convert(videoBits, buffer->range_length() - buffer->range_offset() , videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom,
+						pixels, windowBuffer.stride, windowBuffer.height, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom);
+
+			}
 			else if(cc.isValid())
 			{
 				LOGV("Using system converter");

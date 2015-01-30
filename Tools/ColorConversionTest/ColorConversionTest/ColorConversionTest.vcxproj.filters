@@ -21,10 +21,19 @@
     <ClCompile Include="androidVideoShim_ColorConverter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="ColorConverter444.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ColorConverter444.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
     <ClInclude Include="androidVideoShim_ColorConverter.h">
-      <Filter>Source Files</Filter>
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="androidVideoShim.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
