@@ -376,7 +376,8 @@ status_t ColorConverter::convertYUV420SemiPlanar(
         return ERROR_UNSUPPORTED;
     }
 
-
+	// Constrain the height to the size of our src bits when the image is cropped so that the converter
+	// doesn't read someone else's data and make funny green lines
 	int uvPlaneOffset = 0;
 	if (mSrcBitsLen < src.mWidth * src.mHeight + (src.mWidth * src.mHeight / 2) && src.cropHeight() != src.mHeight)
 	{
