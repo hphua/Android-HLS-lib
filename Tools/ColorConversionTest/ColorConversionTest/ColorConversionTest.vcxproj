@@ -70,10 +70,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="androidVideoShim_ColorConverter.cpp" />
+    <ClCompile Include="ColorConverter444.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="androidVideoShim.h" />
     <ClInclude Include="androidVideoShim_ColorConverter.h" />
+    <ClInclude Include="ColorConverter444.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

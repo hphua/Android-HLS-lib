@@ -6,7 +6,7 @@ LOCAL_MODULE    := HLSPlayerSDK
 
 # Core Player Code
 LOCAL_SRC_FILES += HLSPlayerSDK.cpp HLSSegment.cpp HLSPlayer.cpp AudioTrack.cpp  RefCounted.cpp 
-LOCAL_SRC_FILES += androidVideoShim.cpp androidVideoShim_ColorConverter.cpp 
+LOCAL_SRC_FILES += androidVideoShim.cpp androidVideoShim_ColorConverter.cpp androidVideoShim_ColorConverter444.cpp
 LOCAL_SRC_FILES += aes.c
 LOCAL_SRC_FILES += HLSSegmentCache.cpp
 
