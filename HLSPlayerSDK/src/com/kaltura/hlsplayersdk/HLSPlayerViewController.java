@@ -309,19 +309,16 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	
 	public static void postToInterfaceThread(Runnable runnable)
 	{
-		if (GetInterfaceThread() != null)
+		Handler handler = GetInterfaceThreadHandler();
+		if (handler != null)
 		{
-			GetInterfaceThread().getHandler().post(runnable);
+			handler.post(runnable);
 		}
 	}
 	
 	public static Handler GetInterfaceThreadHandler()
 	{
-		if (GetInterfaceThread() != null)
-		{
-			return GetInterfaceThread().getHandler();
-		}
-		return null;
+		return (GetInterfaceThread() != null) ? GetInterfaceThread().getHandler() : null;
 	}
 
 	// Instance members.
