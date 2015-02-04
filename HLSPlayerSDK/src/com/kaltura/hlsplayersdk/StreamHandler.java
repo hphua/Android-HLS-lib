@@ -150,7 +150,10 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Segmen
 		String[] languages = new String[manifest.playLists.size()];
 		for (int i = 0; i < manifest.playLists.size(); ++i)
 		{
-			languages[i] = manifest.playLists.get(i).language;
+			String lang = manifest.playLists.get(i).language;
+			if (lang.length() == 0 )
+				lang = manifest.playLists.get(i).name;
+			languages[i] = lang;
 		}
 		return languages;
 	}
@@ -161,7 +164,11 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Segmen
 		List<String> languages = new ArrayList<String>();
 		for (int i = 0; i < manifest.playLists.size(); ++i)
 		{
-			languages.add(manifest.playLists.get(i).language);
+			String lang = manifest.playLists.get(i).language;
+			if (lang.length() == 0 )
+				lang = manifest.playLists.get(i).name;
+
+			languages.add(lang);
 		}
 		return languages;
 	}
