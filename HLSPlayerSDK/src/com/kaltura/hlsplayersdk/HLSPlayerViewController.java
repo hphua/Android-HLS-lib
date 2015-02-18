@@ -848,6 +848,10 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	private int targetSeekMS = 0;
 	private boolean targetSeekSet = false;
 	
+	public void goToLive()
+	{
+		seek(StreamHandler.USE_DEFAULT_START);
+	}
 	
 	/***
 	 * seekToCurrentPosition()
