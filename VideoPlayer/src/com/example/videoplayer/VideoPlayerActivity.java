@@ -25,7 +25,7 @@ import com.kaltura.hlsplayersdk.events.*;
 public class VideoPlayerActivity extends ActionBarActivity implements OnTextTracksListListener, OnTextTrackChangeListener, 
 OnTextTrackTextListener, OnAudioTracksListListener, OnAudioTrackSwitchingListener, 
 OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListener, OnPlayerStateChangeListener, 
-OnProgressListener, OnErrorListener  {
+OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 
 	HLSPlayerViewController playerView = null;
 	final Context context = this;
@@ -142,6 +142,7 @@ OnProgressListener, OnErrorListener  {
         	playerView.registerPlayerStateChange(this);
         	playerView.registerProgressUpdate(this);
         	playerView.registerError(this);
+        	playerView.registerDurationChanged(this);
         }
         catch (Exception e)
         {
@@ -329,6 +330,8 @@ OnProgressListener, OnErrorListener  {
         	
         	input.setText("http://apache-testing.dev.kaltura.com/p/1091/sp/109100/playManifest/entryId/0_ue0n7lmw/format/applehttp/protocol/http/uiConfId/15088771/a.m3u8?referrer=aHR0cDovL2V4dGVybmFsdGVzdHMuZGV2LmthbHR1cmEuY29t");
 
+        	input.setText("http://cdnapi.kaltura.com/p/1878761/sp/187876100/playManifest/entryId/0_8s3afdlb/format/applehttp/protocol/http/uiConfId/28013271/a.m3u8%22");
+        	
         	// set up a dialog window
         	alertDialogBuilder
         		.setCancelable(false)
@@ -357,7 +360,7 @@ OnProgressListener, OnErrorListener  {
         return super.onOptionsItemSelected(item);
     }
 
-	@Override
+	//@Override
 	public void onSubtitleText(double startTime, double length, String buffer) {
 		Log.i("VideoPlayer.onSubtitleText", "Start: " + startTime + " | Length: " + length + " | " + buffer);
 
@@ -465,5 +468,19 @@ OnProgressListener, OnErrorListener  {
 	{
 		Toast.makeText(context, "FATAL: " + errorMessage + "(" + errorCode + ")", Toast.LENGTH_LONG).show();
 		
+	}
+
+	//@Override
+	public void onSubtitleText(double arg0, double arg1, String arg2,
+			String arg3)
+	{
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void onDurationChanged(int msec)
+	{
+		Log.i("VideoPlayerActivity.onDurationChanged", "Duration = " + msec);
 	}
 }
