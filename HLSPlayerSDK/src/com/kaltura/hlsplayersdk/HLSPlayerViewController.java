@@ -1072,7 +1072,6 @@ public class HLSPlayerViewController extends RelativeLayout implements
 				}
 			} );
 		}
-		final int duration = getDuration();
 	}
 	
 	@Override
