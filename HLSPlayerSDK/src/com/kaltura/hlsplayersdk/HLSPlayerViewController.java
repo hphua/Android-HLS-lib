@@ -120,13 +120,13 @@ public class HLSPlayerViewController extends RelativeLayout implements
 
 		if (seg.altAudioSegment != null)
 		{
-			HLSSegmentCache.precache(seg.uri, seg.cryptoId, currentController.getStreamHandler(), getInterfaceThreadHandler());
+			HLSSegmentCache.precache(seg.uri, seg.cryptoId, false, currentController.getStreamHandler(), getInterfaceThreadHandler());
 			HLSSegmentCache.precache(seg.altAudioSegment.uri, seg.altAudioSegment.cryptoId);
 			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.altAudioSegment.uri, seg.altAudioSegment.altAudioIndex, seg.startTime, seg.cryptoId, seg.altAudioSegment.cryptoId);
 		}
 		else
 		{
-			HLSSegmentCache.precache(seg.uri, seg.cryptoId, currentController.getStreamHandler(), getInterfaceThreadHandler());
+			HLSSegmentCache.precache(seg.uri, seg.cryptoId, false, currentController.getStreamHandler(), getInterfaceThreadHandler());
 			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, null, -1, seg.startTime, seg.cryptoId, -1);
 		}
 	}
@@ -147,13 +147,13 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		
 		if (seg.altAudioSegment != null)
 		{
-			HLSSegmentCache.precache(seg.uri, seg.cryptoId, currentController.getStreamHandler(), getInterfaceThreadHandler());
+			HLSSegmentCache.precache(seg.uri, seg.cryptoId, false, currentController.getStreamHandler(), getInterfaceThreadHandler());
 			HLSSegmentCache.precache(seg.altAudioSegment.uri, seg.altAudioSegment.cryptoId);
 			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.altAudioSegment.uri, seg.altAudioSegment.altAudioIndex, seg.startTime, seg.cryptoId, seg.altAudioSegment.cryptoId);
 		}
 		else
 		{
-			HLSSegmentCache.precache(seg.uri, seg.cryptoId, currentController.getStreamHandler(), getInterfaceThreadHandler());
+			HLSSegmentCache.precache(seg.uri, seg.cryptoId, false, currentController.getStreamHandler(), getInterfaceThreadHandler());
 			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, null, -1, seg.startTime, seg.cryptoId, -1);
 		}
 
@@ -568,6 +568,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	public void reset()
 	{
 		mTimeMS = 0;
+		HLSSegmentCache.resetProgress();
 	}
 
 	/**
@@ -649,7 +650,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 			// supply the event handler to the segment cache. In the case where the segment is already in the cache, the
 			// event handler can be called immediately.
 			FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.altAudioSegment.uri, seg.altAudioSegment.altAudioIndex, seg.startTime, seg.cryptoId, seg.altAudioSegment.cryptoId);
-			HLSSegmentCache.precache(seg.uri, seg.cryptoId, this, getInterfaceThreadHandler());
+			HLSSegmentCache.precache(seg.uri, seg.cryptoId, true, this, getInterfaceThreadHandler());
 			postAudioTrackSwitchingStart(-1, seg.altAudioSegment.altAudioIndex);
 			postAudioTrackSwitchingEnd(seg.altAudioSegment.altAudioIndex);
 		}
@@ -659,7 +660,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 			// supply the event handler to the segment cache. In the case where the segment is already in the cache, the
 			// event handler can be called immediately.
 			FeedSegment(seg.uri, seg.quality, seg.continuityEra, null, -1, seg.startTime, seg.cryptoId, -1);
-			HLSSegmentCache.precache(seg.uri, seg.cryptoId, this, getInterfaceThreadHandler());
+			HLSSegmentCache.precache(seg.uri, seg.cryptoId, true, this, getInterfaceThreadHandler());
 		}
 		
 		// Kick off render thread.
