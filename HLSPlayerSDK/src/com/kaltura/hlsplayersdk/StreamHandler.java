@@ -348,6 +348,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Segmen
 			HLSPlayerViewController.currentController.seekToCurrentPosition();
 		}
 		startReloadTimer();
+		HLSPlayerViewController.currentController.postDurationChanged();
 		
 	}
 	
@@ -835,7 +836,9 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Segmen
 		Vector<ManifestSegment> segments = getSegmentsForQuality( lastQuality );
 		ManifestParser activeManifest = getManifestForQuality(lastQuality);
 		int i = segments.size() - 1;
-		if (i >= 0 && (activeManifest.allowCache || activeManifest.streamEnds))
+		
+		// Test can be removed in future if there's no problems with returning duration all the time
+		//if (i >= 0 && (activeManifest.allowCache || activeManifest.streamEnds))  
 		{
 			accum = (segments.get(i).startTime + segments.get(i).duration) - lastKnownPlaylistStartTime;
 		}

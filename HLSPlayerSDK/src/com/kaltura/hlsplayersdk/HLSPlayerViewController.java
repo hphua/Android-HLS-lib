@@ -23,6 +23,7 @@ import com.kaltura.hlsplayersdk.cache.HLSSegmentCache;
 import com.kaltura.hlsplayersdk.cache.SegmentCachedListener;
 import com.kaltura.hlsplayersdk.events.OnAudioTrackSwitchingListener;
 import com.kaltura.hlsplayersdk.events.OnAudioTracksListListener;
+import com.kaltura.hlsplayersdk.events.OnDurationChangedListener;
 import com.kaltura.hlsplayersdk.events.OnErrorListener;
 import com.kaltura.hlsplayersdk.events.OnPlayerStateChangeListener;
 import com.kaltura.hlsplayersdk.events.OnPlayheadUpdateListener;
@@ -668,6 +669,8 @@ public class HLSPlayerViewController extends RelativeLayout implements
 			mRenderThread.start();
 		}
 		
+		postDurationChanged();
+		
 	}
 	
 	@Override
@@ -1047,6 +1050,29 @@ public class HLSPlayerViewController extends RelativeLayout implements
 				
 			});
 		}
+	}
+	
+	private OnDurationChangedListener mDurationChangedListener = null;
+	
+	@Override
+	public void registerDurationChanged(OnDurationChangedListener listener)
+	{
+		mDurationChangedListener = listener;		
+	}
+	
+	public void postDurationChanged()
+	{
+		if (mDurationChangedListener != null)
+		{
+			post( new Runnable()
+			{
+				@Override
+				public void run() {
+					mDurationChangedListener.onDurationChanged(getDuration());
+				}
+			} );
+		}
+		final int duration = getDuration();
 	}
 	
 	@Override
@@ -1434,4 +1460,5 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		if (mStreamHandler != null) return mStreamHandler.lastQuality;
 		return 0;
 	}
+
 }
