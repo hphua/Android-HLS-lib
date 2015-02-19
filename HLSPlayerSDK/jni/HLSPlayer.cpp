@@ -2281,13 +2281,19 @@ void HLSPlayer::NotifyFormatChange(int curQuality, int newQuality, int curAudio,
 
 }
 
+#define USE_DEFAULT_START -999
+
 void HLSPlayer::Seek(double time)
 {
 	LOGTRACE("%s", __func__);
 	AutoLock locker(&lock, __func__);
 
 	LOGI("Seeking To: %f", time);
-	if (time < 0) time = 0;
+	if (time < 0)
+	{
+		if ((int)time != USE_DEFAULT_START)
+			time = 0;
+	}
 
 	SetState(SEEKING);
 
@@ -2321,6 +2327,7 @@ void HLSPlayer::Seek(double time)
 
 	mStartTimeMS = (mDataSource->getStartTime() * 1000);
 
+	if (time < 0) time = segTime;
 	LOGI("Seeking To: %f | Segment Start Time = %f", time, segTime);
 
 	int segCount = ((HLSDataSource*) mDataSource.get())->getPreloadedSegmentCount();
