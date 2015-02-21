@@ -50,7 +50,7 @@ public class SegmentBinaryResponseHandler extends AsyncHttpResponseHandler {
 
     @Override
     public void onProgress(int bytesWritten, int totalSize) {
-    	Log.i("SegmentBinaryResponseHandler.onProgress", "Bytes Written:" + bytesWritten + " Total Size:" + totalSize + " : " + entry.uri);
+    	//Log.i("SegmentBinaryResponseHandler.onProgress", "Bytes Written:" + bytesWritten + " Total Size:" + totalSize + " : " + entry.uri);
         entry.updateProgress(bytesWritten, totalSize);
     }
 

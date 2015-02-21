@@ -15,6 +15,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.kaltura.hlsplayersdk.HLSPlayerViewController;
@@ -22,31 +23,31 @@ import com.kaltura.hlsplayersdk.types.PlayerStates;
 import com.kaltura.hlsplayersdk.QualityTrack;
 import com.kaltura.hlsplayersdk.events.*;
 
-public class VideoPlayerActivity extends ActionBarActivity implements OnTextTracksListListener, OnTextTrackChangeListener, 
-OnTextTrackTextListener, OnAudioTracksListListener, OnAudioTrackSwitchingListener, 
-OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListener, OnPlayerStateChangeListener, 
+public class VideoPlayerActivity extends ActionBarActivity implements OnTextTracksListListener, OnTextTrackChangeListener,
+OnTextTrackTextListener, OnAudioTracksListListener, OnAudioTrackSwitchingListener,
+OnQualitySwitchingListener, OnQualityTracksListListener, OnPlayheadUpdateListener, OnPlayerStateChangeListener,
 OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 
 	HLSPlayerViewController playerView = null;
 	final Context context = this;
 	String lastUrl = "";
-	
+
 	int numAltAudioTracks = 0;
 	int curAltAudioTrack = -1;
-	
+
 	int numQualityLevels = 0;
 	int curQualityLevel = 0;
-	
+
 	int mLastTimeMS = 0;
-	
+
 	boolean runSoak = false;
-	
-	
+
+
 	private Thread mSoakThread = null;
 	private Runnable soakRunnable = new Runnable() {
 		public Vector<String> urls = null;
 		public void run() {
-			
+
         	urls = new Vector<String>();
         	urls.add("http://www.kaltura.com/p/0/playManifest/entryId/1_0i2t7w0i/format/applehttp");
         	urls.add("http://abclive.abcnews.com/i/abc_live4@136330/master.m3u8");
@@ -57,22 +58,22 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
             	urls.add("http://pa-www.kaltura.com/content/shared/erank/multi_audio.m3u8");
         		urls.add("http://live.cdn.antel.net.uy/test/hls/teststream1.m3u8");
         	}
-        	
+
 			while (runSoak) {
-				
+
 				runOnUiThread(new Runnable()
 					{
 						public void run() {
 							int i = (int)( Math.random() * urls.size() );
 							Log.i("VideoPlayer Soak", "Playing Index (" + i + ") ");
-							
+
 				        	lastUrl = urls.get(i);
 				        	Log.i("VideoPlayer UI", " -----> Play " + lastUrl);
 				            setVideoUrl(lastUrl);
 						}
 					}
 				);
-				
+
 				try {
 					Thread.sleep((long)(Math.random() * 15000.0) + 5000);
 				} catch (InterruptedException ie) {
@@ -104,9 +105,9 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 	            .penaltyDeath()
 	            .build());
         }
-        
+
         initPlayerView();
-        
+
         if(false)
         {
 /*            // Test the HLS Segment Cache.
@@ -124,7 +125,7 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
             } */
         }
     }
-    
+
     private void initPlayerView()
     {
         try
@@ -161,7 +162,7 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
     	}
     	super.onStop();
     }
-    
+
     @Override
     public void onRestart()
     {
@@ -178,13 +179,13 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
         getMenuInflater().inflate(R.menu.video_player, menu);
         return true;
     }
-    
+
     @Override
     public boolean onMenuOpened(int featureId, Menu menu)
     {
 		return super.onMenuOpened(featureId, menu);
     }
-    
+
     void setVideoUrl(String url)
     {
     	if (playerView != null)
@@ -252,8 +253,8 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
         	mSoakThread = new Thread(soakRunnable);
         	mSoakThread.start();
         	return true;
-        	
-        }        
+
+        }
         else if (id == R.id.seekFwd)
         {
         	Log.i("VideoPlayer UI", " -----> Seek Fwd");
@@ -273,7 +274,7 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
         {
         	Log.i("VideoPlayer UI", " -----> Seek Front");
             playerView.setVisibility(View.VISIBLE);
-        	playerView.seek(playerView.getDuration());
+        	playerView.goToLive();
         	return true;
         }
         else if (id == R.id.testUrl)
@@ -327,11 +328,16 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
         	alertDialogBuilder.setView(urlInputView );
 
         	final EditText input = (EditText)urlInputView.findViewById(R.id.userInput);
-        	
+
         	input.setText("http://apache-testing.dev.kaltura.com/p/1091/sp/109100/playManifest/entryId/0_ue0n7lmw/format/applehttp/protocol/http/uiConfId/15088771/a.m3u8?referrer=aHR0cDovL2V4dGVybmFsdGVzdHMuZGV2LmthbHR1cmEuY29t");
 
         	input.setText("http://cdnapi.kaltura.com/p/1878761/sp/187876100/playManifest/entryId/0_8s3afdlb/format/applehttp/protocol/http/uiConfId/28013271/a.m3u8%22");
-        	
+
+        	input.setText("http://olive.fr.globecast.tv/live/disk4/sub/hls_sub/index.m3u8");
+
+        	input.setText("http://54.169.47.74/masterstitch.m3u8?entryId=126ae943&url=http%3A%2F%2F111.223.97.115%2Fhls%2Fnl%2Findex-timeshifting.m3u8&uid=1c2ef485_46.20.235.45");
+
+
         	// set up a dialog window
         	alertDialogBuilder
         		.setCancelable(false)
@@ -360,9 +366,12 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
         return super.onOptionsItemSelected(item);
     }
 
-	//@Override
-	public void onSubtitleText(double startTime, double length, String buffer) {
+	@Override
+	public void onSubtitleText(double startTime, double length, String align, String buffer) {
 		Log.i("VideoPlayer.onSubtitleText", "Start: " + startTime + " | Length: " + length + " | " + buffer);
+		TextView tv = (TextView)findViewById(R.id.subTitleView);
+		String s = "T:" + playerView.getCurrentPosition() + " S:" + startTime + " L:" + length + " A:" + align + "\n" + buffer;
+		tv.setText(s);
 
 	}
 
@@ -373,13 +382,13 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 		for (int i = 0; i < list.size(); ++i)
 			Log.i("VideoPlayer.OnTextTracksList", "Language[" + i + "] = " + list.get(i));
 
-		
+
 	}
 
 	@Override
 	public void onOnTextTrackChanged(int newTrackIndex) {
 		Log.i("VideoPlayer.onOnTextTrackChanged","newTrackIndex = " + newTrackIndex);
-		
+
 	}
 
 	@Override
@@ -391,7 +400,7 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 	public void onAudioSwitchingEnd(int newTrackIndex) {
 		curAltAudioTrack = newTrackIndex;
 		Log.i("VideoPlayer.onAudioSwitchingEnd", "Quaity Changed to " + newTrackIndex);
-		
+
 	}
 
 	@Override
@@ -403,7 +412,7 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 
 		numAltAudioTracks = list.size();
 	}
-	
+
 	private void LogQualityTrack(QualityTrack track)
 	{
 		Log.i("QualityTrack", track.trackId + "|" + track.bitrate + "|" + track.height + "|" + track.width + "|" + track.type.toString() );
@@ -420,21 +429,21 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 	@Override
 	public void onQualitySwitchingStart(int oldTrackIndex, int newTrackIndex) {
 		Log.i("VideoPlayer.onQualitySwitchingStart", "Quaity Changing from  " + oldTrackIndex + " to " + newTrackIndex);
-		
+
 	}
 
 	@Override
 	public void onQualitySwitchingEnd(int newTrackIndex) {
 		curQualityLevel = newTrackIndex;
 		Log.i("VideoPlayer.onQualitySwitchingEnd", "Quaity Changed to " + newTrackIndex);
-		
+
 	}
 
-	
+
 	@Override
 	public void onPlayheadUpdated(int msec) {
 		mLastTimeMS = msec;
-		//if (msec % 1000 == 0) 
+		//if (msec % 1000 == 0)
 			Log.i("OnPlayheadUpdated", "Time = " + msec);
 	}
 
@@ -442,40 +451,32 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 	public boolean onStateChanged(PlayerStates state) {
 		Log.i("VideoPlayer.onStateChanged", "Player State changed to " + state.toString());
 
-		
+
 		if (state == PlayerStates.END)
 			playerView.setVisibility(View.INVISIBLE);
-		
+
 		return true;
 	}
 
 	@Override
 	public void onProgressUpdate(int progress) {
 		Log.i("VideoPlayer.OnProgressUpdate", "Download Progress: " + progress);
-		
-		
+
+
 	}
 
 	@Override
 	public void onError(int errorCode, String errorMessage)
 	{
 		Toast.makeText(context, errorMessage + "(" + errorCode + ")", Toast.LENGTH_LONG).show();
-		
+
 	}
 
 	@Override
 	public void onFatalError(int errorCode, String errorMessage)
 	{
 		Toast.makeText(context, "FATAL: " + errorMessage + "(" + errorCode + ")", Toast.LENGTH_LONG).show();
-		
-	}
 
-	//@Override
-	public void onSubtitleText(double arg0, double arg1, String arg2,
-			String arg3)
-	{
-		// TODO Auto-generated method stub
-		
 	}
 
 	@Override

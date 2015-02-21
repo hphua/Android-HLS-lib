@@ -12,5 +12,19 @@
        android:layout_width="fill_parent"
        android:layout_height="fill_parent"
        android:visibility="invisible" />
+   
+   <TextView
+        android:id="@+id/subTitleView"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:layout_weight="2"
+        android:textColor="#ffffff"
+        android:shadowColor="#444444"
+        android:shadowDx="2.0"
+        android:shadowDy="2.0"
+        android:textSize="28.5sp"
+        android:colorBackground="#000000"
+        android:text="" 
+        android:ellipsize="none"/>
 
 </FrameLayout>
