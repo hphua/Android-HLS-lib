@@ -267,12 +267,14 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 	@Override
 	public ManifestParser getVideoManifestToReload()
 	{
+		Log.i("StreamHandler.getVideoManifestToReload", "reloadingQuality=" + reloadingQuality + " mIsRecovering=" + mIsRecovering + " targetQuality=" + targetQuality + " lastQuality=" + lastQuality);
 		if (mIsRecovering)
 		{
 			attemptRecovery();
 		}
 		else if (reloadingQuality == -1)
 		{
+			
 			return primaryStream.backupStream.manifest;
 		}
 		else if (targetQuality != lastQuality)
@@ -448,7 +450,9 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 		reloadingFromBackup = false;
 		if (reloadingQuality == -1)
 		{
+			Log.i("StreamHandler.onReloadComplete", "Restoring reloading quality to normal");
 			HLSPlayerViewController.currentController.seekToCurrentPosition();
+			reloadingQuality = targetQuality; // restoring our quality since we're "done" - using target quality since that's where we want to be, in case it was changed in the middle
 		}
 
 		reloader.start();
