@@ -174,6 +174,7 @@ private:
 	int64_t mLastVideoTimeUs;
 	int64_t mSegmentTimeOffset;
 	int64_t mVideoFrameDelta;
+	int64_t mVideoStartDelta; 		// The starting time offset of the video (used in comparing audio time to video time)
 	int64_t mFrameCount;
 
 	int32_t mScreenWidth;

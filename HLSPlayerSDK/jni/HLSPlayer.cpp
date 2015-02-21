@@ -34,6 +34,16 @@ using namespace android_video_shim;
 
 int SEGMENTS_TO_BUFFER = 2;
 
+// I did not add this to a class or a header because I don't expect it to be used in any other file
+// All the other timing is based off the audio
+uint32_t getTimeMS()
+{
+
+	struct timespec now;
+	clock_gettime(CLOCK_MONOTONIC, &now);
+	return (uint32_t)((now.tv_sec*1000000000LL + now.tv_nsec) / 100000);
+}
+
 //////////
 //
 // Thread stuff
@@ -77,7 +87,7 @@ mVideoBuffer(NULL), mWindow(NULL), mSurface(NULL), mRenderedFrameCount(0),
 mDurationUs(0), mOffloadAudio(false), mStatus(STOPPED),
 mAudioTrack(NULL), mVideoTrack(NULL), mJvm(jvm), mPlayerViewClass(NULL),
 mNextSegmentMethodID(NULL), mSetVideoResolutionID(NULL), mEnableHWRendererModeID(NULL), 
-mSegmentTimeOffset(0), mVideoFrameDelta(0), mLastVideoTimeUs(0),
+mSegmentTimeOffset(0), mVideoFrameDelta(0), mLastVideoTimeUs(-1), mVideoStartDelta(0),
 mSegmentForTimeMethodID(NULL), mFrameCount(0), mDataSource(NULL), audioThread(0),
 mScreenHeight(0), mScreenWidth(0), mJAudioTrack(NULL), mStartTimeMS(0), mUseOMXRenderer(true),
 mNotifyFormatChangeComplete(NULL), mNotifyAudioTrackChangeComplete(NULL),
@@ -166,7 +176,8 @@ void HLSPlayer::Reset()
 
 	LOGI("Killing the audio & video tracks");
 
-	mLastVideoTimeUs = 0;
+	mLastVideoTimeUs = -1;
+	mVideoStartDelta = 0;
 	mSegmentTimeOffset = 0;
 	mVideoFrameDelta = 0;
 	mFrameCount = 0;
@@ -1088,14 +1099,14 @@ int HLSPlayer::Update()
 
 			if (segCount < SEGMENTS_TO_BUFFER)
 			{
-				LOGI("**** WAITING_ON_DATA: Requesting next segment...");
+				//LOGI("**** WAITING_ON_DATA: Requesting next segment...");
 				RequestNextSegment();
 			}
 
 		}
 		else
 		{
-			LOGI("**** WAITING_ON_DATA: No DataSource : Requesting next segment...");
+			//LOGI("**** WAITING_ON_DATA: No DataSource : Requesting next segment...");
 			RequestNextSegment();
 		}
 		return -1;
@@ -1208,6 +1219,13 @@ int HLSPlayer::Update()
 
 			if (timeUs > mLastVideoTimeUs)
 			{
+				if (mLastVideoTimeUs == -1)
+				{
+					LOGTIMING("Setting mVideoStartDelta to %lld", timeUs);
+					mLastVideoTimeUs = timeUs;
+					mVideoStartDelta = timeUs;
+				}
+
 				mVideoFrameDelta = timeUs - mLastVideoTimeUs;
 			}
 			else if (timeUs < mLastVideoTimeUs)
@@ -1218,7 +1236,7 @@ int HLSPlayer::Update()
 
 			LOGTIMING("audioTime = %lld | videoTime = %lld | diff = %lld | mVideoFrameDelta = %lld", audioTime, timeUs, audioTime - timeUs, mVideoFrameDelta);
 
-			int64_t delta = audioTime - timeUs;
+			int64_t delta = (audioTime + mVideoStartDelta) - timeUs;
 
 			mLastVideoTimeUs = timeUs;
 			if (delta < -10000) // video is running ahead
@@ -1550,14 +1568,14 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
         int fmt = -1;
         mVideoSource23->getFormat()->findInt32(kKeyColorFormat, &fmt);
 
-		LOGI("Cond1 for hw path colf=%d", fmt);
+		LOGRENDER("Cond1 for hw path colf=%d", fmt);
 
         void *id;
         if (buffer->meta_data()->findPointer(kKeyBufferID, &id)) 
         {
-			LOGV2("Cond2 for hw path");
+        	LOGRENDER("Cond2 for hw path");
             mOMXRenderer->render(id);
-			LOGV2("Cond3 for hw path");
+            LOGRENDER("Cond3 for hw path");
 			//sched_yield();
             return true;
         }
@@ -1568,7 +1586,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 	if (!buffer) { LOGI("the MediaBuffer is NULL"); return true; }
 
 	//RUNDEBUG(buffer->meta_data()->dumpToLog());
-	LOGV("Buffer size=%d | range_offset=%d | range_length=%d", buffer->size(), buffer->range_offset(), buffer->range_length());
+	LOGRENDER("Buffer size=%d | range_offset=%d | range_length=%d", buffer->size(), buffer->range_offset(), buffer->range_length());
 
 	// Get the frame's width and height.
 	int videoBufferWidth = 0, videoBufferHeight = 0, vbCropTop = 0, vbCropLeft = 0, vbCropBottom = 0, vbCropRight = 0;
@@ -1580,11 +1598,11 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 
 	if(!buffer->meta_data()->findInt32(kKeyWidth, &videoBufferWidth) || !buffer->meta_data()->findInt32(kKeyHeight, &videoBufferHeight))
 	{
-		LOGV("Falling back to source dimensions.");
+		LOGRENDER("Falling back to source dimensions.");
 		if(!vidFormat->findInt32(kKeyWidth, &videoBufferWidth) || !vidFormat->findInt32(kKeyHeight, &videoBufferHeight))
 		{
 			// I hope we're right!
-			LOGV("Setting best guess width/height %dx%d", mWidth, mHeight);
+			LOGRENDER("Setting best guess width/height %dx%d", mWidth, mHeight);
 			videoBufferWidth = mWidth;
 			videoBufferHeight = mHeight;
 		}
@@ -1593,23 +1611,23 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 	int stride = -1;
 	if(!buffer->meta_data()->findInt32(kKeyStride, &stride))
 	{
-		LOGV("Trying source stride fallback");
+		LOGRENDER("Trying source stride fallback");
 		if(!vidFormat->findInt32(kKeyStride, &stride))
 		{
-			LOGV("Got no source stride");
+			LOGRENDER("Got no source stride");
 		}
 	}
 
 	if(stride != -1)
 	{
-		LOGV("Got stride %d", stride);
+		LOGRENDER("Got stride %d", stride);
 	}
 
 	int x = -1;
 	buffer->meta_data()->findInt32(kKeyDisplayWidth, &x);
 	if(x != -1)
 	{
-		LOGV("got dwidth = %d", x);
+		LOGRENDER("got dwidth = %d", x);
 	}
 
 	int sliceHeight = -1;
@@ -1617,7 +1635,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 	{
 		if(!vidFormat->findInt32(kKeySliceHeight, &sliceHeight))	
 		{
-			LOGV2("Failed to get vidFormat slice height.");
+			LOGRENDER("Failed to get vidFormat slice height.");
 		}
 	}
 
@@ -1631,11 +1649,11 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 			vbCropRight = videoBufferWidth - 1;
 		}
 	}
-	LOGV("vbw=%d vbh=%d vbcl=%d vbct=%d vbcr=%d vbcb=%d", videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom);
+	LOGRENDER("vbw=%d vbh=%d vbcl=%d vbct=%d vbcr=%d vbcb=%d", videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom);
 
 	if(sliceHeight != -1)
 	{
-		LOGV("Setting buffer slice height %d", sliceHeight);
+		LOGRENDER("Setting buffer slice height %d", sliceHeight);
 		videoBufferHeight = sliceHeight;
 	}
 	
@@ -1669,20 +1687,20 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 	}
 #endif
 
-	LOGV("Found Frame Color Format: %s colf=0x%x internalColf=0x%x", res ? "true" : "false", colf, internalColf);
+	LOGRENDER("Found Frame Color Format: %s colf=0x%x internalColf=0x%x", res ? "true" : "false", colf, internalColf);
 
 	const char *omxCodecString = "";
 	res = vidFormat->findCString(kKeyDecoderComponent, &omxCodecString);
-	LOGV("Found Frame decoder component: %s %s", res ? "true" : "false", omxCodecString);
+	LOGRENDER("Found Frame decoder component: %s %s", res ? "true" : "false", omxCodecString);
 
 	ColorConverter_Local lcc((OMX_COLOR_FORMATTYPE)internalColf, OMX_COLOR_Format16bitRGB565);
-	LOGV("Local ColorConversion from 0x%x is valid: %s", internalColf, lcc.isValid() ? "true" : "false" );
+	LOGRENDER("Local ColorConversion from 0x%x is valid: %s", internalColf, lcc.isValid() ? "true" : "false" );
 
 	ColorConverter cc((OMX_COLOR_FORMATTYPE)internalColf, OMX_COLOR_Format16bitRGB565); // Should be getting these from the formats, probably
-	LOGV("System ColorConversion from 0x%x is valid: %s", internalColf, cc.isValid() ? "true" : "false" );
+	LOGRENDER("System ColorConversion from 0x%x is valid: %s", internalColf, cc.isValid() ? "true" : "false" );
 
 	ColorConverter444 cc444((OMX_COLOR_FORMATTYPE)internalColf, OMX_COLOR_Format16bitRGB565); // Should be getting these from the formats, probably
-	LOGV("444 ColorConversion from 0x%x is valid: %s", internalColf, cc444.isValid() ? "true" : "false" );
+	LOGRENDER("444 ColorConversion from 0x%x is valid: %s", internalColf, cc444.isValid() ? "true" : "false" );
 
 	int64_t timeUs;
     if (buffer->meta_data()->findInt64(kKeyTime, &timeUs))
@@ -1702,7 +1720,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 			}
 
 
-			LOGV("buffer locked (%d x %d stride=%d, format=%d)", windowBuffer.width, windowBuffer.height, windowBuffer.stride, windowBuffer.format);
+			LOGRENDER("buffer locked (%d x %d stride=%d, format=%d)", windowBuffer.width, windowBuffer.height, windowBuffer.stride, windowBuffer.format);
 
 			int32_t targetWidth = windowBuffer.stride;
 			int32_t targetHeight = windowBuffer.height;
@@ -1715,13 +1733,13 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 #endif
 
 			unsigned char *videoBits = (unsigned char*)buffer->data() + buffer->range_offset();
-			LOGV("Saw some source pixels: %x", *(int*)videoBits);
+			LOGRENDER("Saw some source pixels: %x", *(int*)videoBits);
 
-			LOGV("mWidth=%d | mHeight=%d | mCropWidth=%d | mCropHeight=%d | buffer.width=%d | buffer.height=%d | buffer.stride=%d | videoBits=%p",
+			LOGRENDER("mWidth=%d | mHeight=%d | mCropWidth=%d | mCropHeight=%d | buffer.width=%d | buffer.height=%d | buffer.stride=%d | videoBits=%p",
 							mWidth, mHeight, mCropWidth, mCropHeight, windowBuffer.width, windowBuffer.height, windowBuffer.stride, videoBits);
 
-			LOGV("converting source coords, %d, %d, %d, %d, %d, %d", videoBufferWidth, videoBufferHeight, 0, 0, videoBufferWidth, videoBufferHeight);
-			LOGV("converting target coords, %d, %d, %d, %d, %d, %d", targetWidth, targetHeight, 0, 0, videoBufferWidth, videoBufferHeight);
+			LOGRENDER("converting source coords, %d, %d, %d, %d, %d, %d", videoBufferWidth, videoBufferHeight, 0, 0, videoBufferWidth, videoBufferHeight);
+			LOGRENDER("converting target coords, %d, %d, %d, %d, %d, %d", targetWidth, targetHeight, 0, 0, videoBufferWidth, videoBufferHeight);
 
 #if 0
 			// Useful logic to vary behavior over time.
@@ -1749,7 +1767,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 				unsigned char *tmpBuff = NULL;
 				if(gICFM->getDecoderOutputFormat() != OMX_COLOR_FormatYUV420Planar)
 				{
-					LOGV("Alloc'ing tmp buffer due to decoder format %x.", gICFM->getDecoderOutputFormat());
+					LOGRENDER("Alloc'ing tmp buffer due to decoder format %x.", gICFM->getDecoderOutputFormat());
 					tmpBuff = (unsigned char*)malloc(videoBufferWidth*videoBufferHeight*4);
 
 #ifdef _FRAME_DUMP
@@ -1757,7 +1775,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 					isi420 = 2;
 #endif
 
-					LOGV("Converting to tmp buffer due to decoder format %x with func=%p videoBits=%p tmpBuff=%p.", 
+					LOGRENDER("Converting to tmp buffer due to decoder format %x with func=%p videoBits=%p tmpBuff=%p.",
 						gICFM->getDecoderOutputFormat(), (void*)gICFM->convertDecoderOutputToI420, videoBits, tmpBuff);
 
 					ARect crop = { vbCropLeft, vbCropTop, vbCropRight, vbCropBottom };
@@ -1783,7 +1801,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 
 				if(cc444.isValid())
 				{
-					LOGV("Doing 444 color conversion...");
+					LOGRENDER("Doing 444 color conversion...");
 
 					int a = vbCropLeft;
 					int b = vbCropTop;
@@ -1794,7 +1812,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 				}
 				else if(cc.isValid())
 				{
-					LOGV("Doing system color conversion...");
+					LOGRENDER("Doing system color conversion...");
 
 					int a = vbCropLeft;
 					int b = vbCropTop;
@@ -1806,7 +1824,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 				else if(lcc.isValid())
 				{
 					// We could use the local converter but the system one seems to work properly.
-					LOGV("Doing local conversion %dx%d %p %d %p %d",videoBufferWidth, videoBufferHeight,
+					LOGRENDER("Doing local conversion %dx%d %p %d %p %d",videoBufferWidth, videoBufferHeight,
 						tmpBuff, 0,
 						pixels, windowBuffer.stride * 2);
 
@@ -1824,13 +1842,13 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 
 				if(gICFM->getDecoderOutputFormat() != OMX_COLOR_FormatYUV420Planar)
 				{
-					LOGV("Freeing tmp buffer due to format %x.", gICFM->getDecoderOutputFormat());
+					LOGRENDER("Freeing tmp buffer due to format %x.", gICFM->getDecoderOutputFormat());
 					free(tmpBuff);
 				}
 			}
 			else if(colf == QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka)
 			{
-				LOGV("colf = QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka");
+				LOGRENDER("colf = QOMX_COLOR_FormatYUV420PackedSemiPlanar64x32Tile2m8ka");
 				// Special case for QCOM tiled format as the shipped decoders seem busted.
 				unsigned char *tmpBuff = (unsigned char*)malloc(videoBufferWidth*videoBufferHeight*3);
 				convert_64x32_to_NV12(videoBits, tmpBuff, videoBufferWidth, videoBufferWidth, videoBufferHeight);
@@ -1846,7 +1864,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 			}
 			else if(colf == OMX_QCOM_COLOR_FormatYUV420PackedSemiPlanar32m4ka)
 			{
-				LOGV("colf = OMX_QCOM_COLOR_FormatYUV420PackedSemiPlanar32m4ka");
+				LOGRENDER("colf = OMX_QCOM_COLOR_FormatYUV420PackedSemiPlanar32m4ka");
 #define ALIGN(x,multiple)    (((x)+(multiple-1))&~(multiple-1))
 				int a = vbCropLeft;
 				int b = vbCropTop;
@@ -1854,7 +1872,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 				int d = vbCropBottom;
 
 				// Bump size to multiple of 32.
-				LOGV("Rounding up to %dx%d", ALIGN(videoBufferWidth, 32), ALIGN(videoBufferHeight, 32));
+				LOGRENDER("Rounding up to %dx%d", ALIGN(videoBufferWidth, 32), ALIGN(videoBufferHeight, 32));
 				/*if(cc.isValid())
 					cc.convert(videoBits, ALIGN(videoBufferWidth, 32), ALIGN(videoBufferHeight, 32), a, b, c, d,
 					       pixels,  windowBuffer.stride, windowBuffer.height, a, b, c, d);
@@ -1864,13 +1882,13 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 			}
 			else if(colf == OMX_COLOR_Format16bitRGB565)
 			{
-				LOGV("colf = OMX_COLOR_Format16bitRGB565");
+				LOGRENDER("colf = OMX_COLOR_Format16bitRGB565");
 				// Directly copy 16 bit color.
 				size_t bufSize = buffer->range_length() - buffer->range_offset();
 				
 				if(bufSize >= targetWidth * videoBufferWidth * sizeof(short))
 				{
-					LOGV("A bufSize = %d", bufSize);
+					LOGRENDER("A bufSize = %d", bufSize);
 					for(int i=0; i<videoBufferHeight; i++)
 					{
 						//memset(pixels + i * targetWidth, rand(), targetWidth * sizeof(short));
@@ -1881,7 +1899,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 				}
 				else if(bufSize == videoBufferWidth * videoBufferHeight * sizeof(short))
 				{
-					LOGV("B bufSize = %d targetWidth=%d videoBufferWidth=%d", bufSize, targetWidth, videoBufferWidth);
+					LOGRENDER("B bufSize = %d targetWidth=%d videoBufferWidth=%d", bufSize, targetWidth, videoBufferWidth);
 					for(int i=0; i<videoBufferHeight; i++)
 					{
 						//memset(pixels + i * windowBuffer.width, rand(), targetWidth * sizeof(short));
@@ -1905,7 +1923,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 			}*/
 			else if (cc444.isValid())
 			{
-				LOGV("Using 444 converter");
+				LOGRENDER("Using 444 converter");
 				// Use the system converter.
 				cc444.convert(videoBits, buffer->range_length() - buffer->range_offset() , videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom,
 						pixels, windowBuffer.stride, windowBuffer.height, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom);
@@ -1913,14 +1931,14 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 			}
 			else if(cc.isValid())
 			{
-				LOGV("Using system converter");
+				LOGRENDER("Using system converter");
 				// Use the system converter.
 				cc.convert(videoBits, videoBufferWidth, videoBufferHeight, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom,
 						pixels, windowBuffer.stride, windowBuffer.height, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom);
 			}
 			else if(lcc.isValid())
 			{
-				LOGV("Using own converter");
+				LOGRENDER("Using own converter");
 				if (videoBufferHeight != windowBuffer.height)
 				{
 					LOGI("WindowBuffer && videoBuffer heights do not match: %d vs %d", windowBuffer.height, videoBufferHeight);
@@ -1996,10 +2014,21 @@ void HLSPlayer::LogState()
 	}
 }
 
+uint32_t gLastRequestTime = 0;
+
 void HLSPlayer::RequestNextSegment()
 {
+
 	LOGTRACE("%s", __func__);
+
+	uint32_t curRequest = getTimeMS();
+	if (curRequest - 250 > gLastRequestTime)
+		gLastRequestTime = curRequest;
+	else
+		return;
+
 	AutoLock locker(&lock, __func__);
+
 
 	LOGI("Requesting new segment");
 	JNIEnv* env = NULL;
@@ -2112,6 +2141,7 @@ int32_t HLSPlayer::GetCurrentTimeMS()
 
 	if (mJAudioTrack != NULL)
 	{
+		LOGI("mSTartTimeMS=%d", mStartTimeMS);
 		return (mJAudioTrack->GetTimeStamp() / 1000) + mStartTimeMS;
 	}
 	return 0;
@@ -2144,7 +2174,8 @@ void HLSPlayer::StopEverything()
 	clearOMX(mVideoSource);
 	clearOMX(mVideoSource23);
 
-	mLastVideoTimeUs = 0;
+	mLastVideoTimeUs = -1;
+	mVideoStartDelta = 0;
 	mSegmentTimeOffset = 0;
 	mVideoFrameDelta = 0;
 	mFrameCount = 0;
@@ -2437,15 +2468,7 @@ bool HLSPlayer::ReadUntilTime(double timeSecs)
 }
 
 
-// I did not add this to a class or a header because I don't expect it to be used anywhere else
-// All the other timing is based off the audio
-uint32_t getTimeMS()
-{
 
-	struct timespec now;
-	clock_gettime(CLOCK_MONOTONIC, &now);
-	return (uint32_t)((now.tv_sec*1000000000LL + now.tv_nsec) / 100000);
-}
 
 void HLSPlayer::UpdateDroppedFrameInfo()
 {
@@ -2457,7 +2480,7 @@ void HLSPlayer::UpdateDroppedFrameInfo()
 		mDroppedFrameLastSecond = getTimeMS();
 	}
 
-	LOGI("GetTimeMS: %d" , getTimeMS());
+	LOGV2("GetTimeMS: %d" , getTimeMS());
 
 	// If we've gone beyond a second, move our index up one, and set it to 0 to start
 	// that seconds count over again.

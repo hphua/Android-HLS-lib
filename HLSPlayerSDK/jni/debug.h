@@ -28,9 +28,10 @@
 //#define _SYMBOL_ERRORS
 //#define _DEBUG_THREAD
 //#define _TIMING
+//#define _RENDER_DETAILS
 
 //#define _BLITTEST
-#define _FRAME_DUMP 25
+//#define _FRAME_DUMP 25
 
 //#define _VERBOSE
 
@@ -81,6 +82,12 @@
 #define LOGSYMBOLERROR(...) __android_log_print(ANDROID_LOG_VERBOSE, __func__, __VA_ARGS__)
 #else
 #define LOGSYMBOLERROR(...)
+#endif
+
+#ifdef _RENDER_DETAILS
+#define LOGRENDER(...) __android_log_print(ANDROID_LOG_INFO, __func__, __VA_ARGS__)
+#else
+#define LOGRENDER(...)
 #endif
 
 #ifdef _TIMING

@@ -28,7 +28,7 @@ public class HLSSegmentCache
 	
 	public static void resetProgress() { lastBufferPct = -1; }
 	
-	protected static Context context = null;
+	public static Context context = null;
 	
 	public static AsyncHttpClient httpClient()
 	{
