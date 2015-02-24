@@ -24,7 +24,7 @@ public class HLSSegmentCache
 	public static AsyncHttpClient syncHttpClient = new SyncHttpClient();
 	
 	public static double lastDownloadDataRate = 0.0;
-	public static float lastBufferPct = -1;
+	public static int lastBufferPct = -1;
 	
 	public static void resetProgress() { lastBufferPct = -1; }
 	
@@ -294,10 +294,10 @@ public class HLSSegmentCache
 				}
 			}
 			double pct = totalBytes != 0 ? ((double)curBytes / (double)totalBytes) * 100.0 : 0;
-			if (lastBufferPct == (float)pct)
+			if (lastBufferPct == (int)pct)
 				return;
 
-			lastBufferPct = (float)pct;
+			lastBufferPct = (int)pct;
 			
 			if (segmentsWaiting) HLSPlayerViewController.currentController.postProgressUpdate((int)pct);
 
