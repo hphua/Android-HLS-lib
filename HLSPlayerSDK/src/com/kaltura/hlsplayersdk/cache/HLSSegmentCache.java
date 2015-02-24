@@ -70,6 +70,7 @@ public class HLSSegmentCache
 	
 	static public SegmentCacheEntry populateCache(final String segmentUri)
 	{
+		SegmentCacheEntry sce = null;
 		synchronized (segmentCache)
 		{
 			// Hit the cache first.
@@ -85,14 +86,17 @@ public class HLSSegmentCache
 			
 			// Populate a cache entry and initiate the request.
 			Log.i("HLS Cache", "Miss on " + segmentUri + ", populating..");
-			final SegmentCacheEntry sce = (existing != null) ? existing : new SegmentCacheEntry();
+			sce = (existing != null) ? existing : new SegmentCacheEntry();
 			sce.uri = segmentUri;
 			
-			initiateDownload(sce);
-
 			segmentCache.put(segmentUri, sce);		
-			return sce;
+			
 		}
+		
+		final SegmentCacheEntry sc = sce;
+		initiateDownload(sc);
+		return sce;
+		
 	}
 	
 	private static void initiateDownload(final SegmentCacheEntry sce)
@@ -103,15 +107,35 @@ public class HLSSegmentCache
 		sce.downloadStartTime = sce.lastTouchedMillis;
 		
 		// Issue HTTP request.
-
-		Thread t = new Thread()		
-		{		
+		
+		HLSPlayerViewController.postToHTTPResponseThread( new Runnable()
+		{
+			@Override
 			public void run() {
-				httpClient().setMaxRetriesAndTimeout(0, httpClient().getConnectTimeout());
-				sce.request = httpClient().get(context, sce.uri, new SegmentBinaryResponseHandler(sce));
-			}		
-		};		
-		t.start();		
+			AsyncHttpClient httpClient = httpClient();
+			
+			if (httpClient == syncHttpClient) Log.i("HLS Cache", "Using Synchronous HTTP CLient");
+			else Log.i("HLS Cache", "Using Asynchronous HTTP Client");
+			
+			httpClient.setMaxRetriesAndTimeout(0, httpClient().getConnectTimeout());
+			sce.request = httpClient.get(context, sce.uri, new SegmentBinaryResponseHandler(sce));
+			}
+			
+		});
+
+//		Thread t = new Thread()		
+//		{		
+//			public void run() {
+//				AsyncHttpClient httpClient = httpClient();
+//				
+//				if (httpClient == syncHttpClient) Log.i("HLS Cache", "Using Synchronous HTTP CLient");
+//				else Log.i("HLS Cache", "Using Asynchronous HTTP Client");
+//				
+//				httpClient.setMaxRetriesAndTimeout(0, httpClient().getConnectTimeout());
+//				sce.request = httpClient.get(context, sce.uri, new SegmentBinaryResponseHandler(sce));
+//			}		
+//		};		
+//		t.start();		
 
 	}
 	
@@ -279,6 +303,7 @@ public class HLSSegmentCache
 			int totalBytes = 0;
 			int curBytes = 0;
 			boolean segmentsWaiting = false;
+			int segmentsWaitingCount = 0;
 			synchronized (segmentCache)
 			{
 				Collection<SegmentCacheEntry> values = segmentCache.values();
@@ -290,6 +315,7 @@ public class HLSSegmentCache
 						totalBytes += v.totalSize;
 						curBytes += v.bytesDownloaded;
 						segmentsWaiting = true;
+						++segmentsWaitingCount;
 					}
 				}
 			}
@@ -299,7 +325,11 @@ public class HLSSegmentCache
 
 			lastBufferPct = (int)pct;
 			
-			if (segmentsWaiting) HLSPlayerViewController.currentController.postProgressUpdate((int)pct);
+			if (segmentsWaiting)
+			{
+				Log.i("HLS Cache", "Progress=" + (int)pct + " (" + curBytes +"/" + totalBytes + ") seg count=" + segmentsWaitingCount);
+				HLSPlayerViewController.currentController.postProgressUpdate((int)pct);
+			}
 
 		}
 	}
