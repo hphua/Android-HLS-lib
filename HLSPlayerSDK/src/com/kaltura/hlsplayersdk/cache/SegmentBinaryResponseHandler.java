@@ -12,9 +12,9 @@ public class SegmentBinaryResponseHandler extends AsyncHttpResponseHandler {
 	
 	private boolean succeeded = false;
 	
-	public SegmentBinaryResponseHandler(SegmentCacheItem sce)
+	public SegmentBinaryResponseHandler(SegmentCacheItem sci)
 	{
-		entry = sce;
+		entry = sci;
 	}
 	
 	@Override
