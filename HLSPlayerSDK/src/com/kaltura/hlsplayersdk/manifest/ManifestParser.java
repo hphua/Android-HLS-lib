@@ -529,15 +529,25 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 	}
 
 	// This happens in the child
-	private void reload(ManifestParser manifest)
+	private void reload(final ManifestParser manifest)
 	{
 		// When the URLLoader finishes, it should set the parseComplete listener to *this*, and
 		// when that completes, it should call the reloadCompleteListener
 		mReloadParent = false; // we are not the parent
 		mReloadingManifest = manifest; // This is setting the parent - the one we're trying to reload
 		fullUrl = manifest.fullUrl;
-		URLLoader manifestLoader = new URLLoader("ManifestParser(" + instance() + ").reload(" + manifest.instance() + ")", this, null);
-		manifestLoader.get(fullUrl);
+		final ManifestParser self = this;
+		
+		HLSPlayerViewController.postToHTTPResponseThread( new Runnable() 
+		{
+			@Override
+			public void run()
+			{
+				URLLoader manifestLoader = new URLLoader("ManifestParser(" + instance() + ").reload(" + manifest.instance() + ")", self, null);
+				manifestLoader.get(fullUrl);
+				
+			}
+		} );
 	}
 	
 	private void announceIfComplete()

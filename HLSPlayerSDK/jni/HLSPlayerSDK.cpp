@@ -32,7 +32,7 @@ std::tr1::unordered_map<int, AesCtx *> gCryptoStateMap;
 extern "C"
 {
 
-	jint Java_com_kaltura_hlsplayersdk_cache_SegmentCacheEntry_allocAESCryptoState(JNIEnv *env, jobject caller, jbyteArray key, jbyteArray iv)
+	jint Java_com_kaltura_hlsplayersdk_cache_SegmentCacheItem_allocAESCryptoState(JNIEnv *env, jobject caller, jbyteArray key, jbyteArray iv)
 	{
 		if(gCryptoStateMapInitialized == false)
 		{
@@ -61,7 +61,7 @@ extern "C"
 		return idx;
 	}
 
-	void Java_com_kaltura_hlsplayersdk_cache_SegmentCacheEntry_freeCryptoState(JNIEnv, jobject caller, jint handle)
+	void Java_com_kaltura_hlsplayersdk_cache_SegmentCacheItem_freeCryptoState(JNIEnv, jobject caller, jint handle)
 	{
 		if(gCryptoStateMapInitialized == false)
 		{
@@ -83,7 +83,7 @@ extern "C"
 		delete got->second;
 	}
 
-	jlong Java_com_kaltura_hlsplayersdk_cache_SegmentCacheEntry_decrypt(JNIEnv *env, jobject caller, jint handle, jbyteArray bytes, jlong offset, jlong length)
+	jlong Java_com_kaltura_hlsplayersdk_cache_SegmentCacheItem_decrypt(JNIEnv *env, jobject caller, jint handle, jbyteArray bytes, jlong offset, jlong length)
 	{
 		// Can we modify bytes in place?
 		jboolean isCopy = false;

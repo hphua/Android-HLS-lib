@@ -78,6 +78,9 @@ public class URLLoader extends AsyncHttpResponseHandler
 	{
 		uri = url;
 		AsyncHttpClient httpClient = HLSSegmentCache.httpClient();
+		if (httpClient == HLSSegmentCache.syncHttpClient) Log.i("HLS Cache", "Using Synchronous HTTP CLient");
+		else Log.i("HLS Cache", "Using Asynchronous HTTP Client");
+
 		Log.i("URLLoader [" + myUrlHandle + "].get[" + mTag + "]", "Client:" + httpClient.hashCode() + " Looper:" + Looper.myLooper() + " Getting: " + uri);
 		httpClient.setMaxRetriesAndTimeout(0,httpClient.getConnectTimeout());
 		httpClient.setEnableRedirects(true);

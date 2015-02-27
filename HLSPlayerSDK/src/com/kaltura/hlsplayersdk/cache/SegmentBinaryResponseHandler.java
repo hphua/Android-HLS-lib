@@ -8,13 +8,13 @@ import com.loopj.android.http.*;
 
 public class SegmentBinaryResponseHandler extends AsyncHttpResponseHandler {
 
-	public SegmentCacheEntry entry = null;
+	public SegmentCacheItem entry = null;
 	
 	private boolean succeeded = false;
 	
-	public SegmentBinaryResponseHandler(SegmentCacheEntry sce)
+	public SegmentBinaryResponseHandler(SegmentCacheItem sci)
 	{
-		entry = sce;
+		entry = sci;
 	}
 	
 	@Override
