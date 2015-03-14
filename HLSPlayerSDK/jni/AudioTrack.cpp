@@ -20,7 +20,7 @@ using namespace android_video_shim;
 AudioTrack::AudioTrack(JavaVM* jvm) : mJvm(jvm), mAudioTrack(NULL), mGetMinBufferSize(NULL), mPlay(NULL), mPause(NULL), mStop(NULL), mFlush(NULL), buffer(NULL),
 										mRelease(NULL), mGetTimestamp(NULL), mCAudioTrack(NULL), mWrite(NULL), mGetPlaybackHeadPosition(NULL), mSetPositionNotificationPeriod(NULL),
 										mSampleRate(0), mNumChannels(0), mBufferSizeInBytes(0), mChannelMask(0), mTrack(NULL), mPlayState(INITIALIZED),
-										mTimeStampOffset(0), samplesWritten(0), mWaiting(true)
+										mTimeStampOffset(0), samplesWritten(0), mWaiting(true), mNeedsTimeStampOffset(true)
 {
 	if (!mJvm)
 	{
@@ -399,10 +399,18 @@ void AudioTrack::Flush()
 
 }
 
+void AudioTrack::forceTimeStampUpdate()
+{
+	LOGTRACE("%s", __func__);
+	mNeedsTimeStampOffset = true;
+}
+
 void AudioTrack::SetTimeStampOffset(double offsetSecs)
 {
 	LOGTRACE("%s", __func__);
+	LOGTIMING("Setting mTimeStampOffset to: %f", offsetSecs);
 	mTimeStampOffset = offsetSecs;
+	mNeedsTimeStampOffset = false;
 }
 
 
@@ -541,6 +549,8 @@ int AudioTrack::Update()
 		res = OK;
 	}
 
+
+
 	if (res == OK)
 	{
 		//LOGI("Finished reading from the media buffer");
@@ -559,6 +569,23 @@ int AudioTrack::Update()
 		{
 			if (mediaBuffer)
 			{
+				int64_t timeUs;
+				bool rval = mediaBuffer->meta_data()->findInt64(kKeyTime, &timeUs);
+				if (!rval)
+				{
+					timeUs = 0;
+
+				}
+				LOGI("Audiotrack timeUs=%lld | mNeedsTimeStampOffset=%s", timeUs, mNeedsTimeStampOffset ? "True":"False");
+
+				// If we need the timestamp offset (our audio starts at 0, which is not quite accurate and won't match
+				// the video time), set it. This should only be the case when we first start a stream.
+				if (mNeedsTimeStampOffset)
+				{
+					LOGTIMING("Need to set mTimeStampOffset = %lld", timeUs);
+					SetTimeStampOffset(((double)timeUs / 1000000.0f));
+				}
+
 				size_t mbufSize = mediaBuffer->range_length();
 				//LOGI("MediaBufferSize = %d, mBufferSizeInBytes = %d", mbufSize, mBufferSizeInBytes );
 				if (mbufSize <= mBufferSizeInBytes)

@@ -365,15 +365,29 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
         }
         return super.onOptionsItemSelected(item);
     }
+    
+    String subTitleText = "";
+    String timeStampText = "";
+    String progressText = "";
+    String quality = "";
+    String altAudio = "";
+    
+    public void updateDebugText()
+    {
+    	TextView tv = (TextView)findViewById(R.id.subTitleView);
+    	tv.setText(quality + " " + altAudio + " " + timeStampText + progressText + subTitleText);
+    }
 
 	@Override
 	public void onSubtitleText(double startTime, double length, String align, String buffer) {
 		Log.i("VideoPlayer.onSubtitleText", "Start: " + startTime + " | Length: " + length + " | " + buffer);
-		TextView tv = (TextView)findViewById(R.id.subTitleView);
-		String s = "T:" + playerView.getCurrentPosition() + " S:" + startTime + " L:" + length + " A:" + align + "\n" + buffer;
-		tv.setText(s);
+		
+		subTitleText = "T:" + playerView.getCurrentPosition() + " S:" + startTime + " L:" + length + " A:" + align + "\n" + buffer;
+		updateDebugText();
 
 	}
+	
+	
 
 	@Override
 	public void OnTextTracksList(List<String> list, int defaultTrackIndex) {
@@ -399,7 +413,9 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 	@Override
 	public void onAudioSwitchingEnd(int newTrackIndex) {
 		curAltAudioTrack = newTrackIndex;
-		Log.i("VideoPlayer.onAudioSwitchingEnd", "Quaity Changed to " + newTrackIndex);
+		altAudio = "AL:" + curAltAudioTrack + "/" + numAltAudioTracks;
+		updateDebugText();
+		Log.i("VideoPlayer.onAudioSwitchingEnd", "Language Changed to " + newTrackIndex);
 
 	}
 
@@ -417,13 +433,18 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 	{
 		Log.i("QualityTrack", track.trackId + "|" + track.bitrate + "|" + track.height + "|" + track.width + "|" + track.type.toString() );
 	}
+	
+	int numQualityTracks = 0;
 
 	@Override
 	public void OnQualityTracksList(List<QualityTrack> list, int defaultTrackIndex) {
+		numQualityTracks = list.size();
 		Log.i("VideoPlayer.onAlternateAudioAvailable", "Count = " + list.size());
 		Log.i("VideoPlayer.onAlternateAudioAvailable", "Default = " + defaultTrackIndex);
 		for (int i = 0; i < list.size(); ++i)
 			LogQualityTrack(list.get(i));
+		curQualityLevel = defaultTrackIndex;
+		quality = "Q:" + (curQualityLevel + 1) + "/" + numQualityTracks;
 	}
 
 	@Override
@@ -436,6 +457,8 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 	public void onQualitySwitchingEnd(int newTrackIndex) {
 		curQualityLevel = newTrackIndex;
 		Log.i("VideoPlayer.onQualitySwitchingEnd", "Quaity Changed to " + newTrackIndex);
+		quality = "Q:" + (curQualityLevel + 1) + "/" + numQualityTracks;
+		
 
 	}
 
@@ -443,8 +466,10 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 	@Override
 	public void onPlayheadUpdated(int msec) {
 		mLastTimeMS = msec;
-		//if (msec % 1000 == 0)
-			Log.i("OnPlayheadUpdated", "Time = " + msec);
+		timeStampText = "Time: " + msec + "\n";
+		Log.i("OnPlayheadUpdated", "Time = " + msec);
+	
+		updateDebugText();
 	}
 
 	@Override
@@ -461,6 +486,8 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 	@Override
 	public void onProgressUpdate(int progress) {
 		Log.i("VideoPlayer.OnProgressUpdate", "Download Progress: " + progress);
+		progressText = "Progress: " + progress + "%\n";
+		updateDebugText();
 
 
 	}

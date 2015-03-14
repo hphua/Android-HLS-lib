@@ -94,6 +94,8 @@ struct ATSParser : public RefBase {
         STREAMTYPE_PCM_AUDIO            = 0x83,
     };
 
+    uint32_t getFlags() { return mFlags; }
+
 protected:
     virtual ~ATSParser();
 

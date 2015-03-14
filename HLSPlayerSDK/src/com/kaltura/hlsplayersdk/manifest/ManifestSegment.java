@@ -61,10 +61,12 @@ public class ManifestSegment extends BaseManifestItem
 	    return data;
 	}
 
-	public void initializeCrypto()
+	public void initializeCrypto(ManifestEncryptionKey eKey)
 	{
-		if(cryptoId != -1 || key == null)
+		if(cryptoId != -1 || eKey == null)
 			return;
+		
+		key = eKey;
 		
 		// If we're already in the cache, use the same handle
 		cryptoId = HLSSegmentCache.getCryptoId(uri);

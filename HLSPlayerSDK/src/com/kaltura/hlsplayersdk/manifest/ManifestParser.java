@@ -39,6 +39,7 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 	public boolean allowCache;
 	public double targetDuration;
 	public boolean streamEnds = false;
+	public int quality = -1;
 	public Vector<ManifestPlaylist> playLists = new Vector<ManifestPlaylist>();
 	public Vector<ManifestStream> streams = new Vector<ManifestStream>();
 	public Vector<ManifestSegment> segments = new Vector<ManifestSegment>();
@@ -363,7 +364,7 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 		{
 			segments.get(m).id = mediaSequence + m; // set the id based on the media sequence
 			segments.get(m).startTime = timeAccum;
-			Log.i("ManifestParser(" + instanceCount + ").foundSegment", "SegmentURI=" + segments.get(m).uri);
+			//Log.i("ManifestParser(" + instanceCount + ").foundSegment", "SegmentURI=" + segments.get(m).uri);
 			timeAccum += segments.get(m).duration;
 		}
 		
@@ -524,6 +525,7 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 		
 		mReloadingManifest = new ManifestParser(); // This is creating the child that will be used to actually parse the update
 		mReloadingManifest.type = type;
+		mReloadingManifest.quality = quality;
 		mReloadingManifest.setReloadEventListener(reloadListener);
 		mReloadingManifest.reload(this);
 	}

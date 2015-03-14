@@ -126,11 +126,15 @@ public class SegmentCacheItem {
 		if (statusCode == 200)
 		{
 			data = responseData;
-			running = false;
 			
 			downloadCompletedTime = System.currentTimeMillis();
 			Log.i("SegmentCacheItem.postSegmentSucceeded", "Got " + (responseData != null ? responseData.length + " bytes for " : " null document for " )  + uri);
+			updateProgress(responseData != null ? responseData.length : 0, expectedSize);
+			cacheEntry.updateProgress(true);
+			running = false; // We are still running until we've posted the success!!!
 			cacheEntry.postItemSucceeded(this, statusCode);
+			
+
 		}
 		else
 		{
@@ -144,7 +148,7 @@ public class SegmentCacheItem {
 		
 		bytesDownloaded = bytesWritten;
 		expectedSize = totalBytesExpected;
-		cacheEntry.updateProgress();
+		cacheEntry.updateProgress(false);
 
 	}
 	

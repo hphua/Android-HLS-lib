@@ -12,6 +12,7 @@ import android.os.Looper;
 import android.util.Log;
 
 import com.kaltura.hlsplayersdk.HLSPlayerViewController;
+import com.kaltura.hlsplayersdk.manifest.ManifestSegment;
 import com.loopj.android.http.*;
 
 public class HLSSegmentCache 
@@ -192,6 +193,23 @@ public class HLSSegmentCache
 				HLSSegmentCache.postProgressUpdate(true);
 				sce.notifySegmentCached();
 			}
+		}
+	}
+	
+	/*
+	 * precache
+	 * 
+	 * Precache a segment, accounting for the presence of alt audio
+	 */
+	static public void precache(ManifestSegment segment, boolean forceWait, SegmentCachedListener segmentCachedListener, Handler callbackHandler)
+	{
+		if (segment.altAudioSegment != null)
+		{
+			HLSSegmentCache.precache(new String[] {segment.uri, segment.altAudioSegment.uri}, new int [] { segment.cryptoId, segment.altAudioSegment.cryptoId }, forceWait, segmentCachedListener, callbackHandler);
+		}
+		else
+		{
+			HLSSegmentCache.precache(segment.uri, segment.cryptoId, forceWait, segmentCachedListener, callbackHandler);
 		}
 	}
 	

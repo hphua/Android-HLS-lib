@@ -216,7 +216,7 @@ public class SegmentCacheEntry
 		{
 			if (mSegmentCachedListener != listener)
 			{
-				Log.i("SegmentCacheEntry", "Setting the SegmentCachedListener to a new value: " + listener);
+				Log.i("SegmentCacheEntry", "Setting the SegmentCachedListener to a new value: " + listener + " Old Value: " + mSegmentCachedListener);
 				mSegmentCachedListener = listener;
 				mCallbackHandler = callbackHandler;
 			}
@@ -230,16 +230,26 @@ public class SegmentCacheEntry
 	
 	public void notifySegmentCached()
 	{
-		if (isWaiting()) HLSSegmentCache.postProgressUpdate(true);
+		HLSSegmentCache.postProgressUpdate(true);
 		setWaiting(false);
 		if (mSegmentCachedListener != null && mCallbackHandler != null)
 		{
 			mCallbackHandler.post(new Runnable() {
+				SegmentCachedListener listener = mSegmentCachedListener;
+				
 				public void run()
 				{
 					synchronized (selfRef)
 					{
-						if (mSegmentCachedListener != null) mSegmentCachedListener.onSegmentCompleted(mItems[0].uri);
+						if (listener != null) 
+						{
+							String [] uris = new String[mItems.length];
+							for (int i = 0; i < mItems.length; ++i)
+							{
+								uris[i] = mItems[i].uri;
+							}
+							listener.onSegmentCompleted(uris);
+						}
 					}
 				}
 			});
@@ -277,13 +287,17 @@ public class SegmentCacheEntry
 
 	}
 	
-	public void updateProgress()
+	public void updateProgress(boolean force)
 	{
 		// If we have a callback handler, it pretty much means that we're not going to be
 		// in a wait state in the SegmentCache <-- does this comment make sense?
 		if (mCallbackHandler != null && isWaiting() && bytesDownloaded() != expectedSize())
 		{
 			HLSSegmentCache.postProgressUpdate(false);
+		}
+		else if (mCallbackHandler != null && force)
+		{
+			HLSSegmentCache.postProgressUpdate(true);
 		}
 	}
 }

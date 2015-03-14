@@ -19,6 +19,7 @@ import android.view.ViewGroup;
 import android.widget.RelativeLayout;
 import android.widget.Toast;
 
+import com.kaltura.hlsplayersdk.StreamHandler.KnowledgePrepHandler;
 import com.kaltura.hlsplayersdk.cache.HLSSegmentCache;
 import com.kaltura.hlsplayersdk.cache.SegmentCachedListener;
 import com.kaltura.hlsplayersdk.events.OnAudioTrackSwitchingListener;
@@ -50,7 +51,7 @@ import com.kaltura.hlsplayersdk.types.PlayerStates;
  */
 public class HLSPlayerViewController extends RelativeLayout implements
 		VideoPlayerInterface, URLLoader.DownloadEventListener, OnParseCompleteListener, 
-		TextTracksInterface, AlternateAudioTracksInterface, QualityTracksInterface, SegmentCachedListener {
+		TextTracksInterface, AlternateAudioTracksInterface, QualityTracksInterface, SegmentCachedListener, KnowledgePrepHandler {
 
 	// State constants.
 	private final int STATE_STOPPED = 1;
@@ -118,14 +119,13 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		Log.i("HLSPlayerViewController.requestNextSegment", "---- Feeding segment '" + seg.uri + "'");
 			
 
+		HLSSegmentCache.precache(seg, false, currentController.getStreamHandler(), getInterfaceThreadHandler());
 		if (seg.altAudioSegment != null)
 		{
-			HLSSegmentCache.precache(new String[] {seg.uri, seg.altAudioSegment.uri}, new int [] { seg.cryptoId, seg.altAudioSegment.cryptoId }, false, currentController.getStreamHandler(), getInterfaceThreadHandler());
 			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.altAudioSegment.uri, seg.altAudioSegment.altAudioIndex, seg.startTime, seg.cryptoId, seg.altAudioSegment.cryptoId);
 		}
 		else
 		{
-			HLSSegmentCache.precache(seg.uri, seg.cryptoId, false, currentController.getStreamHandler(), getInterfaceThreadHandler());
 			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, null, -1, seg.startTime, seg.cryptoId, -1);
 		}
 	}
@@ -147,14 +147,13 @@ public class HLSPlayerViewController extends RelativeLayout implements
 			return 0;
 		}
 		
+		HLSSegmentCache.precache(seg, false, currentController.getStreamHandler(), getInterfaceThreadHandler());
 		if (seg.altAudioSegment != null)
 		{
-			HLSSegmentCache.precache(new String[] {seg.uri, seg.altAudioSegment.uri}, new int [] { seg.cryptoId, seg.altAudioSegment.cryptoId }, false, currentController.getStreamHandler(), getInterfaceThreadHandler());
 			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.altAudioSegment.uri, seg.altAudioSegment.altAudioIndex, seg.startTime, seg.cryptoId, seg.altAudioSegment.cryptoId);
 		}
 		else
 		{
-			HLSSegmentCache.precache(seg.uri, seg.cryptoId, false, currentController.getStreamHandler(), getInterfaceThreadHandler());
 			currentController.FeedSegment(seg.uri, seg.quality, seg.continuityEra, null, -1, seg.startTime, seg.cryptoId, -1);
 		}
 
@@ -641,6 +640,22 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		mStreamHandler = new StreamHandler(parser);
 		mSubtitleHandler = new SubtitleHandler(parser);
 		
+		final HLSPlayerViewController self = this;
+		Thread t = new Thread() {
+			public void run()
+			{
+				mStreamHandler.doKnowledgePrep(self);
+			}
+		};
+		
+		t.start();
+		
+	}
+	
+	// knowledgePrefetchComplete() is the completion of the code path that begins in onParserComplete() 
+	@Override
+	public void knowledgePrefetchComplete()
+	{
 		double startTime = StreamHandler.USE_DEFAULT_START; // This is a trigger to let getFileForTime know to start a live stream 
 		int subtitleIndex = 0;
 		int qualityLevel = 0;
@@ -700,7 +715,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 			// supply the event handler to the segment cache. In the case where the segment is already in the cache, the
 			// event handler can be called immediately.
 			FeedSegment(seg.uri, seg.quality, seg.continuityEra, seg.altAudioSegment.uri, seg.altAudioSegment.altAudioIndex, seg.startTime, seg.cryptoId, seg.altAudioSegment.cryptoId);
-			HLSSegmentCache.precache(new String[] {seg.uri, seg.altAudioSegment.uri}, new int [] { seg.cryptoId, seg.altAudioSegment.cryptoId }, true, this, getInterfaceThreadHandler());
+			HLSSegmentCache.precache(seg, true, this, getInterfaceThreadHandler());
 			postAudioTrackSwitchingStart(-1, seg.altAudioSegment.altAudioIndex);
 			postAudioTrackSwitchingEnd(seg.altAudioSegment.altAudioIndex);
 		}
@@ -710,7 +725,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 			// supply the event handler to the segment cache. In the case where the segment is already in the cache, the
 			// event handler can be called immediately.
 			FeedSegment(seg.uri, seg.quality, seg.continuityEra, null, -1, seg.startTime, seg.cryptoId, -1);
-			HLSSegmentCache.precache(seg.uri, seg.cryptoId, true, this, getInterfaceThreadHandler());
+			HLSSegmentCache.precache(seg, true, this, getInterfaceThreadHandler());
 		}
 		
 		// Kick off render thread.
@@ -720,13 +735,11 @@ public class HLSPlayerViewController extends RelativeLayout implements
 			mRenderThread.start();
 		}
 		
-		postDurationChanged();
-		
-	}
+		postDurationChanged();	}
 	
 	@Override
-	public void onSegmentCompleted(String uri) {
-		HLSSegmentCache.cancelCacheEvent(uri);
+	public void onSegmentCompleted(String [] uri) {
+		HLSSegmentCache.cancelCacheEvent(uri[0]);
 		postPlayerStateChange(PlayerStates.START);
 		
 		if (mStartupState == STARTUP_STATE_PLAY_QUEUED)
@@ -1419,16 +1432,19 @@ public class HLSPlayerViewController extends RelativeLayout implements
 
 	@Override
 	public void switchQualityTrack(int newIndex) {
+		Log.i("HLSPlayerViewController.switchQualityTrack", "Trying to switch to quality: " + newIndex);
 		if (mStreamHandler != null)
 		{
 			int ql = mStreamHandler.getQualityLevels();
-			if (newIndex >= 0 && newIndex < ql -1)
+			if (newIndex >= 0 && newIndex < ql)
 			{
 				postQualityTrackSwitchingStart(mQualityLevel, newIndex);
 				mQualityLevel = newIndex;
+				mStreamHandler.initiateQualityChange(mQualityLevel);
 			}
 			else
 			{
+				Log.w("HLSPlayerViewController.switchQualityTrack", "New Quality Index is outside the range of qualities (0..." + ql + ")");
 				postQualityTrackSwitchingEnd(mQualityLevel);
 			}
 		}
@@ -1466,7 +1482,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		mOnQualitySwitchingListener = listener;		
 	}
 	
-	private void postQualityTrackSwitchingStart(final  int oldTrackIndex, final int newTrackIndex  )
+	public void postQualityTrackSwitchingStart(final  int oldTrackIndex, final int newTrackIndex  )
 	{
 		if (mOnQualitySwitchingListener != null)
 		{
@@ -1480,7 +1496,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		}
 	}
 	
-	private void postQualityTrackSwitchingEnd(final int newTrackIndex  )
+	public void postQualityTrackSwitchingEnd(final int newTrackIndex  )
 	{
 		if (mOnQualitySwitchingListener != null)
 		{
@@ -1517,7 +1533,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	@Override
 	public void setBufferTime(int newTime) {
 		mTimeToBuffer = newTime;
-		if (mStreamHandler != null && mStreamHandler.manifest != null)
+		if (mStreamHandler != null && mStreamHandler.baseManifest != null)
 		{
 			SetSegmentsToBuffer();
 		}
@@ -1539,5 +1555,4 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		if (mStreamHandler != null) return mStreamHandler.lastQuality;
 		return 0;
 	}
-
 }
