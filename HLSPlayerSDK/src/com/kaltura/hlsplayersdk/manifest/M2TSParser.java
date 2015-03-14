@@ -94,11 +94,6 @@ public class M2TSParser implements PacketStreamHandler
 		}
 	}
 	
-	public class Types
-	{
-		
-	}
-	
 	public class PESPacketStream
 	{
 		public PESPacketStream ( double pts, double dts)
@@ -179,10 +174,8 @@ public class M2TSParser implements PacketStreamHandler
 	{
 		if (_buffer == null)
 		{
-			_buffer = new ByteArray(bytes.length());
+			_buffer = bytes;
 		}
-		
-		_buffer.write(bytes);
 		
 		int cursor = 0;
 		int len = _buffer.length();
@@ -348,19 +341,7 @@ public class M2TSParser implements PacketStreamHandler
 			pts += bytes.unsigned(cursor + 4) & 0xfe;
 			pts /= 2;
 
-			
-			
-//			pts = bytes.array[cursor] & 0x0e;
-//			pts *= 128;
-//			pts += bytes.array[cursor + 1];
-//			pts *= 256;
-//			pts += bytes.array[cursor + 2] & 0xfe;
-//			pts *= 128;
-//			pts += bytes.array[cursor + 3];
-//			pts *= 256;
-//			pts += bytes.array[cursor + 4] & 0xfe;
-//			pts /= 2;
-			
+		
 			if ((ptsDts & 0x01) != 0)
 			{
 				Log.i("M2TSParser.parsePESPacket", bytes.toString(cursor + 5, 5));

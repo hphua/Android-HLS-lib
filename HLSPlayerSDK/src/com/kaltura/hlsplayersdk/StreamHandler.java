@@ -35,6 +35,8 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 	// part of the stream. It's only for testing purposes.
 	private static final boolean SKIP_TO_END_OF_LIVE = true;
 	
+	private final int EDGE_BUFFER_SEGMENT_COUNT = 3;	// The number of segments to keep between playback and live edge.
+	
 	private KnowledgePrepHandler mKnowledgePrepHandler = null;
 	public interface KnowledgePrepHandler
 	{
@@ -80,7 +82,6 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 
 	public int lastSequence = 0;
 	public int altAudioIndex = -1;
-	//private int reloadingAltAudioInstance = -1;
 	private int reloadingAltAudioIndex = -1;
 	private int targetAltAudioIndex = -1;
 	public double lastKnownPlaylistStartTime = 0.0;
@@ -99,16 +100,19 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 
 	private boolean reloadingFromBackup = false;
 	private ManifestStream primaryStream = null;
-	private Timer reloadTimer = null;
 	private int sequenceSkips = 0;
 	private boolean stalled = false;
 	private boolean closed = false;
 	private HashMap<String, Integer> badManifestMap = new HashMap<String, Integer>();
-	private static final int maxFailedManifestTries = 3; // The number of retries a manifest may occur before we give up on it and remove it from our manifest list.
-	private static final int isTooFarBehind = 5; // How far behind a stream can be before we log a message warning of significant delays
-
-	private long mTimerDelay = 10000;
 	
+	
+	/*
+	 * BestEffortRequest
+	 * 
+	 * A container for keeping track of a segment used in determining the time base
+	 * of a particular stream. 
+	 *  
+	 */
 	public class BestEffortRequest
 	{
 		public final static int TYPE_VIDEO = 0;
@@ -129,8 +133,6 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 			if (seg.altAudioSegment != null) // Don't trust the type they send to have knowledge of the alt audio stream
 				type = TYPE_AUDIO_VIDEO;
 		}
-		
-
 	}
 	
 	
@@ -149,7 +151,8 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 		return BestEffortRequest.TYPE_VIDEO;
 	}
 	
-	private List<BestEffortRequest> _bestEffortRequests  = new ArrayList<BestEffortRequest>();
+	
+	private List<BestEffortRequest> _bestEffortRequests = new ArrayList<BestEffortRequest>(); // Active best effort requests
 
 
 	public StreamHandler(ManifestParser parser)
@@ -447,6 +450,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 	{
 		closed = true;
 		stopReloads();
+		stopListeningToBestEffortDownloads();
 	}
 
 	@Override
@@ -931,7 +935,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 		{
 			if (SKIP_TO_END_OF_LIVE)
 			{
-				int idx = Math.max(segments.size() - 2, 0);
+				int idx = Math.max(segments.size() - EDGE_BUFFER_SEGMENT_COUNT, 0);
 				lastSequence = segments.get(idx).id;
 				ManifestSegment seg = segments.get(idx);
 				seg.quality = quality;
@@ -966,8 +970,8 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 			Log.i("StreamHandler.GetFileForTime", "Got out of bound timestamp for time " + time + ". Trying to recover...");
 			
 			ManifestSegment lastSeg = segments.get(segments.size() - 1);
-			if (segments.size() >= 4)
-				lastSeg = segments.get(segments.size() - 3);
+			if (segments.size() >= EDGE_BUFFER_SEGMENT_COUNT + 1)
+				lastSeg = segments.get(segments.size() - EDGE_BUFFER_SEGMENT_COUNT);
 			
 			if (time < segments.get(0).startTime)
 			{
@@ -1359,7 +1363,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 					ByteBuffer buffer = ByteBuffer.allocate((int)HLSSegmentCache.getSize(req.segment.uri));
 					HLSSegmentCache.read(req.segment.uri, 0, buffer.capacity(), buffer);
 					M2TSParser tsParser = new M2TSParser();
-					ByteArray ba = new ByteArray(buffer);
+					ByteArray ba = new ByteArray(HLSSegmentCache.getByteArray(req.segment.uri));
 					tsParser.appendBytes(ba);
 					
 					long pts = tsParser.pts;
@@ -1475,6 +1479,13 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 			
 			final ManifestParser currentManifest = parser;
 			final ManifestParser newManifest = parser.getReloadChild();
+			
+			if (currentManifest.quality == lastQuality)
+			{
+				// We don't need to do anything since this one matches what we're already playing
+				HLSPlayerViewController.currentController.postQualityTrackSwitchingEnd(lastQuality); // Tell 'em we're done, but haven't switched quality
+				return;
+			}
 			
 			// Make sure we have timebase knowledge			
 			if (!checkAnySegmentKnowledge(newManifest.segments)) // I honestly wouldn't expect any, in many cases

@@ -735,11 +735,19 @@ public class HLSPlayerViewController extends RelativeLayout implements
 			mRenderThread.start();
 		}
 		
-		postDurationChanged();	}
+		postDurationChanged();	
+	}
 	
 	@Override
 	public void onSegmentCompleted(String [] uri) {
-		HLSSegmentCache.cancelCacheEvent(uri[0]);
+		if (uri != null && uri.length > 0)
+			HLSSegmentCache.cancelCacheEvent(uri[0]);
+		else
+		{
+			Log.e("HLSPlayerViewController.onSegmentCompleted", "Unexpected empty uri list. Aborting.");
+			return;
+		}
+		
 		postPlayerStateChange(PlayerStates.START);
 		
 		if (mStartupState == STARTUP_STATE_PLAY_QUEUED)

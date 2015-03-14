@@ -19,8 +19,13 @@ public class ByteArray
 	public ByteArray(byte [] bytes)
 	{
 		array = bytes;
-		_length = bytes.length;
-		position = _length;
+		if (array != null)
+		{
+			_length = bytes.length;
+			position = _length;
+		}
+		else
+			array = new byte[0];
 	}
 	
 	public ByteArray(ByteBuffer bytes)
