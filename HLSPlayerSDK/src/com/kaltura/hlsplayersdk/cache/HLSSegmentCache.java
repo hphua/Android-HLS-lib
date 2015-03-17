@@ -187,7 +187,7 @@ public class HLSSegmentCache
 		{
 			sce.setCryptoIds(cryptoIds);
 			sce.registerSegmentCachedListener(segmentCachedListener, callbackHandler);
-			sce.setWaiting(true);
+			sce.setWaiting(forceWait);
 			if (!sce.isRunning())
 			{
 				HLSSegmentCache.postProgressUpdate(true);
@@ -267,7 +267,7 @@ public class HLSSegmentCache
 	private static long lastTime = System.currentTimeMillis();
 	public static void postProgressUpdate(boolean force)
 	{
-		if (System.currentTimeMillis() - 10 > lastTime || force)
+		if (System.currentTimeMillis() - 100 > lastTime || force)
 		{
 			lastTime = System.currentTimeMillis();
 

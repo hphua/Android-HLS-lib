@@ -372,6 +372,8 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
     String quality = "";
     String altAudio = "";
     
+    int progressCount = 0;
+    
     public void updateDebugText()
     {
     	TextView tv = (TextView)findViewById(R.id.subTitleView);
@@ -486,7 +488,8 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 	@Override
 	public void onProgressUpdate(int progress) {
 		Log.i("VideoPlayer.OnProgressUpdate", "Download Progress: " + progress);
-		progressText = "Progress: " + progress + "%\n";
+		++progressCount;
+		progressText = "Progress: " + progress + "(" + progressCount + ")" + "%\n";
 		updateDebugText();
 
 

@@ -10,8 +10,8 @@ import com.loopj.android.http.*;
 public class SegmentCacheItem {
 	public String uri;
 	public byte[] data;
-	public boolean running;
-	public boolean waiting;
+	public boolean running = false;
+	public boolean waiting = false;
 	public long lastTouchedMillis;
 	public long downloadStartTime = 0;
 	public long downloadCompletedTime = 0;
@@ -129,8 +129,8 @@ public class SegmentCacheItem {
 			
 			downloadCompletedTime = System.currentTimeMillis();
 			Log.i("SegmentCacheItem.postSegmentSucceeded", "Got " + (responseData != null ? responseData.length + " bytes for " : " null document for " )  + uri);
-			updateProgress(responseData != null ? responseData.length : 0, expectedSize);
-			cacheEntry.updateProgress(true);
+			if (waiting) updateProgress(responseData != null ? responseData.length : 0, expectedSize);
+			if (waiting) cacheEntry.updateProgress(true);
 			running = false; // We are still running until we've posted the success!!!
 			cacheEntry.postItemSucceeded(this, statusCode);
 			
@@ -148,7 +148,7 @@ public class SegmentCacheItem {
 		
 		bytesDownloaded = bytesWritten;
 		expectedSize = totalBytesExpected;
-		cacheEntry.updateProgress(false);
+		if (waiting) cacheEntry.updateProgress(false);
 
 	}
 	

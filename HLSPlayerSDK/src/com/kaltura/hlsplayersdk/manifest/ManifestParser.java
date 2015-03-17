@@ -426,6 +426,13 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 			if (playLists.get(i).manifest == null)
 				playLists.remove(i);
 		}
+		
+		// Set the qualities
+		for (int i = 0; i < playLists.size(); ++i)
+			playLists.get(i).manifest.quality = i;
+		
+		for (int i = 0; i < streams.size(); ++i)
+			streams.get(i).manifest.quality = i;
 	}
 	
 	private void linkBackupStreams(int startIndex, int count)

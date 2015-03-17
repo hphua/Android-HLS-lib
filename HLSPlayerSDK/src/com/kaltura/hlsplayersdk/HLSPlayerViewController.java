@@ -1338,28 +1338,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 			{
 				postAudioTrackSwitchingStart( getStreamHandler().getAltAudioCurrentIndex(), newIndex);
 				
-				boolean success = getStreamHandler().setAltAudioTrack(newIndex);
-				
-				if (!success) return; // Don't bother trying to change when there's nothing to change to
-				
-				while (getStreamHandler() != null && getStreamHandler().waitingForAudioReload)
-				{
-					try
-					{
-						Thread.sleep(30);
-					}
-					catch (InterruptedException e)
-					{
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-				}
-				
-				if (getStreamHandler() == null) return; // don't seek if the app has exited while waiting for reload.
-				
-				seekToCurrentPosition();
-
-				postAudioTrackSwitchingEnd( getStreamHandler().getAltAudioCurrentIndex());
+				getStreamHandler().setAltAudioTrack(newIndex);
 			}
 		});
 		
@@ -1375,9 +1354,8 @@ public class HLSPlayerViewController extends RelativeLayout implements
 
 		postAudioTrackSwitchingStart( getStreamHandler().getAltAudioCurrentIndex(), newAudioIndex);
 		
-		boolean success = getStreamHandler().setAltAudioTrack(newAudioIndex); 
+		getStreamHandler().setAltAudioTrack(newAudioIndex); 
 
-		postAudioTrackSwitchingEnd( getStreamHandler().getAltAudioCurrentIndex());
 	}
 	
 	private OnAudioTracksListListener mOnAudioTracksListListener = null;
@@ -1419,7 +1397,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		}
 	}
 	
-	private void postAudioTrackSwitchingEnd(final int newTrackIndex  )
+	public void postAudioTrackSwitchingEnd(final int newTrackIndex  )
 	{
 		if (mOnAudioTrackSwitchingListener != null)
 		{
