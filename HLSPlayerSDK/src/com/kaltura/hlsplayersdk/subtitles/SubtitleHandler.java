@@ -6,6 +6,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.Vector;
 
+import com.kaltura.hlsplayersdk.cache.HLSSegmentCache;
 import com.kaltura.hlsplayersdk.manifest.ManifestParser;
 import com.kaltura.hlsplayersdk.manifest.ManifestPlaylist;
 
@@ -20,15 +21,30 @@ public class SubtitleHandler implements OnSubtitleParseCompleteListener, Manifes
 	public SubtitleHandler(ManifestParser baseManifest)
 	{
 		mManifest = baseManifest;
+		initialize();
 	}
 	
 	public void initialize()
 	{
-		ManifestParser man = getManifestForLanguage(lastLanguage);
-		if (man != null && !man.streamEnds && man.segments.size() > 0)
-		{
-			
-		}
+		Thread t = new Thread(new Runnable() {
+			@Override
+			public void run()
+			{
+				ManifestParser man = getManifestForLanguage(lastLanguage);
+				if (man != null && !man.streamEnds && man.subtitles.size() > 0)
+				{
+					double accum = 0.0;
+					man.subtitles.get(0).load();
+					for (int m = 0; m < man.subtitles.size(); ++m)
+					{
+						accum = man.subtitles.get(m).setTimeWindowStart(accum);
+						accum += man.subtitles.get(m).segmentTimeWindowDuration;
+					}
+				}
+			}
+		}, "Subtitle Initialize Thread");
+		t.start();
+
 	}
 	
 	public boolean hasSubtitles()
@@ -99,6 +115,9 @@ public class SubtitleHandler implements OnSubtitleParseCompleteListener, Manifes
 				precacheSegmentAtTime(time + 10, language);
 			}
 			
+			for (TextTrackCue cue : cues)
+				Log.i("SubtitleHandler.update", "Returning:" + cue);
+			
 			return cues;
 		}
 		return null;
@@ -107,7 +126,10 @@ public class SubtitleHandler implements OnSubtitleParseCompleteListener, Manifes
 	public void precacheSegmentAtTime(double time, int language)
 	{
 		SubTitleSegment ntsp = getSegmentForTime(time, language);
-		if (ntsp != null) ntsp.precache();
+		if (ntsp != null)
+		{
+			ntsp.precache();
+		}
 	}
 	
 	private SubTitleSegment getSegmentForTime(double time, int language)
@@ -131,8 +153,9 @@ public class SubtitleHandler implements OnSubtitleParseCompleteListener, Manifes
 			SubTitleSegment stp = mp.subtitles.get(i);
 			if (stp != null)
 			{
-				if (time >= stp.segmentTimeWindowStart && time <= stp.segmentTimeWindowStart + stp.segmentTimeWindowDuration)
+				if ( stp.timeInSegment(time))
 				{
+					//Log.i("SubtitleHandler.getSegmentForTime", "Returning segment " + i + " for time " + time + ". Window = " + stp.segmentTimeWindowStart + "-->" + (stp.segmentTimeWindowStart + stp.segmentTimeWindowDuration));
 					return stp;
 				}
 			}
@@ -161,8 +184,8 @@ public class SubtitleHandler implements OnSubtitleParseCompleteListener, Manifes
 	}
 
 	@Override
-	public void onSubtitleParserComplete(SubTitleSegment parser) {
-		// TODO Auto-generated method stub
+	public void onSubtitleParserComplete(SubTitleSegment segment) {
+		//segment.setTimeWindowStart(segment.segmentTimeWindowStart); // Force it to recalculate the times
 		
 	}
 	

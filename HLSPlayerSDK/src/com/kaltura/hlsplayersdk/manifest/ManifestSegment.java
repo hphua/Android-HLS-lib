@@ -32,6 +32,11 @@ public class ManifestSegment extends BaseManifestItem
 
 	public int cryptoId = -1;
 	
+	public double endTime()
+	{
+		return startTime + duration;
+	}
+	
 	@Override
 	public String toString()
 	{

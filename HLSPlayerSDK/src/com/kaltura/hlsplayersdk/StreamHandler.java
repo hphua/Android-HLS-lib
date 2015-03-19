@@ -36,7 +36,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 	// part of the stream. It's only for testing purposes.
 	private static final boolean SKIP_TO_END_OF_LIVE = true;
 	
-	private final int EDGE_BUFFER_SEGMENT_COUNT = 3;	// The number of segments to keep between playback and live edge.
+	private static final int EDGE_BUFFER_SEGMENT_COUNT = 3;	// The number of segments to keep between playback and live edge.
 	
 	private KnowledgePrepHandler mKnowledgePrepHandler = null;
 	public interface KnowledgePrepHandler
@@ -177,11 +177,11 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 		if (streamEnds())
 		{
 			//initiateBestEffortRequest(Integer.MAX_VALUE, lastQuality);
-			initiateBestEffortRequest(0, lastQuality);
+			initiateBestEffortRequest(0, lastQuality, true);
 		}
 		else
 		{
-			initiateBestEffortRequest(Integer.MAX_VALUE, lastQuality);
+			initiateBestEffortRequest(Integer.MAX_VALUE, lastQuality, true);
 		}
 	}
 	
@@ -296,12 +296,19 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 		for (int i = 0; i < segments.size(); ++i)
 		{
 			ManifestSegment seg = segments.get(i);
+			ManifestSegment segToReturn = null;
 			if (time < seg.startTime && i == 0) // If we're the first one in the list, return us, even if time is less than our initial start time
-				return seg;
+				segToReturn = seg;
 			else if (time < seg.startTime) // If we're not the first one in the list, if it's less than our start time, return the previous one
-				return segments.get(i - 1);
+				segToReturn = segments.get(i - 1);
 			else if (i == segments.size() - 1 && time >= seg.startTime && time < seg.startTime + seg.duration) // If we're the last one in the list, return us if the time is within our duration
-				return seg;
+				segToReturn = seg;
+			
+			if (segToReturn != null)
+			{
+				Log.i("StreamHandler.getSegmentContainingTime", "For Time " + time + ", returning segment: " + segToReturn);
+				return segToReturn;
+			}
 		}
 		
 		// Find matches
@@ -330,7 +337,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 		for (int i = 0; i < segments.size(); ++i)
 		{
 			ManifestSegment seg = segments.get(i);
-			Log.i("StreamHandler.getSegmentContainingTime", "#" + i + " id=" + seg.id + " start=" + seg.startTime + " end=" + (seg.startTime + seg.duration));
+			Log.i("StreamHandler.getSegmentContainingTime", "#" + i + " id=" + seg.id + " start=" + seg.startTime + " end=" + (seg.startTime + seg.duration) + " Segment=" + seg);
 		}
 		
 		return null;
@@ -608,13 +615,13 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 					&& _bestEffortRequests.size() == 0)
 			{
 				Log.i("StreamHandler.onReloadComplete", "(A) Encountered a live/VOD manifest with no timebase knowledge. Requesting newest segment via best effort path for quality " + reloadingQuality);
-				initiateBestEffortRequest(Integer.MAX_VALUE, reloadingQuality, newManifest, bestEffortTypeFromString( newManifest.type) );
+				initiateBestEffortRequest(Integer.MAX_VALUE, reloadingQuality, newManifest, bestEffortTypeFromString( newManifest.type), false );
 			}
 			else if (!checkAnySegmentKnowledge(currentManifest.segments)
 					&& _bestEffortRequests.size() == 0)
 			{
 				Log.i("StreamHandler.onReloadComplete", "(B) Encountered a live/VOD manifest with no timebase knowledge. request newest segment via best efort path for quality " + reloadingQuality);
-				initiateBestEffortRequest(Integer.MAX_VALUE, lastQuality, currentManifest, bestEffortTypeFromString( currentManifest.type));
+				initiateBestEffortRequest(Integer.MAX_VALUE, lastQuality, currentManifest, bestEffortTypeFromString( currentManifest.type), false);
 			}
 			
 			if (!checkAnySegmentKnowledge(newManifest.segments) && !checkAnySegmentKnowledge(currentManifest.segments))
@@ -845,6 +852,8 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 	{
 		if (audioManifest == null || audioManifest.segments == null || audioManifest.segments.size() == 0) return null;
 		
+		if (index < 0) index = 0;
+		
 		if (index >= 0 && index < audioManifest.segments.size())
 		{
 			if (audioManifest != null)
@@ -860,6 +869,9 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 	private ManifestSegment getSegmentForIndex(ManifestParser curManifest, int index, int quality)
 	{
 		if (curManifest == null || curManifest.segments == null || curManifest.segments.size() == 0) return null;
+		
+		if (index < 0) index = 0;
+		
 		ManifestSegment seg = curManifest.segments.get(index);
 
 		seg.quality = quality;
@@ -874,7 +886,28 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 	{
 		if (audioManifest != null)
 		{
+			updateSegmentTimes(audioManifest.segments);
 			ManifestSegment audioSegment = getSegmentContainingTime(audioManifest.segments, segment.startTime);
+			if (audioSegment != null &&  !testSegmentMatch(segment, audioSegment))
+			{
+				if (audioSegment.startTime < segment.startTime)
+				{
+					 ManifestSegment tempAudioSeg = getSegmentBySequence(audioManifest.segments, audioSegment.id + 1);
+					 if (tempAudioSeg != null && testSegmentMatch(segment, tempAudioSeg))
+					 {
+						 audioSegment = tempAudioSeg;
+					 }
+				}
+				else if (audioSegment.startTime > segment.startTime)
+				{
+					 ManifestSegment tempAudioSeg = getSegmentBySequence(audioManifest.segments, audioSegment.id - 1);
+					 if (tempAudioSeg != null && testSegmentMatch(segment, tempAudioSeg))
+					 {
+						 audioSegment = tempAudioSeg;
+					 }
+					
+				}
+			}
 			if (audioSegment == null)
 				audioSegment = getSegmentBySequence(audioManifest.segments, segment.id); // backup plan, in case the start times are out of sequence
 			
@@ -894,13 +927,68 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 		}
 		return true;
 	}
+
+	private boolean testSegmentMatch(ManifestSegment seg, ManifestSegment aaSeg)
+	{
+		if (aaSeg == null) return false;
+		boolean match = false;
+		
+		if (seg.startTime < aaSeg.startTime)
+		{
+			if (seg.endTime() < aaSeg.endTime())
+			{
+				if (aaSeg.startTime - seg.startTime < seg.duration / 2)
+				{
+					// We likely have a match
+					return true;
+				}
+			}
+			
+		}
+		else if (seg.startTime > aaSeg.startTime)
+		{
+			if (seg.endTime() > aaSeg.endTime())
+			{
+				if (seg.startTime - aaSeg.startTime < seg.duration / 2)
+				{
+					// We likely have a match
+					return true;
+				}
+			}
+		}
+		else if (seg.startTime == aaSeg.startTime)
+		{
+			return true;
+		}
+		return false;
+	}
 	
 	private boolean attachAltAudio(ManifestSegment segment, double time, ManifestParser audioManifest)
 	{
 		if (audioManifest != null)
 		{
-			
+			updateSegmentTimes(audioManifest.segments);
 			ManifestSegment audioSegment = getSegmentContainingTime(audioManifest.segments, time);
+			if (audioSegment != null &&  !testSegmentMatch(segment, audioSegment))
+			{
+				if (audioSegment.startTime < segment.startTime)
+				{
+					 ManifestSegment tempAudioSeg = getSegmentBySequence(audioManifest.segments, audioSegment.id + 1);
+					 if (tempAudioSeg != null && testSegmentMatch(segment, tempAudioSeg))
+					 {
+						 audioSegment = tempAudioSeg;
+					 }
+				}
+				else if (audioSegment.startTime > segment.startTime)
+				{
+					 ManifestSegment tempAudioSeg = getSegmentBySequence(audioManifest.segments, audioSegment.id - 1);
+					 if (tempAudioSeg != null && testSegmentMatch(segment, tempAudioSeg))
+					 {
+						 audioSegment = tempAudioSeg;
+					 }
+					
+				}
+			}
 			
 			Log.i("StreamHandler.attachAltAudio", "getting alt audio segment to match segment @ " + time + " : " + segment);
 			Log.i("StreamHandler.attachAltAudio", "altAudioManifest.getSegmentContainingTime returned=" + audioSegment);
@@ -932,7 +1020,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 		{
 			// We may also need to establish a timebase
 			Log.i("StreamHandler.getFileForTime", "Seeking without timebase; initiating reuest.");
-			initiateBestEffortRequest(Integer.MAX_VALUE, quality);
+			initiateBestEffortRequest(Integer.MAX_VALUE, quality, false);
 			
 			while (!checkAnySegmentKnowledge(segments) && _bestEffortRequests.size() > 0)
 			{
@@ -1048,7 +1136,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 			
 			if (_bestEffortRequests.size() == 0)
 			{
-				initiateBestEffortRequest(Integer.MAX_VALUE, quality);
+				initiateBestEffortRequest(Integer.MAX_VALUE, quality, false);
 				stalled = true;
 				return null;
 			}
@@ -1222,12 +1310,12 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 	}
 	
 
-	private void initiateBestEffortRequest(int nextFragmentId, int quality)
+	private void initiateBestEffortRequest(int nextFragmentId, int quality, boolean wait)
 	{
-		initiateBestEffortRequest(nextFragmentId, quality, null, BestEffortRequest.TYPE_VIDEO);
+		initiateBestEffortRequest(nextFragmentId, quality, null, BestEffortRequest.TYPE_VIDEO, wait);
 	}
 	
-	private void initiateBestEffortRequest(int nextFragmentId, int quality, ManifestParser newMan, int type)
+	private void initiateBestEffortRequest(int nextFragmentId, int quality, ManifestParser newMan, int type, boolean wait)
 	{
 		/// if we had a pending BEF download, invalidate it
 		stopListeningToBestEffortDownloads();
@@ -1263,10 +1351,10 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 			return;
 		}
 		
-		if (nextFragmentId > segments.size() - 1 || nextFragmentId == Integer.MAX_VALUE)
+		if (nextFragmentId > segments.size() - EDGE_BUFFER_SEGMENT_COUNT || nextFragmentId == Integer.MAX_VALUE)
 		{
 			Log.i("StreamHandler.initiateBestEffortRequest", "Capping to end of segment list " + (segments.size() - 1));
-			nextFragmentId = segments.size() - 1;
+			nextFragmentId = segments.size() - EDGE_BUFFER_SEGMENT_COUNT;
 		}
 		
 		ManifestSegment seg = null;
@@ -1280,7 +1368,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 		}
 		_bestEffortRequests.add(new BestEffortRequest(seg, type));
 		
-		HLSSegmentCache.precache(seg, false, bestEffortListener, HLSPlayerViewController.getHTTPResponseThreadHandler());
+		HLSSegmentCache.precache(seg, wait, bestEffortListener, HLSPlayerViewController.getHTTPResponseThreadHandler());
 	}
 	
 	// use this to clear a specific besteffort download
@@ -1379,7 +1467,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 			offset += len;
 		}
 		
-		Log.i("StreamHandler.bestEffortListener.onSegmentCompleted", "Found PTS ( " + pts + " ) in first " + offset + " bytes for " + uri);
+		Log.i("StreamHandler.bestEffortListener.onSegmentCompleted", "Found PTS ( " + pts + "/" + ((long)(((double)pts / (double)90000) * (double)1000 * (double)1000)) + " )  in first " + offset + " bytes for " + uri);
 
 		return pts;
 	}
@@ -1547,7 +1635,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 			if (!checkAnySegmentKnowledge(newManifest.segments)) // I honestly wouldn't expect any, in many cases
 			{
 				Log.i("StreamHandler.onReloadComplete", "(A) Encountered a live/VOD manifest with no timebase knowledge. Requesting newest segment via best effort path for quality " + reloadingQuality);
-				initiateBestEffortRequest(Integer.MAX_VALUE, quality, newManifest, bestEffortTypeFromString( newManifest.type) );
+				initiateBestEffortRequest(Integer.MAX_VALUE, quality, newManifest, bestEffortTypeFromString( newManifest.type) , false);
 			}
 
 			// If we don't have timebase knowledge, we need to wait until we have it.
@@ -1661,7 +1749,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 			if (!checkAnySegmentKnowledge(newManifest.segments)) // I honestly wouldn't expect any, in many cases
 			{
 				Log.i("StreamHandler.altAudioChangeReloadListener.onReloadComplete", "(A) Encountered an altAudio manifest with no timebase knowledge. Requesting newest segment via best effort path for index " + currentManifest.quality);
-				initiateBestEffortRequest(Integer.MAX_VALUE, newManifest.quality, newManifest, bestEffortTypeFromString(newManifest.type));
+				initiateBestEffortRequest(Integer.MAX_VALUE, newManifest.quality, newManifest, bestEffortTypeFromString(newManifest.type), false);
 			}
 			
 			// If we don't have timebase knowledge, we need to wait until we have it.
