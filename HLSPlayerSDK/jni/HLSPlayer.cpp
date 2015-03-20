@@ -995,8 +995,8 @@ bool HLSPlayer::Play(double time)
 
 	if (time > 0)
 	{
-		ReadUntilTime(time - segTime);
-		if (mJAudioTrack) mJAudioTrack->ReadUntilTime(time - segTime);
+		ReadUntilTime(time);
+		if (mJAudioTrack) mJAudioTrack->ReadUntilTime(time);
 	}
 
 	LOGI("Starting audio playback");
@@ -1166,14 +1166,29 @@ int HLSPlayer::Update()
 
 		if (err != OK)
 		{
-			LOGI("err=%s,%x  Line: %d", strerror(-err), -err, __LINE__);
 			switch (err)
 			{
-			case INFO_FORMAT_CHANGED:
 			case INFO_DISCONTINUITY:
+				LOGI("Discontinuity");
+				mDataSource->logContinuityInfo();
+				if (mVideoBuffer == NULL)
+				{
+					return 0;
+				}
+				break;
 			case INFO_OUTPUT_BUFFERS_CHANGED:
 				// If it doesn't have a valid buffer, maybe it's informational?
+				LOGI("Output Buffers Changed");
+				mDataSource->logContinuityInfo();
 				if (mVideoBuffer == NULL) 
+				{
+					return 0;
+				}
+				break;
+			case INFO_FORMAT_CHANGED:
+				LOGI("Format Changed");
+				mDataSource->logContinuityInfo();
+				if (mVideoBuffer == NULL)
 				{
 					return 0;
 				}
@@ -1190,6 +1205,7 @@ int HLSPlayer::Update()
 				return -1;
 				break;
 			default:
+				LOGI("Unhandled error err=%s,%x  Line: %d", strerror(-err), -err, __LINE__);
 				SetState(WAITING_ON_DATA);
 				// deal with any errors
 				// in the sample code, they're sending the video event, anyway
@@ -1223,7 +1239,7 @@ int HLSPlayer::Update()
 				{
 					LOGTIMING("Setting mVideoStartDelta to %lld", timeUs);
 					mLastVideoTimeUs = timeUs;
-					mVideoStartDelta = timeUs;
+
 				}
 
 				mVideoFrameDelta = timeUs - mLastVideoTimeUs;
@@ -1241,9 +1257,10 @@ int HLSPlayer::Update()
 			mLastVideoTimeUs = timeUs;
 			if (delta < -10000) // video is running ahead
 			{
-				LOGTIMING("Video is running ahead - waiting til next time : delta = %lld", delta);
+				unsigned long sleepyTime = (-delta >  50000 ? 40000 : -10000 - delta);
+				LOGTIMING("Video is running ahead - waiting til next time : delta = %lld : sleeping %lld", delta, -10000 - delta);
 				//sched_yield();
-				usleep(-10000 - delta);
+				usleep(sleepyTime);
 				break; // skip out - don't render it yet
 			}
 			else if (delta > 40000) // video is running behind
@@ -2142,7 +2159,7 @@ int32_t HLSPlayer::GetCurrentTimeMS()
 	if (mJAudioTrack != NULL)
 	{
 		LOGI("mSTartTimeMS=%d", mStartTimeMS);
-		return (mJAudioTrack->GetTimeStamp() / 1000) + mStartTimeMS;
+		return (mJAudioTrack->GetTimeStamp() / 1000);
 	}
 	return 0;
 }
@@ -2332,36 +2349,51 @@ void HLSPlayer::Seek(double time)
 
 	// Retrieve the current quality markers
 	int curQuality = mDataSource->getQualityLevel();
+	LOGI("curQuality=%d", curQuality);
 	int curAudioTrack = -1;
 	if (mAlternateAudioDataSource.get()) curAudioTrack = mAlternateAudioDataSource->getQualityLevel();
+	LOGI("curAudioTrack=%d", curAudioTrack);
 
 	mDataSource.clear();
 	mAlternateAudioDataSource.clear();
 	mDataSourceCache.clear();
+	LOGI("Data sources cleared");
 
 	// Need to request new segment because we killed all the data sources
 	double segTime = RequestSegmentForTime(time);
+	LOGI("segTime=%f", segTime);
 
 	if (!mDataSource.get())
 	{
 		SetState(CUE_STOP);
+		LOGI("No data source - stopping");
 		return;
 	}
 	mDataSource->logContinuityInfo();
 
 	// Retrieve the new quality markers
 	int newQuality = mDataSource->getQualityLevel();
+	LOGI("newQuality=%d", newQuality);
 	int newAudioTrack = -1;
 	if (mAlternateAudioDataSource.get()) newAudioTrack = mAlternateAudioDataSource->getQualityLevel();
+	LOGI("newAudioTrack=%d", newAudioTrack);
 
+	LOGI("Requesting Next Segment");
 	RequestNextSegment();
+	LOGI("RequestNextSegment completed");
 
 	mStartTimeMS = (mDataSource->getStartTime() * 1000);
+	LOGI("mStartTimeMS = %d", mStartTimeMS);
 
-	if (time < 0) time = segTime;
+	if (time < 0)
+	{
+		LOGI("time < 0 - setting to segTime=%f", segTime);
+		time = segTime;
+	}
 	LOGI("Seeking To: %f | Segment Start Time = %f", time, segTime);
 
 	int segCount = ((HLSDataSource*) mDataSource.get())->getPreloadedSegmentCount();
+	LOGI("segCount=%d", segCount);
 	if (!InitSources())
 	{
 		LOGE("InitSources failed!");
@@ -2376,6 +2408,7 @@ void HLSPlayer::Seek(double time)
 
 	if (err == OK)
 	{
+		LOGI("Video source started - Ensuring audio player is created and set up");
 		if (!EnsureAudioPlayerCreatedAndSourcesSet())
 		{
 			LOGE("Setting Audio Tracks failed!");
@@ -2386,32 +2419,44 @@ void HLSPlayer::Seek(double time)
 		LOGI("Video Track failed to start: %s : %d", strerror(-err), __LINE__);
 	}
 
+	if (mJAudioTrack) mJAudioTrack->forceTimeStampUpdate();
+
 	bool doFormatChange = false;
-	doFormatChange = !ReadUntilTime(time - segTime);
+
+	LOGI("Reading until time %f", time);
+	doFormatChange = !ReadUntilTime(time);
+	LOGI("doFormatChange = %s", doFormatChange ? "True":"False");
+
 	if (!doFormatChange && mJAudioTrack)
 	{
-		doFormatChange = (!mJAudioTrack->ReadUntilTime(time - segTime));
+		LOGI("Reading Audio Track until time %f", time);
+		doFormatChange = (!mJAudioTrack->ReadUntilTime(time));
+		LOGI("doFormatChange = %s", doFormatChange ? "True":"False");
 	}
 
 
 	if (doFormatChange)
 	{
+		LOGI("Applying Format Change");
 		ApplyFormatChange();
 	}
 	else
 	{
 		LOGI("Segment Count %d", segCount);
-		SetState(PLAYING);
 		if (mJAudioTrack)
 		{
+			LOGI("Starting audio track");
 			// Call Start instead of Play, in order to ensure that the internal time values are correctly starting from zero.
 			mJAudioTrack->Start();
 		}
-
+		LOGI("NotifyingFormatChange( %d, %d, %d, %d )", curQuality, newQuality, curAudioTrack, newAudioTrack);
 		NotifyFormatChange(curQuality, newQuality, curAudioTrack, newAudioTrack);
 	}
 
+	LOGI("Calling NoteHWRendererMode( %s, %d, %d, 4)", mUseOMXRenderer ? "True":"False", mWidth, mHeight );
 	NoteHWRendererMode(mUseOMXRenderer, mWidth, mHeight, 4);
+	SetState(PLAYING);
+
 }
 
 bool HLSPlayer::ReadUntilTime(double timeSecs)

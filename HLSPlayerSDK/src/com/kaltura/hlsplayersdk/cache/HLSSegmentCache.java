@@ -12,6 +12,7 @@ import android.os.Looper;
 import android.util.Log;
 
 import com.kaltura.hlsplayersdk.HLSPlayerViewController;
+import com.kaltura.hlsplayersdk.manifest.ManifestSegment;
 import com.loopj.android.http.*;
 
 public class HLSSegmentCache 
@@ -192,6 +193,23 @@ public class HLSSegmentCache
 				HLSSegmentCache.postProgressUpdate(true);
 				sce.notifySegmentCached();
 			}
+		}
+	}
+	
+	/*
+	 * precache
+	 * 
+	 * Precache a segment, accounting for the presence of alt audio
+	 */
+	static public void precache(ManifestSegment segment, boolean forceWait, SegmentCachedListener segmentCachedListener, Handler callbackHandler)
+	{
+		if (segment.altAudioSegment != null)
+		{
+			HLSSegmentCache.precache(new String[] {segment.uri, segment.altAudioSegment.uri}, new int [] { segment.cryptoId, segment.altAudioSegment.cryptoId }, forceWait, segmentCachedListener, callbackHandler);
+		}
+		else
+		{
+			HLSSegmentCache.precache(segment.uri, segment.cryptoId, forceWait, segmentCachedListener, callbackHandler);
 		}
 	}
 	
@@ -456,6 +474,66 @@ public static String bytesToHex(ByteBuffer bytes) {
 
 			// Return how much we read.
 			return size;			
+		}
+	}
+	
+	
+	static public byte[] getByteArray(String segmentUri)
+	{
+		boolean adjusted = false;
+
+		initialize();
+		
+		// Do we have a cache entry for the segment? Populate if it doesn't exist.
+		SegmentCacheEntry sce = populateCache( new String[] { segmentUri });
+		
+		// Sanity check.
+		if(sce == null)
+		{
+			Log.e("HLS Cache", "Failed to populate cache! Aborting...");
+			return null;
+		}
+		
+		waitForLoad(sce);
+		
+		if (sce.dataSize() == 0)
+		{
+			Log.e("HLS Cache", "Segment Data is nonexistant or empty");
+			return null;
+		}
+		
+		synchronized(segmentCache)
+		{
+			SegmentCacheItem sci = sce.getItem(segmentUri);
+
+			// Ensure decrypted.
+			sci.ensureDecryptedTo(sci.data.length);
+
+			// If we have decrypted to the end, look for padding and adjust length.
+			if(sci.isFullyDecrypted() && sci.hasCrypto() && sci.forceSize == -1)
+			{
+				// Look for padding.
+				byte padByte = sci.data[sci.data.length - 1];
+
+				boolean isPadded = true;
+				for(int i=sci.data.length-padByte; i<sci.data.length; i++)
+				{
+					if(sci.data[i] == padByte)
+						continue;
+
+					isPadded = false;
+					break;
+				}
+
+				if(isPadded)
+				{
+					// Note new size.
+					sci.forceSize = sci.data.length - padByte;
+					Log.i("HLS Cache", "Forcing segment size to " + sci.forceSize);
+				}
+			} 
+
+			return sci.data;
 		}
 	}
 	

@@ -398,8 +398,9 @@ android_video_shim::MediaSource23 *MPEG2TSExtractor::getTrackProxy23(size_t inde
 
 MPEG2TSExtractor::MPEG2TSExtractor(const sp<HLSDataSource> &source)
     : mDataSource(source),
-      mParser(new ATSParser),
+      mParser(new ATSParser(ATSParser::TS_TIMESTAMPS_ARE_ABSOLUTE)),
       mOffset(0) {
+	LOGV("mParser->flags=%d", mParser->getFlags());
     init();
 }
 

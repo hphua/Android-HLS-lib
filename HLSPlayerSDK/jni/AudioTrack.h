@@ -45,7 +45,8 @@ public:
 	void shutdown();
 
 	int64_t GetTimeStamp();
-	void SetTimeStampOffset(double offsetSecs);
+
+	void forceTimeStampUpdate();
 
 	int getBufferSize();
 
@@ -53,6 +54,8 @@ public:
 
 	bool ReadUntilTime(double timeSecs);
 private:
+	void SetTimeStampOffset(double offsetSecs);
+
 	jclass mCAudioTrack;
 	jmethodID mAudioTrack;
 	jmethodID mGetMinBufferSize;
@@ -83,6 +86,7 @@ private:
 	bool mWaiting;
 
 	double mTimeStampOffset;
+	bool mNeedsTimeStampOffset;
 
 	long long samplesWritten;
 

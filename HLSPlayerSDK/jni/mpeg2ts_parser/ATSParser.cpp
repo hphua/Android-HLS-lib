@@ -454,7 +454,11 @@ int64_t ATSParser::Program::convertPTSToTimestamp(uint64_t PTS) {
         }
     }
 
+
+
     int64_t timeUs = (PTS * 100) / 9;
+
+    //LOGTIMING("PTS: %lld timeUs: %lld", PTS, timeUs);
 
     if (mParser->mAbsoluteTimeAnchorUs >= 0ll) {
         timeUs += mParser->mAbsoluteTimeAnchorUs;
