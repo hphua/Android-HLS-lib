@@ -25,7 +25,7 @@ public class SubTitleSegment implements SegmentCachedListener {
 	public double segmentTimeWindowDuration = -1;
 	public int id = 0;
 	
-	private String _url;
+	public String _url;
 	private boolean _isLoaded = false;
 	private double _mpegts = 0;
 	private double _localts = 0;
@@ -80,6 +80,11 @@ public class SubTitleSegment implements SegmentCachedListener {
 			if (cue.startTime >= startTime) result.add(cue);
 		}
 		return result;
+	}
+	
+	public void setLoaded()
+	{
+		_isLoaded = true;
 	}
 	
 	public boolean isLoaded()

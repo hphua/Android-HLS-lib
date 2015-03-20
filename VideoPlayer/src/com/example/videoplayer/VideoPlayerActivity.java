@@ -470,7 +470,7 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 	public void onPlayheadUpdated(int msec) {
 		mLastTimeMS = msec;
 		timeStampText = "Time: " + msec + "\n";
-		Log.i("OnPlayheadUpdated", "Time = " + msec);
+		//Log.i("OnPlayheadUpdated", "Time = " + msec);
 	
 		updateDebugText();
 	}

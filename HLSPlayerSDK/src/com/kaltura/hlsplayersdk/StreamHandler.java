@@ -22,6 +22,7 @@ import com.kaltura.hlsplayersdk.manifest.ManifestPlaylist;
 import com.kaltura.hlsplayersdk.manifest.ManifestReloader;
 import com.kaltura.hlsplayersdk.manifest.ManifestSegment;
 import com.kaltura.hlsplayersdk.manifest.ManifestStream;
+import com.kaltura.hlsplayersdk.subtitles.SubtitleHandler;
 import com.kaltura.hlsplayersdk.types.ByteArray;
 import com.kaltura.hlsplayersdk.types.TrackType;
 
@@ -437,7 +438,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 		return tracks;
 	}
 
-	public void initialize()
+	public void initialize(SubtitleHandler subtitleHandler)
 	{
 		ManifestParser man = getManifestForQuality(lastQuality);
 
@@ -445,6 +446,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 		{
 			reloader.setVideoSource(this, this);
 			reloader.setAltAudioSource(this,  this);
+			reloader.setSubtitleSource(subtitleHandler, subtitleHandler);
 			reloader.start((long) man.segments.get(man.segments.size() - 1).duration * 1000 / 2);
 		}
 	}
@@ -464,13 +466,15 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 	@Override
 	public ManifestParser getVideoManifestToReload()
 	{
-		Log.i("StreamHandler.getVideoManifestToReload", "reloadingQuality=" + reloadingQuality + " mIsRecovering=" + mIsRecovering + " targetQuality=" + targetQuality + " lastQuality=" + lastQuality);
+		Log.i("StreamHandler.getVideoManifestToReload", "reloadingQuality=" + reloadingQuality + " mIsRecovering=" + mIsRecovering + " lastQuality=" + lastQuality);
 		if (mIsRecovering)
 		{
 			attemptRecovery();
 		}
 		else if (reloadingQuality == -1)
 		{
+			// Need to make sure that the quality is set on the backup stream manifest before we try to reload it
+			primaryStream.backupStream.manifest.quality = primaryStream.manifest.quality;
 			return primaryStream.backupStream.manifest;
 		}
 		else
@@ -502,6 +506,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 	@Override
 	public ManifestParser getAltAudioManifestToReload()
 	{
+		Log.i("StreamHandler.getAltAudioManifestToReload", "hasAltAudio = " + hasAltAudio());
 		if (hasAltAudio())
 		{
 			int index = altAudioIndex;
@@ -537,7 +542,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 	@Override
 	public void onReloadComplete(ManifestParser parser)
 	{
-		Log.i("StreamHandler.onReloadComplete", "onReloadComplete last/reload/target: " + lastQuality + "/" + reloadingQuality + "/" + targetQuality);
+		Log.i("StreamHandler.onReloadComplete", "onReloadComplete quality/reloading: " + lastQuality + "/" + reloadingQuality + " | type=" + parser.type);
 
 		if (closed)
 		{
@@ -565,11 +570,11 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 		}
 		
 		boolean isAudio = newManifest.type.equals(ManifestParser.AUDIO);
-
+		boolean isBackupStreamSwitch = (reloadingQuality == -1 && !isAudio);
+		
 		// Handle backup source swaps
 		if (reloadingQuality == -1 && !isAudio)
 		{
-			Log.e("StreamHandler.onReloadComplete", "reloading quality == -1. This shouldn't happen, anymore.");
 			for (int i = 0; i <= baseManifest.streams.size(); ++i)
 			{
 				if (i == baseManifest.streams.size())
@@ -591,106 +596,14 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 		
 		// Need to differentiate between audio and video streams for determining whether we need to do a timestamp request
 		int rid = reloadingQuality;
-		int tid = targetQuality;
 		int lid = lastQuality;
 		if (isAudio)
 		{
 			rid = reloadingAltAudioIndex;
-			tid = targetAltAudioIndex;
 			lid = altAudioIndex;
 		}
 		
-		// If we're not switching quality or going to a backup stream
-		if (rid == lid)
-		{
-			// Do nothing.
-		}
-		else if (rid == tid)
-		{
-			Log.e("StreamHandler.onReloadComplete", "How did we get here? Are we supposed to get here? We're not switching qualities.");
-			// If we are going to a quality level we don't know about, go ahead
-			// and best-effort-fetch a segment from it to establish the timebase
-			if (!checkAnySegmentKnowledge(newManifest.segments)
-					&& _bestEffortRequests.size() == 0)
-			{
-				Log.i("StreamHandler.onReloadComplete", "(A) Encountered a live/VOD manifest with no timebase knowledge. Requesting newest segment via best effort path for quality " + reloadingQuality);
-				initiateBestEffortRequest(Integer.MAX_VALUE, reloadingQuality, newManifest, bestEffortTypeFromString( newManifest.type), false );
-			}
-			else if (!checkAnySegmentKnowledge(currentManifest.segments)
-					&& _bestEffortRequests.size() == 0)
-			{
-				Log.i("StreamHandler.onReloadComplete", "(B) Encountered a live/VOD manifest with no timebase knowledge. request newest segment via best efort path for quality " + reloadingQuality);
-				initiateBestEffortRequest(Integer.MAX_VALUE, lastQuality, currentManifest, bestEffortTypeFromString( currentManifest.type), false);
-			}
-			
-			if (!checkAnySegmentKnowledge(newManifest.segments) && !checkAnySegmentKnowledge(currentManifest.segments))
-			{
-				Log.i("StreamHandler.onReloadComplete", "Bailing on reload due to lack of knowledge!");
-				
-				// re-reload
-				
-			}
-		}
-		
-		
 		updateSegmentTimes(newManifest.segments);
-		
-		// Remap time
-//		if (rid != lid)
-//		{
-//			updateSegmentTimes(currentManifest.segments);
-//			updateSegmentTimes(newManifest.segments);
-//			
-//			ManifestSegment lastSeg = getSegmentBySequence(currentManifest.segments, lastSequence);
-//			ManifestSegment newSeg = lastSeg != null ? getSegmentContainingTime(newManifest.segments, lastSeg.startTime) : null;
-//			if (newSeg == null)
-//			{
-//				Log.i("StreamHandler.onReloadComplete", "Remapping from " + lastSequence);
-//			
-//				if (lastSeg != null)
-//				{
-//					// Guess by time....
-//					Log.i("StreamHandler.onReloadComplete", "Found last seg with startTime=" + lastSeg.startTime + " duration=" + lastSeg.duration);
-//					
-//					// If the segment is beyond last ID, then jump to end...
-//					if (lastSeg.startTime + lastSeg.duration >= newManifest.segments.get(newManifest.segments.size() - 1).startTime)
-//					{
-//						Log.e("StreamHandler.onReloadComplete", "Couldn't remap sequence to new quality level, restarting at last time " + newManifest.segments.get(newManifest.segments.size() - 1).startTime);
-//						lastSequence = newManifest.segments.get(newManifest.segments.size() - 1).id;
-//					}
-//					else
-//					{
-//						Log.e("StreamHandler.onReloadComplete", "Couldn't remap sequence to new quality level, restarting at first time " + newManifest.segments.get(0).startTime);
-//						lastSequence = newManifest.segments.get(0).id;
-//					}
-//				}
-//				else
-//				{
-//					// Guess by sequence number
-//					Log.i("StreamHandler.onReloadComplete", "No last segment found");
-//					
-//					// If the segment is beyond last ID, then jump to end...
-//					if (lastSequence >= newManifest.segments.get(newManifest.segments.size() - 1).id)
-//					{
-//						Log.e("StreamHandler.onReloadComplete", "Couldn't remap sequence to new quality level, restarting at last sequence " + newManifest.segments.get(newManifest.segments.size() - 1).id);
-//						lastSequence = newManifest.segments.get(newManifest.segments.size() - 1).id;
-//					}
-//					else
-//					{
-//						Log.e("StreamHandler.onReloadComplete", "Couldn't remap sequence to new quality level, restarting at first sequence " + newManifest.segments.get(0).id);
-//						lastSequence = newManifest.segments.get(0).id;
-//					}
-//				}
-//			}
-//			else
-//			{
-//				Log.i("StreamHandler.onReloadComplete", "***** Current sequence segment " + lastSeg);
-//				Log.i("StreamHandler.onReloadComplete", "***** New sequence Segment " + newSeg);
-//				Log.i("StreamHandler.onReloadComplete", "Remapping from " + lastSequence + " to " + (lastSeg.startTime + lastSeg.duration));
-//				Log.i("StreamHandler.onReloadComplete", "===== Remapping to " + lastSequence + " new " + (newSeg.id));
-//				lastSequence = newSeg.id;
-//			}
-//		}
 		
 		// Update our manifest for this quality level
 		if (newManifest != null && isAudio)
@@ -698,7 +611,9 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 			Log.i("StreamHandler.onReloadComplete", "Setting alt audio to " + rid);
 			if (baseManifest.playLists.size() > 0)
 			{
-				baseManifest.playLists.get(rid).manifest = newManifest;
+				baseManifest.playLists.get(newManifest.quality).manifest = newManifest;
+				if (newManifest.quality == lid)
+					altAudioManifest = newManifest;
 			}
 			else
 			{
@@ -724,19 +639,16 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 			}
 			
 			reloadingFromBackup = false;
-			if (rid == -1)
+			if (isBackupStreamSwitch)
 			{
 				Log.i("StreamHandler.onReloadComplete", "Restoring reloading quality to normal");
 				HLSPlayerViewController.currentController.seekToCurrentPosition();
-				reloadingQuality = tid; // restoring our quality since we're "done" - using target quality since that's where we want to be, in case it was changed in the middle
+				reloadingQuality = lid; // restoring our quality since we're "done"
 			}
 
 			reloader.start();
 			HLSPlayerViewController.currentController.postDurationChanged();
 		}
-		
-		
-		
 	}
 
 	private int mFailureCount = 0;
@@ -792,12 +704,8 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 			return;
 		}
 
-
-		// This might just be a bad manifest, so try swapping it with a backup if we can and reload the manifest immediately
-		int quality = targetQuality != lastQuality ? targetQuality : lastQuality;
-
-		if (!swapBackupStream(getStreamForQuality(quality)))
-			reload(quality);
+		if (!swapBackupStream(getStreamForQuality(lastQuality)))
+			reload(lastQuality);
 
 	}
 
@@ -830,25 +738,12 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 
 	private int getWorkingQuality(int requestedQuality)
 	{
-		// Note that this method always returns lastQuality. It triggers a reload if it needs to, and
-		// 	lastQuality will be set once the reload is complete.
-
-		// If the requested quality is the same as what we're currently using, return that
-		if (requestedQuality == lastQuality) return lastQuality;
-
-		// If the requsted quality is the same as the target quality, we've already asked for a reload, so return the last quality
-		if (requestedQuality == targetQuality) return lastQuality;
-
-		// The requested quality doesn't match eithe the targetQuality or the lastQuality, which means this is new territory.
-		// So we will reload the manifest for the requested quality
-		
-		// targetQuality = requestedQuality;
-		// Log.i("StreamHandler.getWorkingQuality", "Quality Change: " + lastQuality + " --> " + requestedQuality);
-		//reload(targetQuality);
-		
 		// We're basically always returning the last quality - if you want to switch qualities, now, you
 		// must use the initiateQualityChange method.
-		Log.w("StreamHandler.getWorkingQuality", "Requested quality doesn't match working quality. Please use initiateQualityChange method for switching qualities.");
+		if (requestedQuality != lastQuality)
+		{
+			Log.w("StreamHandler.getWorkingQuality", "Requested quality doesn't match working quality. Please use initiateQualityChange method for switching qualities.");
+		}
 		return lastQuality;
 	}
 	
@@ -1127,12 +1022,24 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 
 	public ManifestSegment getNextFile(int quality)
 	{
-		Log.i("StreamHandler.getNextFile", "Requesting Segment For Quality: " + quality + " lastQuality=" + lastQuality);
+		Log.i("StreamHandler.getNextFile", "Requesting Segment For Quality: " + quality + " lastQuality=" + lastQuality + " lastSequence=" + lastSequence);
 		int requestedQuality = quality;
 		quality = getWorkingQuality(quality);
 
 		ManifestParser parser = getManifestForQuality(quality);
 		Vector<ManifestSegment> segments = getSegmentsForQuality( quality );
+		
+
+		// Checking this here, as there's no need to do all the segment knowledge work if there isn't anything new
+		if (segments.size() > 0 && lastSequence + 1 > (segments.get(segments.size() -1).id))
+		{
+			// There's nothing more to return.
+			Log.i("StreamHandler.getNextFile", "No new segments to play!!! Looking for sequence id " + (lastSequence + 1));
+			
+			if (!streamEnds())
+				stalled = true;
+			return null;
+		}
 		
 		if (!checkAnySegmentKnowledge(segments))
 		{
@@ -1159,20 +1066,13 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 		++lastSequence;
 		Log.i("StreamHandler.getNextFile", "lastSequence = " + lastSequence);
 
+
 		if (segments.size() > 0 && lastSequence < segments.get(0).id)
 		{
 			Log.i("StreamHandler.getNextFile", "Reseting too low sequence " + lastSequence + " to " + segments.get(0).id);
 			lastSequence = segments.get(0).id;
 		}
 		
-		if (segments.size() > 0 && lastSequence > (segments.get(segments.size() -1).id) && !streamEnds())
-		{
-			// There's nothing more to return.
-			Log.i("StreamHandler.getNextFile", "No new segments to play!!! Stalling! Looking for sequence id " + lastSequence);
-			lastSequence = segments.get(segments.size() - 1).id;
-			stalled = true;
-			return null;
-		}
 		
 		ManifestSegment curSegment = getSegmentBySequence(segments, lastSequence);
 		
@@ -1226,6 +1126,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 		if (baseManifest == null) return -1;
 
 		Vector<ManifestSegment> segments = getSegmentsForQuality( lastQuality );
+		updateSegmentTimes(segments);
 		int i = segments.size() - 1;
 
 		accum = (segments.get(i).startTime + segments.get(i).duration) - lastKnownPlaylistStartTime;
@@ -1234,25 +1135,25 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 
 	}
 
-	private int getSegmentIndexForTime(double time)
-	{
-		return getSegmentIndexForTimeAndQuality(time, lastQuality);
-	}
-
-	private int getSegmentIndexForTimeAndQuality(double time, int quality)
-	{
-		if (baseManifest != null)
-			return -1;
-
-		Vector<ManifestSegment> segments = getSegmentsForQuality( lastQuality );
-
-		for (int i = segments.size() - 1; i >= 0; --i)
-		{
-			if (segments.get(i).startTime < time)
-				return i;
-		}
-		return 0;
-	}
+//	private int getSegmentIndexForTime(double time)
+//	{
+//		return getSegmentIndexForTimeAndQuality(time, lastQuality);
+//	}
+//
+//	private int getSegmentIndexForTimeAndQuality(double time, int quality)
+//	{
+//		if (baseManifest != null)
+//			return -1;
+//
+//		Vector<ManifestSegment> segments = getSegmentsForQuality( lastQuality );
+//
+//		for (int i = segments.size() - 1; i >= 0; --i)
+//		{
+//			if (segments.get(i).startTime < time)
+//				return i;
+//		}
+//		return 0;
+//	}
 
 	public int getQualityLevels()
 	{
@@ -1265,9 +1166,9 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 	private Vector<ManifestSegment> getSegmentsForQuality(int quality)
 	{
 		if ( baseManifest == null) return new Vector<ManifestSegment>();
-		if (baseManifest.streams.size() < 1 || baseManifest.streams.get(0) == null) return updateSegmentTimes(baseManifest.segments);
-		else if ( quality >= baseManifest.streams.size() ) return updateSegmentTimes(baseManifest.streams.get(0).manifest.segments);
-		else return updateSegmentTimes(baseManifest.streams.get(quality).manifest.segments);
+		if (baseManifest.streams.size() < 1 || baseManifest.streams.get(0) == null) return baseManifest.segments;
+		else if ( quality >= baseManifest.streams.size() ) return baseManifest.streams.get(0).manifest.segments;
+		else return baseManifest.streams.get(quality).manifest.segments;
 	}
 	
 	public ManifestParser getManifestForQuality(int quality)

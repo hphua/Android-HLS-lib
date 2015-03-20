@@ -41,7 +41,7 @@ uint32_t getTimeMS()
 
 	struct timespec now;
 	clock_gettime(CLOCK_MONOTONIC, &now);
-	return (uint32_t)((now.tv_sec*1000000000LL + now.tv_nsec) / 100000);
+	return (uint32_t)((now.tv_sec*1000000000LL + now.tv_nsec) / 1000000);
 }
 
 //////////
@@ -1136,7 +1136,6 @@ int HLSPlayer::Update()
 
 			if (segCount < SEGMENTS_TO_BUFFER)
 			{
-				LOGI("**** Requesting next segment...");
 				RequestNextSegment();
 			}
 		}
@@ -2039,10 +2038,11 @@ void HLSPlayer::RequestNextSegment()
 	LOGTRACE("%s", __func__);
 
 	uint32_t curRequest = getTimeMS();
-	if (curRequest - 250 > gLastRequestTime)
-		gLastRequestTime = curRequest;
-	else
+	if (curRequest - 500 < gLastRequestTime)
 		return;
+
+	LOGI("Request Next Segment @ %d", curRequest);
+	gLastRequestTime = curRequest;
 
 	AutoLock locker(&lock, __func__);
 

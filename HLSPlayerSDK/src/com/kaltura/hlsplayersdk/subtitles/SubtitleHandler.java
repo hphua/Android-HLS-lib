@@ -9,10 +9,11 @@ import java.util.Vector;
 import com.kaltura.hlsplayersdk.cache.HLSSegmentCache;
 import com.kaltura.hlsplayersdk.manifest.ManifestParser;
 import com.kaltura.hlsplayersdk.manifest.ManifestPlaylist;
+import com.kaltura.hlsplayersdk.manifest.ManifestReloader.ManifestGetHandler;
 
 import android.util.Log;
 
-public class SubtitleHandler implements OnSubtitleParseCompleteListener, ManifestParser.ReloadEventListener {
+public class SubtitleHandler implements OnSubtitleParseCompleteListener, ManifestParser.ReloadEventListener, ManifestGetHandler {
 
 	private ManifestParser mManifest;
 	private double mLastTime = 0;
@@ -174,13 +175,47 @@ public class SubtitleHandler implements OnSubtitleParseCompleteListener, Manifes
 			
 			ManifestPlaylist mpl = mManifest.subtitlePlayLists.get(language);
 			if (mpl.manifest != null && mpl.manifest.subtitles.size() > 0)
+			{
 				mp = mpl.manifest;
+				mp.quality = language;
+			}
 		}
 		else if (mManifest.subtitles.size() > 0)
 		{
 			mp = mManifest;
+			mp.quality = language;
 		}
 		return mp;
+	}
+	
+	private void mergeManifests(ManifestParser manifest, ManifestParser newManifest)
+	{
+		SubTitleSegment lastSeg = manifest.subtitles.get(manifest.subtitles.size() - 1);
+		
+		for (SubTitleSegment seg : newManifest.subtitles)
+		{
+			if (seg.id > lastSeg.id)
+			{
+				seg.setTimeWindowStart(lastSeg.segmentTimeWindowStart + lastSeg.segmentTimeWindowDuration);
+				manifest.subtitles.add(seg);
+				lastSeg = seg;
+			}
+		}
+	}
+	
+	private void updateManifestForLanguage(ManifestParser manifest, int language)
+	{
+		if (language < 0) return; // no point.
+		
+		if (mManifest.subtitlePlayLists.size() > language)
+		{
+			ManifestPlaylist mpl = mManifest.subtitlePlayLists.get(language);
+			ManifestParser oldMan = mpl.manifest;
+			if (oldMan != null && manifest != null)
+			{
+				mergeManifests(oldMan, manifest);
+			}
+		}
 	}
 
 	@Override
@@ -259,8 +294,12 @@ public class SubtitleHandler implements OnSubtitleParseCompleteListener, Manifes
 	@Override
 	public void onReloadComplete(ManifestParser parser)
 	{
-		// TODO Auto-generated method stub
+		if (parser == null || parser.getReloadChild() == null)
+			return; // A strange failure of the reloader
 		
+		ManifestParser newMan = parser.getReloadChild();
+		
+		updateManifestForLanguage(newMan, newMan.quality);
 	}
 
 	@Override
@@ -268,5 +307,26 @@ public class SubtitleHandler implements OnSubtitleParseCompleteListener, Manifes
 	{
 		// TODO Auto-generated method stub
 		
+	}
+
+	@Override
+	public ManifestParser getVideoManifestToReload()
+	{
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public ManifestParser getAltAudioManifestToReload()
+	{
+		// TODO Auto-generated method stub
+		return null;
+	}
+
+	@Override
+	public ManifestParser getSubtitleManifestToReload()
+	{
+		// TODO Auto-generated method stub
+		return getManifestForLanguage(lastLanguage);
 	}
 }
