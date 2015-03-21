@@ -19,6 +19,7 @@ public class HLSSegmentCache
 {	
 	protected static long targetSize = 16*1024*1024; // 16mb segment cache.
 	protected static long minimumExpireAge = 5000; // Keep everything touched in last 5 seconds.
+	private static final int minimumTimeBetweenProgressNotifications = 100; // Keep us from spamming progress notifications
 	
 	protected static Map<String, SegmentCacheEntry> segmentCache = null;
 	public static AsyncHttpClient asyncHttpClient = new AsyncHttpClient();
@@ -187,7 +188,7 @@ public class HLSSegmentCache
 		{
 			sce.setCryptoIds(cryptoIds);
 			sce.registerSegmentCachedListener(segmentCachedListener, callbackHandler);
-			sce.setWaiting(true);
+			sce.setWaiting(forceWait);
 			if (!sce.isRunning())
 			{
 				HLSSegmentCache.postProgressUpdate(true);
@@ -267,7 +268,7 @@ public class HLSSegmentCache
 	private static long lastTime = System.currentTimeMillis();
 	public static void postProgressUpdate(boolean force)
 	{
-		if (System.currentTimeMillis() - 10 > lastTime || force)
+		if (System.currentTimeMillis() - minimumTimeBetweenProgressNotifications > lastTime || force)
 		{
 			lastTime = System.currentTimeMillis();
 

@@ -32,6 +32,11 @@ public class ManifestSegment extends BaseManifestItem
 
 	public int cryptoId = -1;
 	
+	public double endTime()
+	{
+		return startTime + duration;
+	}
+	
 	@Override
 	public String toString()
 	{
@@ -43,9 +48,10 @@ public class ManifestSegment extends BaseManifestItem
 		sb.append("continuityEra : " + continuityEra + " | ");
 		sb.append("quality : " + quality + " | ");
 		sb.append("byteRangeStart : " + byteRangeStart + " | ");
-		sb.append("byteRangeEnd : " + byteRangeEnd + "\n");
+		sb.append("cryptoId : " + cryptoId + " | ");
+		sb.append("byteRangeEnd : " + byteRangeEnd + " | ");
 		sb.append("uri : " + uri + "\n");
-		sb.append("cryptoId : " + cryptoId + "\n");
+		
 		
 		return sb.toString();
 		

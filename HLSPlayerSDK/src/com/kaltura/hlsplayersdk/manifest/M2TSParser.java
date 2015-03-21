@@ -17,8 +17,6 @@ public class M2TSParser implements PacketStreamHandler
 		private int _packetID = 0;
 		private int _lastContinuity = -1;
 		
-
-
 		public PacketStream(int packetID)
 		{
 			_buffer = new ByteArray(MAX_PACKET_SIZE);
@@ -27,6 +25,7 @@ public class M2TSParser implements PacketStreamHandler
 		
 		public void appendBytes(ByteArray bytes, int offset, int length, boolean payloadStart, int continuityCounter, boolean discontinuity, PacketStreamHandler packetStreamHandler)
 		{
+			
 			if (_lastContinuity == continuityCounter)
 			{
 				// Ignore duplicate packets.
@@ -170,12 +169,13 @@ public class M2TSParser implements PacketStreamHandler
 		_types.clear();
 	}
 	
-	public void appendBytes(ByteArray bytes)
+	public void appendBytes(ByteArray bytes, int offset, int count)
 	{
 		if (_buffer == null)
 		{
-			_buffer = bytes;
+			_buffer = new ByteArray(0);
 		}
+		_buffer.write(bytes, offset, count);
 		
 		int cursor = 0;
 		int len = _buffer.length();

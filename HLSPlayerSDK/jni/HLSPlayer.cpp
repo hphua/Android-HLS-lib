@@ -28,6 +28,8 @@
 #endif
 
 
+#define NANOSEC_PER_MS 1000000
+
 extern HLSPlayerSDK* gHLSPlayerSDK;
 
 using namespace android_video_shim;
@@ -41,7 +43,7 @@ uint32_t getTimeMS()
 
 	struct timespec now;
 	clock_gettime(CLOCK_MONOTONIC, &now);
-	return (uint32_t)((now.tv_sec*1000000000LL + now.tv_nsec) / 100000);
+	return (uint32_t)((now.tv_sec*1000000000LL + now.tv_nsec) / NANOSEC_PER_MS);
 }
 
 //////////
@@ -1136,7 +1138,6 @@ int HLSPlayer::Update()
 
 			if (segCount < SEGMENTS_TO_BUFFER)
 			{
-				LOGI("**** Requesting next segment...");
 				RequestNextSegment();
 			}
 		}
@@ -2031,7 +2032,9 @@ void HLSPlayer::LogState()
 	}
 }
 
+#define MIN_NEXT_SEGMENT_REQUEST_DELAY 500
 uint32_t gLastRequestTime = 0;
+
 
 void HLSPlayer::RequestNextSegment()
 {
@@ -2039,10 +2042,11 @@ void HLSPlayer::RequestNextSegment()
 	LOGTRACE("%s", __func__);
 
 	uint32_t curRequest = getTimeMS();
-	if (curRequest - 250 > gLastRequestTime)
-		gLastRequestTime = curRequest;
-	else
+	if (curRequest - MIN_NEXT_SEGMENT_REQUEST_DELAY < gLastRequestTime)
 		return;
+
+	LOGI("Request Next Segment @ %d", curRequest);
+	gLastRequestTime = curRequest;
 
 	AutoLock locker(&lock, __func__);
 

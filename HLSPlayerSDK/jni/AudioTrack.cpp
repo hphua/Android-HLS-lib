@@ -428,7 +428,7 @@ int64_t AudioTrack::GetTimeStamp()
 	AutoLock locker(&lock);
 	double frames = env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mGetPlaybackHeadPosition);
 	double secs = frames / (double)mSampleRate;
-	LOGTIMING("TIMESTAMP: secs = %f | mTimeStampOffset = %f", secs, mTimeStampOffset);
+	LOGTIMING("TIMESTAMP: secs = %f | mTimeStampOffset = %f | timeStampUS = %lld", secs, mTimeStampOffset, (int64_t)((secs + mTimeStampOffset) * 1000000));
 	return ((secs + mTimeStampOffset) * 1000000);
 }
 

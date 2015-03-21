@@ -413,7 +413,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 				int state = GetState();
 				if (state == STATE_PLAYING || state == STATE_FOUND_DISCONTINUITY || state == STATE_WAITING_FOR_DATA) {
 					int rval = NextFrame();
-					if (rval >= 0) { mTimeMS = rval; Log.i("RunThread", "mTimeMS = " + mTimeMS); }
+					if (rval >= 0) { mTimeMS = rval; /* Log.i("RunThread", "mTimeMS = " + mTimeMS); */ }
 					if (rval < 0 && state != lastState)
 					{
 						Log.i("videoThread", "State Changed -- NextFrame() returned " + rval + " : state = " + 
@@ -848,7 +848,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	private void initiatePlay()
 	{
 		setStartupState(STARTUP_STATE_STARTED);
-		mStreamHandler.initialize();
+		mStreamHandler.initialize(mSubtitleHandler);
 		PlayFile(((double)mStartingMS) / 1000.0f);
 		postPlayerStateChange(PlayerStates.PLAY);
 
@@ -980,7 +980,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 				else if (tss && state == STATE_STOPPED && mRenderThreadState == THREAD_STATE_RUNNING)
 				{
 					Log.i("PlayerViewController.Seek().Runnable()", "Seeking while player is stopped.");
-					mStreamHandler.initialize(); // Need to restart the reload manifest process
+					mStreamHandler.initialize(mSubtitleHandler); // Need to restart the reload manifest process
 					if (notify) postPlayerStateChange(PlayerStates.SEEKING);
 					targetSeekSet = false;
 					targetSeekMS = 0;
@@ -1338,28 +1338,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 			{
 				postAudioTrackSwitchingStart( getStreamHandler().getAltAudioCurrentIndex(), newIndex);
 				
-				boolean success = getStreamHandler().setAltAudioTrack(newIndex);
-				
-				if (!success) return; // Don't bother trying to change when there's nothing to change to
-				
-				while (getStreamHandler() != null && getStreamHandler().waitingForAudioReload)
-				{
-					try
-					{
-						Thread.sleep(30);
-					}
-					catch (InterruptedException e)
-					{
-						// TODO Auto-generated catch block
-						e.printStackTrace();
-					}
-				}
-				
-				if (getStreamHandler() == null) return; // don't seek if the app has exited while waiting for reload.
-				
-				seekToCurrentPosition();
-
-				postAudioTrackSwitchingEnd( getStreamHandler().getAltAudioCurrentIndex());
+				getStreamHandler().setAltAudioTrack(newIndex);
 			}
 		});
 		
@@ -1375,9 +1354,8 @@ public class HLSPlayerViewController extends RelativeLayout implements
 
 		postAudioTrackSwitchingStart( getStreamHandler().getAltAudioCurrentIndex(), newAudioIndex);
 		
-		boolean success = getStreamHandler().setAltAudioTrack(newAudioIndex); 
+		getStreamHandler().setAltAudioTrack(newAudioIndex); 
 
-		postAudioTrackSwitchingEnd( getStreamHandler().getAltAudioCurrentIndex());
 	}
 	
 	private OnAudioTracksListListener mOnAudioTracksListListener = null;
@@ -1419,7 +1397,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		}
 	}
 	
-	private void postAudioTrackSwitchingEnd(final int newTrackIndex  )
+	public void postAudioTrackSwitchingEnd(final int newTrackIndex  )
 	{
 		if (mOnAudioTrackSwitchingListener != null)
 		{

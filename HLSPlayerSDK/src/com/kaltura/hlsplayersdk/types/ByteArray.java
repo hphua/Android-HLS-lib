@@ -10,12 +10,25 @@ public class ByteArray
 	private int _length = 0; // This is the length of our data IN the array - not the length of the array
 	public int position = 0;
 	
+	
+	/* ByteArray (int size)
+	 * 
+	 * Creates an empty array of size bytes
+	 * 
+	 */
 	public ByteArray(int size)
 	{
 		array = new byte[size];
 	}
 	
 	
+	/*
+	 *  ByteArray (byte [] bytes)
+	 *  
+	 *  Does NOT make a copy of the data, but uses the byte array
+	 *  directly.
+	 *  
+	 */
 	public ByteArray(byte [] bytes)
 	{
 		array = bytes;
@@ -26,6 +39,18 @@ public class ByteArray
 		}
 		else
 			array = new byte[0];
+	}
+	
+	/*
+	 *  ByteArray (ByteArray bytes)
+	 *  
+	 *  Makes a copy of the data.
+	 */
+	public ByteArray(ByteArray bytes)
+	{
+		array = Arrays.copyOf(bytes.array, bytes.length());
+		_length = array.length;
+		position = _length;
 	}
 	
 	public ByteArray(ByteBuffer bytes)

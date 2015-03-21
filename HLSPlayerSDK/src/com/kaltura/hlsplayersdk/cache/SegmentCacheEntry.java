@@ -153,7 +153,7 @@ public class SegmentCacheEntry
 	public void setWaiting(boolean waiting)
 	{
 		for (int i = 0; i < mItems.length; ++i)
-			mItems[i].waiting = true;
+			mItems[i].waiting = waiting;
 	}
 	
 	public void setWaiting(String uri, boolean waiting)

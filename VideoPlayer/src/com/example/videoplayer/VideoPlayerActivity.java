@@ -333,10 +333,11 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 
         	input.setText("http://cdnapi.kaltura.com/p/1878761/sp/187876100/playManifest/entryId/0_8s3afdlb/format/applehttp/protocol/http/uiConfId/28013271/a.m3u8%22");
 
-        	input.setText("http://olive.fr.globecast.tv/live/disk4/sub/hls_sub/index.m3u8");
-
+        	// Disney Alt Audio
         	input.setText("http://54.169.47.74/masterstitch.m3u8?entryId=126ae943&url=http%3A%2F%2F111.223.97.115%2Fhls%2Fnl%2Findex-timeshifting.m3u8&uid=1c2ef485_46.20.235.45");
 
+        	// Subtitles
+        	input.setText("http://olive.fr.globecast.tv/live/disk4/sub/hls_sub/index.m3u8");
 
         	// set up a dialog window
         	alertDialogBuilder
@@ -371,6 +372,8 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
     String progressText = "";
     String quality = "";
     String altAudio = "";
+    
+    int progressCount = 0;
     
     public void updateDebugText()
     {
@@ -467,7 +470,7 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 	public void onPlayheadUpdated(int msec) {
 		mLastTimeMS = msec;
 		timeStampText = "Time: " + msec + "\n";
-		Log.i("OnPlayheadUpdated", "Time = " + msec);
+		//Log.i("OnPlayheadUpdated", "Time = " + msec);
 	
 		updateDebugText();
 	}
@@ -486,7 +489,8 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 	@Override
 	public void onProgressUpdate(int progress) {
 		Log.i("VideoPlayer.OnProgressUpdate", "Download Progress: " + progress);
-		progressText = "Progress: " + progress + "%\n";
+		++progressCount;
+		progressText = "Progress: " + progress + "(" + progressCount + ")" + "%\n";
 		updateDebugText();
 
 
