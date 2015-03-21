@@ -1,13 +1,9 @@
 package com.kaltura.hlsplayersdk;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.Vector;
 
 import android.os.SystemClock;
@@ -85,7 +81,6 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 	public int lastSequence = 0;
 	public int altAudioIndex = -1;
 	private int reloadingAltAudioIndex = -1;
-	private int targetAltAudioIndex = -1;
 	public double lastKnownPlaylistStartTime = 0.0;
 	public int lastQuality = 0;
 	public int targetQuality = 0;
@@ -100,14 +95,9 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 	private ErrorTimer mErrorSurrenderTimer = new ErrorTimer();
 	private boolean mIsRecovering = false;
 
-	private boolean reloadingFromBackup = false;
 	private ManifestStream primaryStream = null;
-	private int sequenceSkips = 0;
 	private boolean stalled = false;
 	private boolean closed = false;
-	private HashMap<String, Integer> badManifestMap = new HashMap<String, Integer>();
-	
-	
 	/*
 	 * BestEffortRequest
 	 * 
@@ -290,7 +280,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 		return -1;
 	}
 	
-	public static ManifestSegment getSegmentContainingTime(Vector<ManifestSegment> segments, double time /*, boolean forward */)
+	public static ManifestSegment getSegmentContainingTime(Vector<ManifestSegment> segments, double time)
 	{
 		
 
@@ -311,27 +301,6 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 				return segToReturn;
 			}
 		}
-		
-		// Find matches
-//		if (forward)
-//		{
-//			for (int i = 1; i < segments.size(); ++i)
-//			{
-//				ManifestSegment seg = segments.get(i);
-//				if (time < seg.startTime) return seg;
-//				if (i + 1 == segments.size() && time < seg.startTime + seg.duration)
-//					return seg;
-//			}
-//			
-//		}
-//		else
-//		{
-//			for (int i = segments.size() - 1; i >= 0; --i)
-//			{
-//				ManifestSegment seg = segments.get(i);
-//				if (time >= seg.startTime) return seg;
-//			}
-//		}
 		
 		// No match, dump to aid debug
 		Log.i("StreamHandler.getSegmentContainingTime", "Looking for time: " + time);
@@ -482,18 +451,6 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 		return null;
 	}
 
-	private int getAltAudioIndexFromInstance(int instance)
-	{
-		for (int i = 0; i < baseManifest.playLists.size(); ++i)
-		{
-			if (baseManifest.playLists.get(i).manifest.instance() == instance)
-			{
-				return i;
-			}
-		}
-		return -1;
-	}
-	
 	private ManifestParser getAltAudioManifestForLanguage(int language)
 	{
 		if (baseManifest == null || language == -1) return null;
@@ -638,7 +595,6 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 				baseManifest = newManifest;
 			}
 			
-			reloadingFromBackup = false;
 			if (isBackupStreamSwitch)
 			{
 				Log.i("StreamHandler.onReloadComplete", "Restoring reloading quality to normal");
@@ -769,7 +725,11 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 	{
 		if (curManifest == null || curManifest.segments == null || curManifest.segments.size() == 0) return null;
 		
-		if (index < 0) index = 0;
+		if (index < 0)
+		{
+			Log.w("StreamHandler.getSegmentForIndex", "Index of (" + index + ") requested. Resetting index to 0");
+			index = 0;
+		}
 		
 		ManifestSegment seg = curManifest.segments.get(index);
 
@@ -787,12 +747,12 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 		{
 			updateSegmentTimes(audioManifest.segments);
 			ManifestSegment audioSegment = getSegmentContainingTime(audioManifest.segments, segment.startTime);
-			if (audioSegment != null &&  !testSegmentMatch(segment, audioSegment))
+			if (audioSegment != null &&  !testSegmentMatchByTime(segment, audioSegment))
 			{
 				if (audioSegment.startTime < segment.startTime)
 				{
 					 ManifestSegment tempAudioSeg = getSegmentBySequence(audioManifest.segments, audioSegment.id + 1);
-					 if (tempAudioSeg != null && testSegmentMatch(segment, tempAudioSeg))
+					 if (tempAudioSeg != null && testSegmentMatchByTime(segment, tempAudioSeg))
 					 {
 						 audioSegment = tempAudioSeg;
 					 }
@@ -800,7 +760,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 				else if (audioSegment.startTime > segment.startTime)
 				{
 					 ManifestSegment tempAudioSeg = getSegmentBySequence(audioManifest.segments, audioSegment.id - 1);
-					 if (tempAudioSeg != null && testSegmentMatch(segment, tempAudioSeg))
+					 if (tempAudioSeg != null && testSegmentMatchByTime(segment, tempAudioSeg))
 					 {
 						 audioSegment = tempAudioSeg;
 					 }
@@ -827,16 +787,22 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 		return true;
 	}
 
-	private boolean testSegmentMatch(ManifestSegment seg, ManifestSegment aaSeg)
+	/*
+	 * testSegmentMatchByTime
+	 * 
+	 * Determines if an altAudio Segment (altAudioSeg), matches the the video segment
+	 * by time
+	 * 
+	 */
+	private boolean testSegmentMatchByTime(ManifestSegment seg, ManifestSegment altAudioSeg)
 	{
-		if (aaSeg == null) return false;
-		boolean match = false;
+		if (altAudioSeg == null) return false;
 		
-		if (seg.startTime < aaSeg.startTime)
+		if (seg.startTime < altAudioSeg.startTime)
 		{
-			if (seg.endTime() < aaSeg.endTime())
+			if (seg.endTime() < altAudioSeg.endTime())
 			{
-				if (aaSeg.startTime - seg.startTime < seg.duration / 2)
+				if (altAudioSeg.startTime - seg.startTime < seg.duration / 2)
 				{
 					// We likely have a match
 					return true;
@@ -844,18 +810,18 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 			}
 			
 		}
-		else if (seg.startTime > aaSeg.startTime)
+		else if (seg.startTime > altAudioSeg.startTime)
 		{
-			if (seg.endTime() > aaSeg.endTime())
+			if (seg.endTime() > altAudioSeg.endTime())
 			{
-				if (seg.startTime - aaSeg.startTime < seg.duration / 2)
+				if (seg.startTime - altAudioSeg.startTime < seg.duration / 2)
 				{
 					// We likely have a match
 					return true;
 				}
 			}
 		}
-		else if (seg.startTime == aaSeg.startTime)
+		else if (seg.startTime == altAudioSeg.startTime)
 		{
 			return true;
 		}
@@ -868,12 +834,12 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 		{
 			updateSegmentTimes(audioManifest.segments);
 			ManifestSegment audioSegment = getSegmentContainingTime(audioManifest.segments, time);
-			if (audioSegment != null &&  !testSegmentMatch(segment, audioSegment))
+			if (audioSegment != null &&  !testSegmentMatchByTime(segment, audioSegment))
 			{
 				if (audioSegment.startTime < segment.startTime)
 				{
 					 ManifestSegment tempAudioSeg = getSegmentBySequence(audioManifest.segments, audioSegment.id + 1);
-					 if (tempAudioSeg != null && testSegmentMatch(segment, tempAudioSeg))
+					 if (tempAudioSeg != null && testSegmentMatchByTime(segment, tempAudioSeg))
 					 {
 						 audioSegment = tempAudioSeg;
 					 }
@@ -881,7 +847,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 				else if (audioSegment.startTime > segment.startTime)
 				{
 					 ManifestSegment tempAudioSeg = getSegmentBySequence(audioManifest.segments, audioSegment.id - 1);
-					 if (tempAudioSeg != null && testSegmentMatch(segment, tempAudioSeg))
+					 if (tempAudioSeg != null && testSegmentMatchByTime(segment, tempAudioSeg))
 					 {
 						 audioSegment = tempAudioSeg;
 					 }
@@ -961,7 +927,6 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 		if (time < segments.get(0).startTime)
 		{
 			time = segments.get(0).startTime;
-			++sequenceSkips;
 			Log.i("StreamHandler.getFileForTime", "SequenceSkip - time: " + time + " playlistStartTime: " + segments.get(0).startTime);
 		}
 		
@@ -1135,26 +1100,6 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 
 	}
 
-//	private int getSegmentIndexForTime(double time)
-//	{
-//		return getSegmentIndexForTimeAndQuality(time, lastQuality);
-//	}
-//
-//	private int getSegmentIndexForTimeAndQuality(double time, int quality)
-//	{
-//		if (baseManifest != null)
-//			return -1;
-//
-//		Vector<ManifestSegment> segments = getSegmentsForQuality( lastQuality );
-//
-//		for (int i = segments.size() - 1; i >= 0; --i)
-//		{
-//			if (segments.get(i).startTime < time)
-//				return i;
-//		}
-//		return 0;
-//	}
-
 	public int getQualityLevels()
 	{
 		if (baseManifest == null) return 0;
@@ -1173,10 +1118,9 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 	
 	public ManifestParser getManifestForQuality(int quality)
 	{
-		ManifestParser retParser = null;
-		if (baseManifest == null) retParser = new ManifestParser();
-		else if (baseManifest.streams.size() < 1 || baseManifest.streams.get(0).manifest == null) retParser = baseManifest;
-		else if ( quality >= baseManifest.streams.size() ) retParser = baseManifest.streams.get(0).manifest;
+		if (baseManifest == null) return new ManifestParser();
+		else if (baseManifest.streams.size() < 1 || baseManifest.streams.get(0).manifest == null) return baseManifest;
+		else if ( quality >= baseManifest.streams.size() ) return baseManifest.streams.get(0).manifest;
 		return baseManifest.streams.get(quality).manifest;
 	}
 
@@ -1279,39 +1223,6 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 		HLSSegmentCache.precache(seg, wait, bestEffortListener, HLSPlayerViewController.getHTTPResponseThreadHandler());
 	}
 	
-	// use this to clear a specific besteffort download
-	private void stopListeningToBestEffortDownload(BestEffortRequest ber)
-	{
-		synchronized (_bestEffortRequests)
-		{
-			if (ber != null)
-			{
-				HLSSegmentCache.cancelCacheEvent(ber.segment.uri);
-				_bestEffortRequests.remove(ber);
-			}
-		}
-	}
-	
-	/*
-	 *  Use this to clear a specific type of best effort download
-	 * If there using BestEffortRequest.TYPE_AUDIO or BestEffortRequest.TYPE_VIDEO
-	 * will clear all requests that contain that type PLUS any TYPE_AUDIO_VIDEO requests.
-	 *  
-	 */	
-	private void stopListeningToBestEffortDownload(int type)
-	{
-		synchronized (_bestEffortRequests)
-		{
-			for (int i = _bestEffortRequests.size() - 1; i <= 0; --i)
-			{
-				BestEffortRequest b = _bestEffortRequests.get(i);
-				if (b.type == type || b.type == BestEffortRequest.TYPE_AUDIO_VIDEO)
-					_bestEffortRequests.remove(i);
-			}
-		}
-	}
-	
-	
 	// Use this to clear ALL besteffort downloads
 	private void stopListeningToBestEffortDownloads()
 	{
@@ -1344,21 +1255,6 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 	}
 	
 
-	private BestEffortRequest getBestEffortRequestForURI(String uri)
-	{
-		synchronized (_bestEffortRequests)
-		{
-			for (int i = 0; i < _bestEffortRequests.size(); ++i)
-			{
-				if (_bestEffortRequests.get(i).segment.uri.equals(uri))
-				{
-					return _bestEffortRequests.get(i);
-				}
-			}
-		}
-		return null;
-	}
-	
 	private final int _bufferCopySize = 0x4000;  
 	private long getPTS(ByteArray segmentBytes, String uri)
 	{
@@ -1366,7 +1262,6 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 					
 		long pts = -1;
 		int offset = 0;
-		int count = 0;
 		while (pts == -1 && offset < segmentBytes.length())
 		{
 			int len = Math.min(_bufferCopySize, segmentBytes.length() - offset);
@@ -1392,7 +1287,6 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 			Log.i("StreamHandler.bestEffortListener.onSegmentCompleted", "Completed for URL[0]: " + uris[0] + " _bestEffortRequests count = " + _bestEffortRequests.size());
 			if (_bestEffortRequests.size() == 0) return; // There's nothing to work against
 			
-			boolean found = false;
 			for (String uri : uris)
 			{
 				synchronized (_bestEffortRequests)
@@ -1641,8 +1535,6 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 		@Override
 		public void onReloadComplete(ManifestParser parser)
 		{
-			int language = parser.quality;
-			
 			final ManifestParser currentManifest = parser;
 			final ManifestParser newManifest = parser.getReloadChild();
 			

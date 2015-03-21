@@ -220,7 +220,6 @@ public class SubtitleHandler implements OnSubtitleParseCompleteListener, Manifes
 
 	@Override
 	public void onSubtitleParserComplete(SubTitleSegment segment) {
-		//segment.setTimeWindowStart(segment.segmentTimeWindowStart); // Force it to recalculate the times
 		
 	}
 	
