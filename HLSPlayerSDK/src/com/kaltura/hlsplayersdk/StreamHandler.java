@@ -741,51 +741,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 		return seg;
 	}
 	
-	private boolean attachAltAudio(ManifestSegment segment, ManifestParser audioManifest)
-	{
-		if (audioManifest != null)
-		{
-			updateSegmentTimes(audioManifest.segments);
-			ManifestSegment audioSegment = getSegmentContainingTime(audioManifest.segments, segment.startTime);
-			if (audioSegment != null &&  !testSegmentMatchByTime(segment, audioSegment))
-			{
-				if (audioSegment.startTime < segment.startTime)
-				{
-					 ManifestSegment tempAudioSeg = getSegmentBySequence(audioManifest.segments, audioSegment.id + 1);
-					 if (tempAudioSeg != null && testSegmentMatchByTime(segment, tempAudioSeg))
-					 {
-						 audioSegment = tempAudioSeg;
-					 }
-				}
-				else if (audioSegment.startTime > segment.startTime)
-				{
-					 ManifestSegment tempAudioSeg = getSegmentBySequence(audioManifest.segments, audioSegment.id - 1);
-					 if (tempAudioSeg != null && testSegmentMatchByTime(segment, tempAudioSeg))
-					 {
-						 audioSegment = tempAudioSeg;
-					 }
-					
-				}
-			}
-			if (audioSegment == null)
-				audioSegment = getSegmentBySequence(audioManifest.segments, segment.id); // backup plan, in case the start times are out of sequence
-			
-			Log.i("StreamHandler.attachAltAudio", "getting alt audio segment to match segment @ " + segment.startTime + " : " + segment);
-			Log.i("StreamHandler.attachAltAudio", "altAudioManifest.getSegmentContainingTime returned=" + audioSegment);
 
-			if (audioSegment != null)
-			{
-				segment.altAudioSegment = audioSegment;
-				segment.altAudioSegment.altAudioIndex = audioManifest.quality;
-				segment.altAudioSegment.initializeCrypto(getKeyForSequence(segment.altAudioSegment.id, audioManifest.keys));
-			}
-			else
-			{
-				return false;
-			}
-		}
-		return true;
-	}
 
 	/*
 	 * testSegmentMatchByTime
@@ -828,30 +784,38 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 		return false;
 	}
 	
+	private boolean attachAltAudio(ManifestSegment segment, ManifestParser audioManifest)
+	{
+		return attachAltAudio(segment, segment.startTime, audioManifest);
+	}
+	
 	private boolean attachAltAudio(ManifestSegment segment, double time, ManifestParser audioManifest)
 	{
 		if (audioManifest != null)
 		{
 			updateSegmentTimes(audioManifest.segments);
 			ManifestSegment audioSegment = getSegmentContainingTime(audioManifest.segments, time);
-			if (audioSegment != null &&  !testSegmentMatchByTime(segment, audioSegment))
+			if (audioSegment != audioManifest.segments.get(0))
 			{
-				if (audioSegment.startTime < segment.startTime)
+				if (audioSegment != null &&  !testSegmentMatchByTime(segment, audioSegment))
 				{
-					 ManifestSegment tempAudioSeg = getSegmentBySequence(audioManifest.segments, audioSegment.id + 1);
-					 if (tempAudioSeg != null && testSegmentMatchByTime(segment, tempAudioSeg))
-					 {
-						 audioSegment = tempAudioSeg;
-					 }
-				}
-				else if (audioSegment.startTime > segment.startTime)
-				{
-					 ManifestSegment tempAudioSeg = getSegmentBySequence(audioManifest.segments, audioSegment.id - 1);
-					 if (tempAudioSeg != null && testSegmentMatchByTime(segment, tempAudioSeg))
-					 {
-						 audioSegment = tempAudioSeg;
-					 }
-					
+					if (audioSegment.startTime < segment.startTime)
+					{
+						 ManifestSegment tempAudioSeg = getSegmentBySequence(audioManifest.segments, audioSegment.id + 1);
+						 if (tempAudioSeg != null && testSegmentMatchByTime(segment, tempAudioSeg))
+						 {
+							 audioSegment = tempAudioSeg;
+						 }
+					}
+					else if (audioSegment.startTime > segment.startTime)
+					{
+						 ManifestSegment tempAudioSeg = getSegmentBySequence(audioManifest.segments, audioSegment.id - 1);
+						 if (tempAudioSeg != null && testSegmentMatchByTime(segment, tempAudioSeg))
+						 {
+							 audioSegment = tempAudioSeg;
+						 }
+						
+					}
 				}
 			}
 			

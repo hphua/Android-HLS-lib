@@ -70,7 +70,7 @@ public class M2TSParser implements PacketStreamHandler
 			if (_buffer.length() > 5)
 			{
 				// extract length...
-				int packetLength = ((_buffer.array[4] << 8) + _buffer.array[5]);
+				int packetLength = ((_buffer.unsigned(4) << 8) + _buffer.unsigned(5));
 				
 				// Check against observed payload.
 				if (packetLength > 0)
@@ -223,7 +223,10 @@ public class M2TSParser implements PacketStreamHandler
 		
 		// Decode header bytes.
 		payloadStart 		= (_buffer.array[cursor + 1] & 0x40) != 0;
-		packetID			= ((_buffer.array[cursor + 1] & 0x1f) << 8) + _buffer.array[cursor + 2];
+		packetID			= ((_buffer.unsigned(cursor + 1) & 0x1f) << 8) + _buffer.unsigned(cursor + 2);
+		
+		
+//		packetID			= ((_buffer.array[cursor + 1] & 0x1f) << 8) + _buffer.array[cursor + 2];
 		continuityCounter	= _buffer.array[cursor + 3] & 0x0f;
 		hasPayload			= (_buffer.array[cursor + 3] & 0x10) != 0;
 		hasAdaptationField	= (_buffer.array[cursor + 3] & 0x20) != 0;
