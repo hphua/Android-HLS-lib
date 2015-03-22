@@ -224,9 +224,6 @@ public class M2TSParser implements PacketStreamHandler
 		// Decode header bytes.
 		payloadStart 		= (_buffer.array[cursor + 1] & 0x40) != 0;
 		packetID			= ((_buffer.unsigned(cursor + 1) & 0x1f) << 8) + _buffer.unsigned(cursor + 2);
-		
-		
-//		packetID			= ((_buffer.array[cursor + 1] & 0x1f) << 8) + _buffer.array[cursor + 2];
 		continuityCounter	= _buffer.array[cursor + 3] & 0x0f;
 		hasPayload			= (_buffer.array[cursor + 3] & 0x10) != 0;
 		hasAdaptationField	= (_buffer.array[cursor + 3] & 0x20) != 0;
