@@ -1,26 +1,27 @@
 /*
- * AudioTrack.cpp
+ * AudioFDK.cpp
  *
- *  Created on: Jul 17, 2014
+ *  Created on: Mar 24, 2015
  *      Author: Mark
  */
 
 #include <jni.h>
 #include "constants.h"
-#include <AudioTrack.h>
 #include "HLSPlayerSDK.h"
 #include "HLSPlayer.h"
 #include <unistd.h>
+#include <AudioFDK.h>
+#include <ESDS.h>
 
 extern HLSPlayerSDK* gHLSPlayerSDK;
 
 
 using namespace android_video_shim;
 
-AudioTrack::AudioTrack(JavaVM* jvm) : mJvm(jvm), mAudioTrack(NULL), mGetMinBufferSize(NULL), mPlay(NULL), mPause(NULL), mStop(NULL), mFlush(NULL), buffer(NULL),
-										mRelease(NULL), mGetTimestamp(NULL), mCAudioTrack(NULL), mWrite(NULL), mGetPlaybackHeadPosition(NULL), mSetPositionNotificationPeriod(NULL),
-										mSampleRate(0), mNumChannels(0), mBufferSizeInBytes(0), mChannelMask(0), mTrack(NULL), mPlayState(INITIALIZED),
-										mTimeStampOffset(0), samplesWritten(0), mWaiting(true), mNeedsTimeStampOffset(true)
+AudioFDK::AudioFDK(JavaVM* jvm) : mJvm(jvm), mAudioTrack(NULL), mGetMinBufferSize(NULL), mPlay(NULL), mPause(NULL), mStop(NULL), mFlush(NULL), buffer(NULL),
+									mRelease(NULL), mGetTimestamp(NULL), mCAudioTrack(NULL), mWrite(NULL), mGetPlaybackHeadPosition(NULL), mSetPositionNotificationPeriod(NULL),
+									mSampleRate(0), mNumChannels(0), mBufferSizeInBytes(0), mChannelMask(0), mTrack(NULL), mPlayState(INITIALIZED),
+									mTimeStampOffset(0), samplesWritten(0), mWaiting(true), mNeedsTimeStampOffset(true), mAACDecoder(NULL), mESDSType(TT_UNKNOWN), mESDSData(NULL), mESDSSize(0)
 {
 	if (!mJvm)
 	{
@@ -30,13 +31,14 @@ AudioTrack::AudioTrack(JavaVM* jvm) : mJvm(jvm), mAudioTrack(NULL), mGetMinBuffe
 	int err = pthread_mutex_init(&updateMutex, NULL);
 	LOGI(" AudioTrack mutex err = %d", err);
 	err = pthread_mutex_init(&lock, NULL);
-
 }
 
-AudioTrack::~AudioTrack() {
+AudioFDK::~AudioFDK()
+{
+	// TODO Auto-generated destructor stub
 }
 
-void AudioTrack::unload()
+void AudioFDK::unload()
 {
 	LOGI("Unloading");
 	if (mTrack)
@@ -48,7 +50,7 @@ void AudioTrack::unload()
 	delete this;
 }
 
-void AudioTrack::Close()
+void AudioFDK::Close()
 {
 	Stop();
 	if (mJvm)
@@ -67,14 +69,14 @@ void AudioTrack::Close()
 		mTrack = NULL;
 		mCAudioTrack = NULL;
 
-		clearOMX(mAudioSource);
-		clearOMX(mAudioSource23);
+		aacDecoder_Close(mAACDecoder);
 
 		sem_destroy(&semPause);
 	}
 }
 
-bool AudioTrack::Init()
+// TODO: This could likely be moved in it's entirety to the base class
+bool AudioFDK::Init()
 {
 	if (!mJvm)
 	{
@@ -123,13 +125,13 @@ bool AudioTrack::Init()
     return true;
 }
 
-void AudioTrack::ClearAudioSource()
+void AudioFDK::ClearAudioSource()
 {
 	Set(NULL, true);
 	Set23(NULL, true);
 }
 
-bool AudioTrack::Set(sp<MediaSource> audioSource, bool alreadyStarted)
+bool AudioFDK::Set(sp<MediaSource> audioSource, bool alreadyStarted)
 {
 	if (mAudioSource.get())
 	{
@@ -145,8 +147,7 @@ bool AudioTrack::Set(sp<MediaSource> audioSource, bool alreadyStarted)
 	return UpdateFormatInfo();
 }
 
-
-bool AudioTrack::Set23(sp<MediaSource23> audioSource, bool alreadyStarted)
+bool AudioFDK::Set23(sp<MediaSource23> audioSource, bool alreadyStarted)
 {
 	if (mAudioSource23.get())
 		mAudioSource23->stop();
@@ -158,7 +159,7 @@ bool AudioTrack::Set23(sp<MediaSource23> audioSource, bool alreadyStarted)
 	return UpdateFormatInfo();
 }
 
-bool AudioTrack::UpdateFormatInfo()
+bool AudioFDK::UpdateFormatInfo()
 {
 	sp<MetaData> format;
 	if(mAudioSource.get())
@@ -183,9 +184,9 @@ bool AudioTrack::UpdateFormatInfo()
 		LOGE("Could not find mime type");
 		return false;
 	}
-	if (strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_RAW))
+	if (strcasecmp(mime, MEDIA_MIMETYPE_AUDIO_AAC))
 	{
-		LOGE("Mime Type was not audio/raw. Was: %s", mime);
+		LOGE("Mime Type was not audio/mp4a-latm. Was: %s", mime);
 		return false;
 	}
 
@@ -202,7 +203,7 @@ bool AudioTrack::UpdateFormatInfo()
 		LOGE("Could not find channel count");
 		return false;
 	}
-	
+
 	if (!format->findInt32(kKeyChannelMask, &mChannelMask))
 	{
 		if (mNumChannels > 2)
@@ -211,6 +212,19 @@ bool AudioTrack::UpdateFormatInfo()
 		}
 		mChannelMask = 0; // CHANNEL_MASK_USE_CHANNEL_ORDER
 	}
+
+
+	if (!format->findData(kKeyESDS, &mESDSType, &mESDSData, &mESDSSize))
+	{
+		// Uh - what do we do now?
+		LOGE("Couldn't find ESDS data");
+	}
+
+
+
+
+
+
 
 	return true;
 }
@@ -223,7 +237,39 @@ bool AudioTrack::UpdateFormatInfo()
 #define ENCODING_PCM_16BIT 2
 #define MODE_STREAM 1
 
-bool AudioTrack::Start()
+
+void LogBytes(const char* header, const char* footer, char* bytes, int size)
+{
+	int rowLen = 16;
+	int rowCount = size / rowLen;
+	int extraRow = size % rowLen;
+	int o = 0;
+	LOGE("%s: size = %d", header, size);
+	for (int i = 0; i < rowCount; ++i)
+	{
+		o = i * rowLen;
+		LOGE("%x: %x %x %x %x %x %x %x %x  %x %x %x %x %x %x %x %x", o ,*(bytes + (0 + o)),*(bytes + (1 + o)),*(bytes + (2 + o)),*(bytes + (3 + o)),
+																   *(bytes + (4 + o)),*(bytes + (5 + o)),*(bytes + (6 + o)),*(bytes + (7 + o)),
+																   *(bytes + (8 + o)),*(bytes + (9 + o)),*(bytes + (10 + o)),*(bytes + (11 + o)),
+																   *(bytes + (12 + o)),*(bytes + (13 + o)),*(bytes + (14 + o)),*(bytes + (15 + o))
+																   );
+	}
+	if (extraRow > 0)
+	{
+		o += 16;
+		char xb[rowLen];
+		memset(xb, 0, rowLen);
+		memcpy(xb, bytes + o, extraRow);
+		LOGE("%x: %x %x %x %x %x %x %x %x  %x %x %x %x %x %x %x %x", o, *(xb + 0),*(xb + 1 ),*(xb + 2 ),*(xb + 3),
+																				*(xb + 4),*(xb + 5),*(xb + 6),*(xb + 7),
+																				*(xb + 8),*(xb + 9 ),*(xb + 10 ),*(xb + 11),
+																				*(xb + 12),*(xb + 13),*(xb + 14),*(xb + 15));
+	}
+	LOGE("%s", footer);
+}
+
+// TODO: Figure out the difference between start and play and document that!!!
+bool AudioFDK::Start()
 {
 	LOGTRACE("%s", __func__);
 	AutoLock locker(&lock);
@@ -246,6 +292,36 @@ bool AudioTrack::Start()
 	{
 		LOGE("Failed to update format info!");
 		return false;
+	}
+
+	mAACDecoder = aacDecoder_Open(TT_MP4_ADIF, 1); // This is what SoftAAC2 does in initDecoder()
+	if (mAACDecoder != NULL)
+	{
+		ESDS esds((const char*)mESDSData, mESDSSize);
+		if (esds.InitCheck() != OK)
+		{
+			LOGE("ESDS is not okay");
+			return false;
+		}
+
+		const void* codec_specific_data;
+		size_t codec_specific_data_size;
+		esds.getCodecSpecificInfo(&codec_specific_data, &codec_specific_data_size);
+
+
+		UCHAR* inBuffer[1] = { (UCHAR*)codec_specific_data };
+		UINT inBufferLength[1] = { codec_specific_data_size };
+		AAC_DECODER_ERROR decoderErr = aacDecoder_ConfigRaw(mAACDecoder, inBuffer, inBufferLength);
+		if (decoderErr != AAC_DEC_OK)
+		{
+			LOGE("aac ESDS length = %d, ptr=%p", mESDSSize, mESDSData);
+			UCHAR* d = (UCHAR*)mESDSData;
+			LogBytes("Begin ESDSData", "End ESDSData", (char*)d, mESDSSize);
+
+
+			LOGE("aacDecoder_ConfigRaw decoderErr = 0x%4.4x", decoderErr );
+			return false;
+		}
 	}
 
 	if(mSampleRate == 0)
@@ -274,9 +350,9 @@ bool AudioTrack::Start()
 
 	LOGI("Creating AudioTrack mNumChannels=%d | channelConfig=%d | mSampleRate=%d", mNumChannels, channelConfig, mSampleRate);
 
-	// HACK ALERT!! Note that this value was originally 2... this is a quick hack to test the audio sending since 
+	// HACK ALERT!! Note that this value was originally 2... this is a quick hack to test the audio sending since
 	// the media buffer I am seeing is exactly the same size as this value * 4
-	mBufferSizeInBytes = env->CallStaticIntMethod(mCAudioTrack, mGetMinBufferSize, mSampleRate, channelConfig,ENCODING_PCM_16BIT) * 4; 
+	mBufferSizeInBytes = env->CallStaticIntMethod(mCAudioTrack, mGetMinBufferSize, mSampleRate, channelConfig,ENCODING_PCM_16BIT) * 4;
 
 	LOGI("mBufferSizeInBytes=%d", mBufferSizeInBytes);
 
@@ -309,7 +385,8 @@ bool AudioTrack::Start()
 
 }
 
-void AudioTrack::Play()
+
+void AudioFDK::Play()
 {
 	LOGTRACE("%s", __func__);
 	LOGI("Trying to play: state = %d", mPlayState);
@@ -334,7 +411,7 @@ void AudioTrack::Play()
 	samplesWritten = 0;
 }
 
-bool AudioTrack::Stop(bool seeking)
+bool AudioFDK::Stop(bool seeking)
 {
 	LOGTRACE("%s", __func__);
 	if (mPlayState == STOPPED && seeking == false) return true;
@@ -361,6 +438,7 @@ bool AudioTrack::Stop(bool seeking)
 
 	if(seeking)
 	{
+		// TODO: Replace with libFDK equivelant
 		clearOMX(mAudioSource);
 		clearOMX(mAudioSource23);
 	}
@@ -374,7 +452,7 @@ bool AudioTrack::Stop(bool seeking)
 	return true;
 }
 
-void AudioTrack::Pause()
+void AudioFDK::Pause()
 {
 	LOGTRACE("%s", __func__);
 	if (mPlayState == PAUSED) return;
@@ -384,27 +462,27 @@ void AudioTrack::Pause()
 		env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mPause);
 }
 
-void AudioTrack::Flush()
+void AudioFDK::Flush()
 {
 	LOGTRACE("%s", __func__);
 	if (mPlayState == PLAYING) return;
 	JNIEnv* env;
 	if (gHLSPlayerSDK->GetEnv(&env))
 		env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mFlush);
-	
+
 	pthread_mutex_lock(&updateMutex);
 	samplesWritten = 0;
 	pthread_mutex_unlock(&updateMutex);
 
 }
 
-void AudioTrack::forceTimeStampUpdate()
+void AudioFDK::forceTimeStampUpdate()
 {
 	LOGTRACE("%s", __func__);
 	mNeedsTimeStampOffset = true;
 }
 
-void AudioTrack::SetTimeStampOffset(double offsetSecs)
+void AudioFDK::SetTimeStampOffset(double offsetSecs)
 {
 	LOGTRACE("%s", __func__);
 	LOGTIMING("Setting mTimeStampOffset to: %f", offsetSecs);
@@ -412,8 +490,7 @@ void AudioTrack::SetTimeStampOffset(double offsetSecs)
 	mNeedsTimeStampOffset = false;
 }
 
-
-int64_t AudioTrack::GetTimeStamp()
+int64_t AudioFDK::GetTimeStamp()
 {
 	LOGTRACE("%s", __func__);
 	JNIEnv* env;
@@ -431,7 +508,8 @@ int64_t AudioTrack::GetTimeStamp()
 	return ((secs + mTimeStampOffset) * 1000000);
 }
 
-bool AudioTrack::ReadUntilTime(double timeSecs)
+// TODO: This method probably needs some FDK love!
+bool AudioFDK::ReadUntilTime(double timeSecs)
 {
 	LOGTRACE("%s", __func__);
 	status_t res = ERROR_END_OF_STREAM;
@@ -491,7 +569,7 @@ bool AudioTrack::ReadUntilTime(double timeSecs)
 	return true;
 }
 
-int AudioTrack::Update()
+int AudioFDK::Update()
 {
 	LOGTRACE("%s", __func__);
 	LOGTHREAD("Audio Update Thread Running");
@@ -562,51 +640,104 @@ int AudioTrack::Update()
 			buffer = (jarray)env->NewGlobalRef(buffer);
 		}
 
-		void* pBuffer = env->GetPrimitiveArrayCritical(buffer, NULL);
 
-		if (pBuffer)
+		if (mediaBuffer)
 		{
-			if (mediaBuffer)
+			int64_t timeUs;
+			bool rval = mediaBuffer->meta_data()->findInt64(kKeyTime, &timeUs);
+			if (!rval)
 			{
-				int64_t timeUs;
-				bool rval = mediaBuffer->meta_data()->findInt64(kKeyTime, &timeUs);
-				if (!rval)
+				timeUs = 0;
+
+			}
+			LOGI("Audiotrack timeUs=%lld | mNeedsTimeStampOffset=%s", timeUs, mNeedsTimeStampOffset ? "True":"False");
+
+			// If we need the timestamp offset (our audio starts at 0, which is not quite accurate and won't match
+			// the video time), set it. This should only be the case when we first start a stream.
+			if (mNeedsTimeStampOffset)
+			{
+				LOGTIMING("Need to set mTimeStampOffset = %lld", timeUs);
+				SetTimeStampOffset(((double)timeUs / 1000000.0f));
+			}
+
+			size_t mbufSize = mediaBuffer->range_length();
+
+			AAC_DECODER_ERROR err;
+			UINT valid = mbufSize;
+			UINT bufSize = mbufSize;
+			unsigned char* data = (unsigned char*)mediaBuffer->data();
+
+			err = aacDecoder_Fill(mAACDecoder, &data, &bufSize, &valid);
+			if (err != AAC_DEC_OK)
+			{
+				LOGE("aacDecoder_Fill() failed: %x", err);
+				mediaBuffer->release();
+				return AUDIOTHREAD_FINISH;
+			}
+
+			INT_PCM tmpBuffer[2048];
+
+
+			LOGI("MediaBufferSize = %d, mBufferSizeInBytes = %d", mbufSize, mBufferSizeInBytes );
+			if (mbufSize <= mBufferSizeInBytes)
+			{
+				err = AAC_DEC_OK;
+
+				void* pBuffer = env->GetPrimitiveArrayCritical(buffer, NULL);
+				int offset = 0;
+				while (err == AAC_DEC_OK)
 				{
-					timeUs = 0;
+					LOGI("tmpBuffer size = %d", sizeof(tmpBuffer));
+					//memset(tmpBuffer, 0, sizeof(tmpBuffer));
+
+					err = aacDecoder_DecodeFrame(mAACDecoder, (INT_PCM*)tmpBuffer, sizeof(tmpBuffer), 0 );
+					if (err != AAC_DEC_OK)
+					{
+						if (err == AAC_DEC_NOT_ENOUGH_BITS)
+							LOGE("aacDecoder_DecodeFrame() NOT ENOUGH BITS");
+						else
+							LOGE("aacDecoder_DecodeFrame() failed: %x", err);
+					}
+					else
+					{
+						int frameSize = 0;
+						CStreamInfo* streamInfo = aacDecoder_GetStreamInfo(mAACDecoder);
+						frameSize = streamInfo->frameSize;
+						LOGI("offset = %d, frameSize = %d, tmpBufferSize=%d", offset, frameSize, sizeof(tmpBuffer));
+
+						//LogBytes("Begin Frame", "End Frame", (char*)tmpBuffer, sizeof(tmpBuffer));
+
+						LOGI("Copying %d bytes to buffer at offset %d", sizeof(tmpBuffer), offset);
+						if (offset + sizeof(tmpBuffer) > mBufferSizeInBytes)
+						{
+							// We need to empty our buffer and make a new one!!!
+							env->ReleasePrimitiveArrayCritical(buffer, pBuffer, 0);
+							//LOGI("Finished copying audio data to buffer");
+							samplesWritten += env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mWrite, buffer, 0, offset  );
+
+							pBuffer = env->GetPrimitiveArrayCritical(buffer, NULL);
+							offset = 0;
+						}
+						memcpy(((char*)pBuffer) + offset, tmpBuffer, sizeof(tmpBuffer));
+						offset += sizeof(tmpBuffer);
+					}
 
 				}
-				LOGI("Audiotrack timeUs=%lld | mNeedsTimeStampOffset=%s", timeUs, mNeedsTimeStampOffset ? "True":"False");
 
-				// If we need the timestamp offset (our audio starts at 0, which is not quite accurate and won't match
-				// the video time), set it. This should only be the case when we first start a stream.
-				if (mNeedsTimeStampOffset)
-				{
-					LOGTIMING("Need to set mTimeStampOffset = %lld", timeUs);
-					SetTimeStampOffset(((double)timeUs / 1000000.0f));
-				}
+				env->ReleasePrimitiveArrayCritical(buffer, pBuffer, 0);
+				//LOGI("Finished copying audio data to buffer");
+				samplesWritten += env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mWrite, buffer, 0, offset  );
 
-				size_t mbufSize = mediaBuffer->range_length();
-				//LOGI("MediaBufferSize = %d, mBufferSizeInBytes = %d", mbufSize, mBufferSizeInBytes );
-				if (mbufSize <= mBufferSizeInBytes)
-				{
-					//LOGI("Writing data to jAudioTrack %d", mbufSize);
-					memcpy(pBuffer, mediaBuffer->data(), mbufSize);
-					unsigned short* pBShorts = (unsigned short*)pBuffer;
-					//LOGV("%hd %hd %hd %hd", pBShorts[0], pBShorts[1], pBShorts[2], pBShorts[3]);
-					int len = mbufSize / 2;
-					//LOGV("%hd %hd %hd %hd", pBShorts[len - 4], pBShorts[len - 3], pBShorts[len - 2], pBShorts[len - 1]);
-
-					env->ReleasePrimitiveArrayCritical(buffer, pBuffer, 0);
-					//LOGI("Finished copying audio data to buffer");
-					samplesWritten += env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mWrite, buffer, 0, mbufSize  );
-					//LOGI("Finished Writing Data to jAudioTrack");
-				}
-				else
-				{
-					LOGI("MediaBufferSize > mBufferSizeInBytes");
-				}
 			}
 			else
+			{
+				LOGI("MediaBufferSize > mBufferSizeInBytes");
+			}
+		}
+		else
+		{
+			void* pBuffer = env->GetPrimitiveArrayCritical(buffer, NULL);
+			if (pBuffer)
 			{
 				LOGV("Writing zeros to the audio buffer");
 				memset(pBuffer, 0, mBufferSizeInBytes);
@@ -617,7 +748,7 @@ int AudioTrack::Update()
 		}
 
 		env->PopLocalFrame(NULL);
-		
+
 	}
 	else if (res == INFO_FORMAT_CHANGED)
 	{
@@ -654,7 +785,7 @@ int AudioTrack::Update()
 	return AUDIOTHREAD_CONTINUE;
 }
 
-void AudioTrack::shutdown()
+void AudioFDK::shutdown()
 {
 	LOGTRACE("%s", __func__);
 	JNIEnv* env;
@@ -662,7 +793,7 @@ void AudioTrack::shutdown()
 		env->DeleteGlobalRef(buffer);
 }
 
-int AudioTrack::getBufferSize()
+int AudioFDK::getBufferSize()
 {
 	LOGTRACE("%s", __func__);
 	JNIEnv* env;
@@ -678,3 +809,4 @@ int AudioTrack::getBufferSize()
 
 	return (samplesWritten / 2) - frames;
 }
+

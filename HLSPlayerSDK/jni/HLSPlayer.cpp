@@ -56,7 +56,7 @@ void* audio_thread_func(void* arg)
 {
 	LOGTRACE("%s", __func__);
 	LOGTHREAD("audio_thread_func STARTING");
-	AudioTrack* audioTrack = (AudioTrack*)arg;
+	AudioPlayer* audioTrack = (AudioPlayer*)arg;
 	int refCount = audioTrack->addRef();
 	LOGI("mJAudioTrack refCount = %d", refCount);
 
@@ -91,7 +91,7 @@ mAudioTrack(NULL), mVideoTrack(NULL), mJvm(jvm), mPlayerViewClass(NULL),
 mNextSegmentMethodID(NULL), mSetVideoResolutionID(NULL), mEnableHWRendererModeID(NULL), 
 mSegmentTimeOffset(0), mVideoFrameDelta(0), mLastVideoTimeUs(-1), mVideoStartDelta(0),
 mSegmentForTimeMethodID(NULL), mFrameCount(0), mDataSource(NULL), audioThread(0),
-mScreenHeight(0), mScreenWidth(0), mJAudioTrack(NULL), mStartTimeMS(0), mUseOMXRenderer(true),
+mScreenHeight(0), mScreenWidth(0), mAudioPlayer(NULL), mStartTimeMS(0), mUseOMXRenderer(true),
 mNotifyFormatChangeComplete(NULL), mNotifyAudioTrackChangeComplete(NULL),
 mDroppedFrameIndex(0), mDroppedFrameLastSecond(0), mPostErrorID(NULL)
 {
@@ -157,11 +157,11 @@ void HLSPlayer::Reset()
 	mAudioSource.clear();
 	mAudioSource23.clear();
 
-	if (mJAudioTrack)
+	if (mAudioPlayer)
 	{
-		int refCount = mJAudioTrack->release();
+		int refCount = mAudioPlayer->release();
 		LOGI("mJAudioTrack refCount = %d", refCount);
-		mJAudioTrack = NULL;
+		mAudioPlayer = NULL;
 		pthread_join(audioThread, NULL);
 	}
 	LOGI("Killing the video buffer");
@@ -713,28 +713,28 @@ bool HLSPlayer::CreateAudioPlayer()
 	LOGTRACE("%s", __func__);
 	AutoLock locker(&lock, __func__);
 	LOGI("Constructing JAudioTrack");
-	mJAudioTrack = new AudioTrack(mJvm);
-	if (!mJAudioTrack)
+	mAudioPlayer = MakeAudioPlayer(mJvm, USE_OMX_AUDIO);
+	if (!mAudioPlayer)
 		return false;
 
-	if (!mJAudioTrack->Init())
+	if (!mAudioPlayer->Init())
 	{
 		LOGE("JAudioTrack::Init() failed - quitting CreateAudioPlayer");
-		mJAudioTrack->release();
-		mJAudioTrack = NULL;
+		mAudioPlayer->release();
+		mAudioPlayer = NULL;
 		return false;
 	}
 
-	if (pthread_create(&audioThread, NULL, audio_thread_func, (void*)mJAudioTrack  ) != 0)
+	if (pthread_create(&audioThread, NULL, audio_thread_func, (void*)mAudioPlayer  ) != 0)
 		return false;
 
 
 	if(mAudioSource.get())
-		mJAudioTrack->Set(mAudioSource);
+		mAudioPlayer->Set(mAudioSource);
 	else if (mAudioSource23.get())
-		mJAudioTrack->Set23(mAudioSource23);
+		mAudioPlayer->Set23(mAudioSource23);
 	else
-		mJAudioTrack->ClearAudioSource();
+		mAudioPlayer->ClearAudioSource();
 
 	return true;
 }
@@ -923,14 +923,17 @@ bool HLSPlayer::InitSources()
 		RUNDEBUG(audioFormat->dumpToLog());
 
 		LOGI("Creating audio sources (OMXCodec)");
-		if(AVSHIM_USE_NEWMEDIASOURCE)
-			mAudioSource = OMXCodec::Create(iomx, audioFormat, false, mAudioTrack, NULL, 0);
-		else
-			mAudioSource23 = OMXCodec::Create23(iomx, audioFormat, false, mAudioTrack23, NULL, 0);
+		if (USE_OMX_AUDIO)
+		{
+			if(AVSHIM_USE_NEWMEDIASOURCE)
+				mAudioSource = OMXCodec::Create(iomx, audioFormat, false, mAudioTrack, NULL, 0);
+			else
+				mAudioSource23 = OMXCodec::Create23(iomx, audioFormat, false, mAudioTrack23, NULL, 0);
 
-		LOGI("OMXCodec::Create() (audio) returned %p %p", mAudioSource.get(), mAudioSource23.get());
+			LOGI("OMXCodec::Create() (audio) returned %p %p", mAudioSource.get(), mAudioSource23.get());
+		}
 
-		if (mOffloadAudio)
+		if (mOffloadAudio || !USE_OMX_AUDIO)
 		{
 			LOGI("Bypass OMX (offload) Line: %d", __LINE__);
 			if(AVSHIM_USE_NEWMEDIASOURCE)
@@ -941,8 +944,11 @@ bool HLSPlayer::InitSources()
 	}
 	else
 	{
-		clearOMX(mAudioSource);
-		clearOMX(mAudioSource23);
+		if (USE_OMX_AUDIO)
+		{
+			clearOMX(mAudioSource);
+			clearOMX(mAudioSource23);
+		}
 	}
 
 	meta.clear();
@@ -998,13 +1004,13 @@ bool HLSPlayer::Play(double time)
 	if (time > 0)
 	{
 		ReadUntilTime(time);
-		if (mJAudioTrack) mJAudioTrack->ReadUntilTime(time);
+		if (mAudioPlayer) mAudioPlayer->ReadUntilTime(time);
 	}
 
 	LOGI("Starting audio playback");
 
 #ifdef USE_AUDIO
-	if (!mJAudioTrack->Start())
+	if (!mAudioPlayer->Start())
 	{
 		LOGE("Failed to start audio track.");
 		return false;
@@ -1226,7 +1232,7 @@ int HLSPlayer::Update()
 			}
 
 #ifdef USE_AUDIO
-			int64_t audioTime = mJAudioTrack->GetTimeStamp();
+			int64_t audioTime = mAudioPlayer->GetTimeStamp();
 #else
 			// Set the audio time to the video time, which will keep the video running.
 			// TODO: This should probably be set to system time with a delta, so that the video doesn't
@@ -2131,12 +2137,12 @@ void HLSPlayer::Pause(bool pause)
 	if (pause && GetState() == PLAYING)
 	{
 		SetState(PAUSED);
-		mJAudioTrack->Pause();
+		mAudioPlayer->Pause();
 	}
 	else if (!pause && GetState() == PAUSED)
 	{
 		SetState(PLAYING);
-		mJAudioTrack->Play();
+		mAudioPlayer->Play();
 	}
 
 }
@@ -2151,7 +2157,7 @@ void HLSPlayer::Stop()
 	if (GetState() != STOPPED)
 	{
 		SetState(STOPPED);
-		mJAudioTrack->Stop();
+		mAudioPlayer->Stop();
 	}
 }
 
@@ -2160,10 +2166,10 @@ int32_t HLSPlayer::GetCurrentTimeMS()
 	LOGTRACE("%s", __func__);
 	AutoLock locker(&lock, __func__);
 
-	if (mJAudioTrack != NULL)
+	if (mAudioPlayer != NULL)
 	{
 		LOGI("mSTartTimeMS=%d", mStartTimeMS);
-		return (mJAudioTrack->GetTimeStamp() / 1000);
+		return (mAudioPlayer->GetTimeStamp() / 1000);
 	}
 	return 0;
 }
@@ -2177,7 +2183,7 @@ void HLSPlayer::StopEverything()
 	// We might need to clear these before we stop (so we don't get stuck waiting)
 	mAudioSource.clear();
 	mAudioSource23.clear();
-	if (mJAudioTrack) mJAudioTrack->Stop(true); // Passing true means we're seeking.
+	if (mAudioPlayer) mAudioPlayer->Stop(true); // Passing true means we're seeking.
 
 	mAudioTrack.clear();
 	mAudioTrack23.clear();
@@ -2205,19 +2211,19 @@ void HLSPlayer::StopEverything()
 bool HLSPlayer::EnsureAudioPlayerCreatedAndSourcesSet()
 {
 	LOGTRACE("%s", __func__);
-	if (!mJAudioTrack)
+	if (!mAudioPlayer)
 	{
 		return CreateAudioPlayer(); // CreateAudioPlayer sets the sources internally
 	}
 	else
 	{
 		if(mAudioSource.get())
-			return mJAudioTrack->Set(mAudioSource);
+			return mAudioPlayer->Set(mAudioSource);
 		else if (mAudioSource23.get())
-			return mJAudioTrack->Set23(mAudioSource23);
+			return mAudioPlayer->Set23(mAudioSource23);
 		else
 		{
-			mJAudioTrack->ClearAudioSource();
+			mAudioPlayer->ClearAudioSource();
 			return true;
 		}
 	}
@@ -2282,9 +2288,9 @@ void HLSPlayer::ApplyFormatChange()
 		LOGI("Video Track failed to start: %s : %d", strerror(-err), __LINE__);
 	}
 	SetState(PLAYING);
-	if (mJAudioTrack)
+	if (mAudioPlayer)
 	{
-		mJAudioTrack->Start();
+		mAudioPlayer->Start();
 	}
 
 	NotifyFormatChange(curQuality, newQuality, curAudioTrack, newAudioTrack);
@@ -2423,7 +2429,7 @@ void HLSPlayer::Seek(double time)
 		LOGI("Video Track failed to start: %s : %d", strerror(-err), __LINE__);
 	}
 
-	if (mJAudioTrack) mJAudioTrack->forceTimeStampUpdate();
+	if (mAudioPlayer) mAudioPlayer->forceTimeStampUpdate();
 
 	bool doFormatChange = false;
 
@@ -2431,10 +2437,10 @@ void HLSPlayer::Seek(double time)
 	doFormatChange = !ReadUntilTime(time);
 	LOGI("doFormatChange = %s", doFormatChange ? "True":"False");
 
-	if (!doFormatChange && mJAudioTrack)
+	if (!doFormatChange && mAudioPlayer)
 	{
 		LOGI("Reading Audio Track until time %f", time);
-		doFormatChange = (!mJAudioTrack->ReadUntilTime(time));
+		doFormatChange = (!mAudioPlayer->ReadUntilTime(time));
 		LOGI("doFormatChange = %s", doFormatChange ? "True":"False");
 	}
 
@@ -2447,11 +2453,11 @@ void HLSPlayer::Seek(double time)
 	else
 	{
 		LOGI("Segment Count %d", segCount);
-		if (mJAudioTrack)
+		if (mAudioPlayer)
 		{
 			LOGI("Starting audio track");
 			// Call Start instead of Play, in order to ensure that the internal time values are correctly starting from zero.
-			mJAudioTrack->Start();
+			mAudioPlayer->Start();
 		}
 		LOGI("NotifyingFormatChange( %d, %d, %d, %d )", curQuality, newQuality, curAudioTrack, newAudioTrack);
 		NotifyFormatChange(curQuality, newQuality, curAudioTrack, newAudioTrack);

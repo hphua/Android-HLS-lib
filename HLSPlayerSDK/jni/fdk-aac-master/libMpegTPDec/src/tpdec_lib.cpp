@@ -102,7 +102,7 @@ amm-info@iis.fraunhofer.de
 
 #include "tpdec_latm.h"
 
-
+#include "../../../debug.h"
 
 #define MODULE_NAME "transportDec"
 
@@ -244,6 +244,7 @@ TRANSPORTDEC_ERROR transportDec_OutOfBandConfig(HANDLE_TRANSPORTDEC hTp, UCHAR *
     default:
       fConfigFound = 1;
       err = AudioSpecificConfig_Parse(&hTp->asc[layer], hBs, 1, &hTp->callbacks);
+      LOGI("err = %d", err);
       if (err == TRANSPORTDEC_OK) {
         int errC;
 
