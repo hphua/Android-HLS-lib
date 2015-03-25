@@ -625,8 +625,6 @@ int AudioFDK::Update()
 		res = OK;
 	}
 
-
-
 	if (res == OK)
 	{
 		//LOGI("Finished reading from the media buffer");
@@ -638,7 +636,6 @@ int AudioFDK::Update()
 			buffer = env->NewByteArray(mBufferSizeInBytes);
 			buffer = (jarray)env->NewGlobalRef(buffer);
 		}
-
 
 		if (mediaBuffer)
 		{
@@ -666,68 +663,84 @@ int AudioFDK::Update()
 			UINT bufSize = mbufSize;
 			unsigned char* data = (unsigned char*)mediaBuffer->data();
 
-			err = aacDecoder_Fill(mAACDecoder, &data, &bufSize, &valid);
-			if (err != AAC_DEC_OK)
+			int dataOffset = 0;
+
+			while (valid > 0)
 			{
-				LOGE("aacDecoder_Fill() failed: %x", err);
-				mediaBuffer->release();
-				return AUDIOTHREAD_FINISH;
-			}
-
-			INT_PCM tmpBuffer[2048];
-
-
-			LOGI("MediaBufferSize = %d, mBufferSizeInBytes = %d", mbufSize, mBufferSizeInBytes );
-			if (mbufSize <= mBufferSizeInBytes)
-			{
-				err = AAC_DEC_OK;
-
-				void* pBuffer = env->GetPrimitiveArrayCritical(buffer, NULL);
-				int offset = 0;
-				while (err == AAC_DEC_OK)
+				bufSize = bufSize - dataOffset;
+				unsigned char* dataBuffer = data + dataOffset;
+				err = aacDecoder_Fill(mAACDecoder, &dataBuffer, &bufSize , &valid);
+				if (err != AAC_DEC_OK)
 				{
-					LOGI("tmpBuffer size = %d", sizeof(tmpBuffer));
-
-					err = aacDecoder_DecodeFrame(mAACDecoder, (INT_PCM*)tmpBuffer, sizeof(tmpBuffer), 0 );
-					if (err != AAC_DEC_OK)
-					{
-						if (err == AAC_DEC_NOT_ENOUGH_BITS)
-							LOGE("aacDecoder_DecodeFrame() NOT ENOUGH BITS");
-						else
-							LOGE("aacDecoder_DecodeFrame() failed: %x", err);
-					}
-					else
-					{
-						int frameSize = 0;
-						CStreamInfo* streamInfo = aacDecoder_GetStreamInfo(mAACDecoder);
-						frameSize = streamInfo->frameSize;
-						LOGI("offset = %d, frameSize = %d, tmpBufferSize=%d", offset, frameSize, sizeof(tmpBuffer));
-
-						//LogBytes("Begin Frame", "End Frame", (char*)tmpBuffer, sizeof(tmpBuffer));
-
-						LOGI("Copying %d bytes to buffer at offset %d", sizeof(tmpBuffer), offset);
-						if (offset + sizeof(tmpBuffer) > mBufferSizeInBytes)
-						{
-							// We need to empty our buffer and make a new one!!!
-							env->ReleasePrimitiveArrayCritical(buffer, pBuffer, 0);
-							samplesWritten += env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mWrite, buffer, 0, offset  );
-
-							pBuffer = env->GetPrimitiveArrayCritical(buffer, NULL);
-							offset = 0;
-						}
-						memcpy(((char*)pBuffer) + offset, tmpBuffer, sizeof(tmpBuffer));
-						offset += sizeof(tmpBuffer);
-					}
-
+					LOGE("aacDecoder_Fill() failed: %x", err);
+					mediaBuffer->release();
+					return AUDIOTHREAD_FINISH;
 				}
 
-				env->ReleasePrimitiveArrayCritical(buffer, pBuffer, 0);
-				samplesWritten += env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mWrite, buffer, 0, offset  );
+				LOGI("Valid = %d", valid);
+				dataOffset = bufSize - valid;
 
-			}
-			else
-			{
-				LOGI("MediaBufferSize > mBufferSizeInBytes");
+				INT_PCM tmpBuffer[2048];
+
+
+				LOGI("MediaBufferSize = %d, mBufferSizeInBytes = %d", mbufSize, mBufferSizeInBytes );
+				if (mbufSize <= mBufferSizeInBytes)
+				{
+					err = AAC_DEC_OK;
+
+					void* pBuffer = env->GetPrimitiveArrayCritical(buffer, NULL);
+					int offset = 0;
+					while (err == AAC_DEC_OK)
+					{
+						LOGI("tmpBuffer size = %d", sizeof(tmpBuffer));
+
+						memset(tmpBuffer, 0xCD, sizeof(tmpBuffer));
+
+						err = aacDecoder_DecodeFrame(mAACDecoder, (INT_PCM*)tmpBuffer, sizeof(tmpBuffer), 0 );
+						if (err != AAC_DEC_OK)
+						{
+							if (err == AAC_DEC_NOT_ENOUGH_BITS)
+								LOGE("aacDecoder_DecodeFrame() NOT ENOUGH BITS");
+							else
+								LOGE("aacDecoder_DecodeFrame() failed: %x", err);
+						}
+						else
+						{
+							int frameSize = 0;
+							CStreamInfo* streamInfo = aacDecoder_GetStreamInfo(mAACDecoder);
+							frameSize = streamInfo->frameSize;
+							int channels = streamInfo->numChannels;
+							LOGI("offset = %d, frameSize = %d, tmpBufferSize=%d, channels=%d", offset, frameSize, sizeof(tmpBuffer), channels);
+
+							//LogBytes("Begin Frame", "End Frame", (char*)tmpBuffer, sizeof(tmpBuffer));
+
+							int copySize = sizeof(tmpBuffer) / 2 * channels;
+
+							if (offset + copySize > mBufferSizeInBytes)
+							{
+								LOGI("offset (%d) + sizeof(tmpBuffer) (%d) > mBufferSizeinBytes (%d) -- Writing to java audio track and getting new java buffer.", offset, sizeof(tmpBuffer), mBufferSizeInBytes);
+								// We need to empty our buffer and make a new one!!!
+								env->ReleasePrimitiveArrayCritical(buffer, pBuffer, 0);
+								samplesWritten += env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mWrite, buffer, 0, offset  );
+
+								pBuffer = env->GetPrimitiveArrayCritical(buffer, NULL);
+								offset = 0;
+							}
+							LOGI("Copying %d bytes to buffer at offset %d", copySize, offset);
+							memcpy(((char*)pBuffer) + offset, tmpBuffer, copySize);
+							offset += copySize;
+						}
+
+					}
+
+					env->ReleasePrimitiveArrayCritical(buffer, pBuffer, 0);
+					samplesWritten += env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mWrite, buffer, 0, offset  );
+
+				}
+				else
+				{
+					LOGI("MediaBufferSize > mBufferSizeInBytes");
+				}
 			}
 		}
 		else

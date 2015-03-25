@@ -134,7 +134,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 	 * May need to be extended to handle other types.
 	 * 
 	 */
-	public static int bestEffortTypeFromString(String t)
+	public int bestEffortTypeFromString(String t)
 	{
 		if (t.equals("AUDIO"))
 		{
@@ -181,7 +181,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 	// seg if known. Since all segments are immutable, we can keep this
 	// as a global cache.
 	
-	public static Map<String, Double> startTimeWitnesses = new HashMap<String, Double>();
+	public Map<String, Double> startTimeWitnesses = new HashMap<String, Double>();
 	
 	public Vector<ManifestSegment> updateSegmentTimes(Vector<ManifestSegment> segments)
 	{
@@ -245,7 +245,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 		return segments;
 	}
 	
-	public static boolean checkAnySegmentKnowledge(Vector<ManifestSegment> segments)
+	public boolean checkAnySegmentKnowledge(Vector<ManifestSegment> segments)
 	{
 		// Find matches
 		for (int i = 0; i < segments.size(); ++i)
@@ -256,7 +256,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 		return false;
 	}
 	
-	public static ManifestSegment getSegmentBySequence(Vector<ManifestSegment> segments, int id)
+	public ManifestSegment getSegmentBySequence(Vector<ManifestSegment> segments, int id)
 	{
 		// Find matches
 		for (int i = 0; i < segments.size(); ++i)
@@ -268,7 +268,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 		return null;
 	}
 	
-	public static double getSegmentStartTimeBySequence(Vector<ManifestSegment> segments, int id)
+	public double getSegmentStartTimeBySequence(Vector<ManifestSegment> segments, int id)
 	{
 		// Find matches
 		for (int i = 0; i < segments.size(); ++i)
@@ -280,10 +280,8 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 		return -1;
 	}
 	
-	public static ManifestSegment getSegmentContainingTime(Vector<ManifestSegment> segments, double time)
+	public ManifestSegment getSegmentContainingTime(Vector<ManifestSegment> segments, double time)
 	{
-		
-
 		for (int i = 0; i < segments.size(); ++i)
 		{
 			ManifestSegment seg = segments.get(i);
@@ -313,7 +311,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 		return null;
 	}
 	
-	public static int getSegmentSequenceContainingTime(Vector<ManifestSegment> segments, double time)
+	public int getSegmentSequenceContainingTime(Vector<ManifestSegment> segments, double time)
 	{
 		ManifestSegment seg = getSegmentContainingTime(segments, time);
 		if (seg != null)
@@ -839,6 +837,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 
 	public ManifestSegment getFileForTime(double time, int quality)
 	{
+		Log.i("StreamHandler.getFileForTime", "time: " + time + " quality: " + quality);
 		quality = getWorkingQuality(quality);
 
 		double accum = 0.0;
