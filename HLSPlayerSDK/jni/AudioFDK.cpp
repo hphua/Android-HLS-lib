@@ -438,9 +438,8 @@ bool AudioFDK::Stop(bool seeking)
 
 	if(seeking)
 	{
-		// TODO: Replace with libFDK equivelant
-		clearOMX(mAudioSource);
-		clearOMX(mAudioSource23);
+		aacDecoder_Close(mAACDecoder);
+		mAACDecoder = NULL;
 	}
 
 	JNIEnv* env;
@@ -688,7 +687,6 @@ int AudioFDK::Update()
 				while (err == AAC_DEC_OK)
 				{
 					LOGI("tmpBuffer size = %d", sizeof(tmpBuffer));
-					//memset(tmpBuffer, 0, sizeof(tmpBuffer));
 
 					err = aacDecoder_DecodeFrame(mAACDecoder, (INT_PCM*)tmpBuffer, sizeof(tmpBuffer), 0 );
 					if (err != AAC_DEC_OK)
@@ -712,7 +710,6 @@ int AudioFDK::Update()
 						{
 							// We need to empty our buffer and make a new one!!!
 							env->ReleasePrimitiveArrayCritical(buffer, pBuffer, 0);
-							//LOGI("Finished copying audio data to buffer");
 							samplesWritten += env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mWrite, buffer, 0, offset  );
 
 							pBuffer = env->GetPrimitiveArrayCritical(buffer, NULL);
@@ -725,7 +722,6 @@ int AudioFDK::Update()
 				}
 
 				env->ReleasePrimitiveArrayCritical(buffer, pBuffer, 0);
-				//LOGI("Finished copying audio data to buffer");
 				samplesWritten += env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mWrite, buffer, 0, offset  );
 
 			}
