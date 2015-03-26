@@ -94,6 +94,7 @@ amm-info@iis.fraunhofer.de
 #include "FDK_crc.h"
 #endif
 
+#include "../../../debug.h"
 
 void CProgramConfig_Reset(CProgramConfig *pPce)
 {
@@ -1300,6 +1301,7 @@ TRANSPORTDEC_ERROR AudioSpecificConfig_Parse(
                 0  /* don't know the length */
                 );
       } else {
+    	  LOGE("err = Unsupported AOT format");
         return TRANSPORTDEC_UNSUPPORTED_FORMAT;
       }
       break;
@@ -1315,6 +1317,7 @@ TRANSPORTDEC_ERROR AudioSpecificConfig_Parse(
 #endif /* TP_ELD_ENABLE */
 
     default:
+    	LOGE("err = Default Unknown format : %d", self->m_aot);
       return TRANSPORTDEC_UNSUPPORTED_FORMAT;
       break;
   }

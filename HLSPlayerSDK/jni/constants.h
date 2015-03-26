@@ -9,6 +9,7 @@
 #define CONSTANTS_H_
 
 #define APP_NAME "HLSPlayerSDK"
+#define USE_OMX_AUDIO false
 
 enum ErrorCode
 {

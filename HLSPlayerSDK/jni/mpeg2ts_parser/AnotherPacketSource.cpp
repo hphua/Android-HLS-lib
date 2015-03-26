@@ -163,6 +163,8 @@ status_t AnotherPacketSource::read(
         int64_t timeUs;
         CHECK(buffer->meta()->findInt64("timeUs", &timeUs));
 
+        LOGTIMING("read %lld, isAudio=%d, bufferSize=%d", timeUs, mIsAudio, buffer->size() );
+
         // Copy data into a MediaBuffer.
         MediaBuffer *mediaBuffer = new MediaBuffer(buffer->size());
         memcpy(mediaBuffer->data(), buffer->data(), buffer->size());

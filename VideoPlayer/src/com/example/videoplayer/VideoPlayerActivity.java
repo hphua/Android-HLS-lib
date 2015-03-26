@@ -338,6 +338,8 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 
         	// Subtitles
         	input.setText("http://olive.fr.globecast.tv/live/disk4/sub/hls_sub/index.m3u8");
+        	
+        	input.setText("http://apache-testing.dev.kaltura.com/p/1091/sp/109100/playManifest/entryId/0_ue0n7lmw/format/applehttp/protocol/http/uiConfId/15088771/a.m3u8?referrer=aHR0cDovL2V4dGVybmFsdGVzdHMuZGV2LmthbHR1cmEuY29t&responseFormat=m3u8&callback=jQuery111106298717719037086_1425418291289&_=1425418291290");
 
         	// set up a dialog window
         	alertDialogBuilder

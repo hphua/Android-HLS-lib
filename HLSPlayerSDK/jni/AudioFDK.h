@@ -1,23 +1,24 @@
 /*
- * AudioTrack.h
+ * AudioFDK.h
  *
- *  Created on: Jul 17, 2014
+ *  Created on: Mar 24, 2015
  *      Author: Mark
  */
 
-#ifndef AUDIOTRACK_H_
-#define AUDIOTRACK_H_
+#ifndef AUDIOFDK_H_
+#define AUDIOFDK_H_
 
 #include <jni.h>
 #include <androidVideoShim.h>
 #include <semaphore.h>
 #include <RefCounted.h>
 #include <AudioPlayer.h>
+#include <aacdecoder_lib.h>
 
-class AudioTrack : public AudioPlayer {
+class AudioFDK: public AudioPlayer {
 public:
-	AudioTrack(JavaVM* jvm);
-	~AudioTrack();
+	AudioFDK(JavaVM* jvm);
+	virtual ~AudioFDK();
 
 	bool Init();
 	void Close();
@@ -47,6 +48,12 @@ public:
 	bool ReadUntilTime(double timeSecs);
 private:
 	void SetTimeStampOffset(double offsetSecs);
+
+	HANDLE_AACDECODER mAACDecoder;
+
+	uint32_t mESDSType;
+	const void* mESDSData;
+	size_t mESDSSize;
 
 	jclass mCAudioTrack;
 	jmethodID mAudioTrack;
@@ -83,9 +90,9 @@ private:
 	long long samplesWritten;
 
 	sem_t semPause;
-    pthread_mutex_t updateMutex;
-    pthread_mutex_t lock;
+	pthread_mutex_t updateMutex;
+	pthread_mutex_t lock;
 
 };
 
-#endif /* AUDIOTRACK_H_ */
+#endif /* AUDIOFDK_H_ */

@@ -17,7 +17,7 @@
 #include <android/window.h>
 #include <unistd.h>
 
-#include "AudioTrack.h"
+#include "AudioPlayer.h"
 
 #include <pthread.h>
 #include <list>
@@ -153,7 +153,7 @@ private:
 	android_video_shim::MediaSource::ReadOptions mOptions;
 	android_video_shim::MediaSource23::ReadOptions mOptions23;
 
-	AudioTrack *mJAudioTrack;
+	AudioPlayer *mAudioPlayer;
 
 	bool mUseOMXRenderer;
 	bool mOffloadAudio;
