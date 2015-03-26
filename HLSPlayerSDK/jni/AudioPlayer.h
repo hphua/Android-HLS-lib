@@ -26,6 +26,19 @@ enum
  * An interface class for defining how the app works with the audio implementations
  * the HLSPlayer supports.
  *
+ *	1) Call MakeAudioPlayer to create the type of player you want.
+ *
+ *	2) Call Init()
+ *
+ *	3) Set the sources
+ *
+ *	4) Call Start() to get ready to play
+ *
+ *	5) Call Play to begin playback
+ *
+ *	The current implementations of this interface expect to have a thread started that will call update repeatedly and
+ *	watches for the various return values from Update that indicate it's state. The thread should call release once
+ *	update returns AUDIOTHREAD_FINISH
  */
 
 class AudioPlayer : public RefCounted {
@@ -35,14 +48,11 @@ public:
 	virtual bool Init() = 0;
 	virtual void Close() = 0; // Stops the player and releases any memory and references to external objects
 
-	virtual void unload() = 0; // from RefCounted - calls close internally, then deletes our object
-
 	virtual bool Start() = 0; // Should prepare an audio track for playing
 	virtual void Play() = 0; // begins playback
 	virtual void Pause() = 0; // pauses playback
 	virtual void Flush() = 0; // Flushes any buffers
 	virtual bool Stop(bool seeking = false) = 0; // Stops playback completely.
-
 
 	virtual bool Set(android_video_shim::sp<android_video_shim::MediaSource> audioSource, bool alreadyStarted = false) = 0; // Set a DataSource from 4.0 android and later
 	virtual bool Set23(android_video_shim::sp<android_video_shim::MediaSource23> audioSource, bool alreadyStarted = false) = 0; // Set a DataSource from 2.3 android
@@ -59,6 +69,9 @@ public:
 	virtual bool UpdateFormatInfo() = 0; // Updates the audio format information ( sample rate, channels, etc...)
 
 	virtual bool ReadUntilTime(double timeSecs) = 0; // Reads through the audio stream until the timestamp matches - sort of a fast forward
+
+	virtual void unload() = 0; // from RefCounted - calls close internally, then deletes our object - do not call directly. Call AudioPlayer->release() instead.
+
 };
 
 /*
