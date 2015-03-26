@@ -37,8 +37,6 @@ public:
 
 	int Update();
 
-	void shutdown();
-
 	int64_t GetTimeStamp();
 
 	void forceTimeStampUpdate();

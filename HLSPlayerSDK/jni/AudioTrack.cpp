@@ -654,13 +654,6 @@ int AudioTrack::Update()
 	return AUDIOTHREAD_CONTINUE;
 }
 
-void AudioTrack::shutdown()
-{
-	LOGTRACE("%s", __func__);
-	JNIEnv* env;
-	if (gHLSPlayerSDK->GetEnv(&env))
-		env->DeleteGlobalRef(buffer);
-}
 
 int AudioTrack::getBufferSize()
 {

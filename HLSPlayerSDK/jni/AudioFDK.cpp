@@ -16,12 +16,21 @@
 extern HLSPlayerSDK* gHLSPlayerSDK;
 
 
+#define STREAM_MUSIC 3
+#define CHANNEL_CONFIGURATION_MONO 4
+#define CHANNEL_CONFIGURATION_STEREO 12
+#define CHANNEL_CONFIGURATION_5_1 1052
+#define ENCODING_PCM_8BIT 3
+#define ENCODING_PCM_16BIT 2
+#define MODE_STREAM 1
+
+
 using namespace android_video_shim;
 
 AudioFDK::AudioFDK(JavaVM* jvm) : mJvm(jvm), mAudioTrack(NULL), mGetMinBufferSize(NULL), mPlay(NULL), mPause(NULL), mStop(NULL), mFlush(NULL), buffer(NULL),
-									mRelease(NULL), mGetTimestamp(NULL), mCAudioTrack(NULL), mWrite(NULL), mGetPlaybackHeadPosition(NULL), mSetPositionNotificationPeriod(NULL),
-									mSampleRate(0), mNumChannels(0), mBufferSizeInBytes(0), mChannelMask(0), mTrack(NULL), mPlayState(INITIALIZED),
-									mTimeStampOffset(0), samplesWritten(0), mWaiting(true), mNeedsTimeStampOffset(true), mAACDecoder(NULL), mESDSType(TT_UNKNOWN), mESDSData(NULL), mESDSSize(0)
+		mRelease(NULL), mGetTimestamp(NULL), mCAudioTrack(NULL), mWrite(NULL), mGetPlaybackHeadPosition(NULL), mSetPositionNotificationPeriod(NULL),
+		mSampleRate(0), mNumChannels(0), mBufferSizeInBytes(0), mChannelMask(0), mTrack(NULL), mPlayState(INITIALIZED),
+		mTimeStampOffset(0), samplesWritten(0), mWaiting(true), mNeedsTimeStampOffset(true), mAACDecoder(NULL), mESDSType(TT_UNKNOWN), mESDSData(NULL), mESDSSize(0)
 {
 	if (!mJvm)
 	{
@@ -94,35 +103,35 @@ bool AudioFDK::Init()
 		return false;
 	}
 
-    if (!mCAudioTrack)
-    {
-        /* Cache AudioTrack class and it's method id's
-         * And do this only once!
-         */
+	if (!mCAudioTrack)
+	{
+		/* Cache AudioTrack class and it's method id's
+		 * And do this only once!
+		 */
 
-    	LOGE("Caching AudioTrack class and method ids");
+		LOGE("Caching AudioTrack class and method ids");
 
-        mCAudioTrack = env->FindClass("android/media/AudioTrack");
-        if (!mCAudioTrack)
-        {
-            LOGE("android.media.AudioTrack class is not found. Are you running at least 1.5 version?");
-            return false;
-        }
+		mCAudioTrack = env->FindClass("android/media/AudioTrack");
+		if (!mCAudioTrack)
+		{
+			LOGE("android.media.AudioTrack class is not found. Are you running at least 1.5 version?");
+			return false;
+		}
 
-        mCAudioTrack = (jclass)env->NewGlobalRef(mCAudioTrack);
+		mCAudioTrack = (jclass)env->NewGlobalRef(mCAudioTrack);
 
-        mAudioTrack = env->GetMethodID(mCAudioTrack, "<init>", "(IIIIII)V");
-        mGetMinBufferSize = env->GetStaticMethodID(mCAudioTrack, "getMinBufferSize", "(III)I");
-        mPlay = env->GetMethodID(mCAudioTrack, "play", "()V");
-        mStop = env->GetMethodID(mCAudioTrack, "stop", "()V");
-        mPause = env->GetMethodID(mCAudioTrack, "pause", "()V");
-        mFlush = env->GetMethodID(mCAudioTrack, "flush", "()V");
-        mRelease = env->GetMethodID(mCAudioTrack, "release", "()V");
-        mWrite = env->GetMethodID(mCAudioTrack, "write", "([BII)I");
-        mSetPositionNotificationPeriod = env->GetMethodID(mCAudioTrack, "setPositionNotificationPeriod", "(I)I");
-        mGetPlaybackHeadPosition = env->GetMethodID(mCAudioTrack, "getPlaybackHeadPosition", "()I");
-    }
-    return true;
+		mAudioTrack = env->GetMethodID(mCAudioTrack, "<init>", "(IIIIII)V");
+		mGetMinBufferSize = env->GetStaticMethodID(mCAudioTrack, "getMinBufferSize", "(III)I");
+		mPlay = env->GetMethodID(mCAudioTrack, "play", "()V");
+		mStop = env->GetMethodID(mCAudioTrack, "stop", "()V");
+		mPause = env->GetMethodID(mCAudioTrack, "pause", "()V");
+		mFlush = env->GetMethodID(mCAudioTrack, "flush", "()V");
+		mRelease = env->GetMethodID(mCAudioTrack, "release", "()V");
+		mWrite = env->GetMethodID(mCAudioTrack, "write", "([BII)I");
+		mSetPositionNotificationPeriod = env->GetMethodID(mCAudioTrack, "setPositionNotificationPeriod", "(I)I");
+		mGetPlaybackHeadPosition = env->GetMethodID(mCAudioTrack, "getPlaybackHeadPosition", "()I");
+	}
+	return true;
 }
 
 void AudioFDK::ClearAudioSource()
@@ -220,23 +229,8 @@ bool AudioFDK::UpdateFormatInfo()
 		LOGE("Couldn't find ESDS data");
 	}
 
-
-
-
-
-
-
 	return true;
 }
-
-#define STREAM_MUSIC 3
-#define CHANNEL_CONFIGURATION_MONO 4
-#define CHANNEL_CONFIGURATION_STEREO 12
-#define CHANNEL_CONFIGURATION_5_1 1052
-#define ENCODING_PCM_8BIT 3
-#define ENCODING_PCM_16BIT 2
-#define MODE_STREAM 1
-
 
 void LogBytes(const char* header, const char* footer, char* bytes, int size)
 {
@@ -244,16 +238,19 @@ void LogBytes(const char* header, const char* footer, char* bytes, int size)
 	int rowCount = size / rowLen;
 	int extraRow = size % rowLen;
 	int o = 0;
+
 	LOGE("%s: size = %d", header, size);
+
 	for (int i = 0; i < rowCount; ++i)
 	{
 		o = i * rowLen;
 		LOGE("%x: %x %x %x %x %x %x %x %x  %x %x %x %x %x %x %x %x", o ,*(bytes + (0 + o)),*(bytes + (1 + o)),*(bytes + (2 + o)),*(bytes + (3 + o)),
-																   *(bytes + (4 + o)),*(bytes + (5 + o)),*(bytes + (6 + o)),*(bytes + (7 + o)),
-																   *(bytes + (8 + o)),*(bytes + (9 + o)),*(bytes + (10 + o)),*(bytes + (11 + o)),
-																   *(bytes + (12 + o)),*(bytes + (13 + o)),*(bytes + (14 + o)),*(bytes + (15 + o))
-																   );
+																		*(bytes + (4 + o)),*(bytes + (5 + o)),*(bytes + (6 + o)),*(bytes + (7 + o)),
+																		*(bytes + (8 + o)),*(bytes + (9 + o)),*(bytes + (10 + o)),*(bytes + (11 + o)),
+																		*(bytes + (12 + o)),*(bytes + (13 + o)),*(bytes + (14 + o)),*(bytes + (15 + o))
+		);
 	}
+
 	if (extraRow > 0)
 	{
 		o += 16;
@@ -261,10 +258,11 @@ void LogBytes(const char* header, const char* footer, char* bytes, int size)
 		memset(xb, 0, rowLen);
 		memcpy(xb, bytes + o, extraRow);
 		LOGE("%x: %x %x %x %x %x %x %x %x  %x %x %x %x %x %x %x %x", o, *(xb + 0),*(xb + 1 ),*(xb + 2 ),*(xb + 3),
-																				*(xb + 4),*(xb + 5),*(xb + 6),*(xb + 7),
-																				*(xb + 8),*(xb + 9 ),*(xb + 10 ),*(xb + 11),
-																				*(xb + 12),*(xb + 13),*(xb + 14),*(xb + 15));
+																		*(xb + 4),*(xb + 5),*(xb + 6),*(xb + 7),
+																		*(xb + 8),*(xb + 9 ),*(xb + 10 ),*(xb + 11),
+																		*(xb + 12),*(xb + 13),*(xb + 14),*(xb + 15));
 	}
+
 	LOGE("%s", footer);
 }
 
@@ -298,9 +296,9 @@ bool AudioFDK::Start()
 	if (mAACDecoder != NULL)
 	{
 		ESDS esds((const char*)mESDSData, mESDSSize);
-		if (esds.InitCheck() != OK)
+		if (status_t ec = esds.InitCheck() != OK)
 		{
-			LOGE("ESDS is not okay");
+			LOGE("ESDS is not okay: 0x%4.4x", ec);
 			return false;
 		}
 
@@ -317,7 +315,6 @@ bool AudioFDK::Start()
 			LOGE("aac ESDS length = %d, ptr=%p", mESDSSize, mESDSData);
 			UCHAR* d = (UCHAR*)mESDSData;
 			LogBytes("Begin ESDSData", "End ESDSData", (char*)d, mESDSSize);
-
 
 			LOGE("aacDecoder_ConfigRaw decoderErr = 0x%4.4x", decoderErr );
 			return false;
@@ -354,7 +351,7 @@ bool AudioFDK::Start()
 	// the media buffer I am seeing is exactly the same size as this value * 4
 	mBufferSizeInBytes = env->CallStaticIntMethod(mCAudioTrack, mGetMinBufferSize, mSampleRate, channelConfig,ENCODING_PCM_16BIT) * 4;
 
-	LOGI("mBufferSizeInBytes=%d", mBufferSizeInBytes);
+	LOGV("mBufferSizeInBytes=%d", mBufferSizeInBytes);
 
 	// Release our old track.
 	if(mTrack)
@@ -507,7 +504,6 @@ int64_t AudioFDK::GetTimeStamp()
 	return ((secs + mTimeStampOffset) * 1000000);
 }
 
-// TODO: This method probably needs some FDK love!
 bool AudioFDK::ReadUntilTime(double timeSecs)
 {
 	LOGTRACE("%s", __func__);
@@ -548,6 +544,7 @@ bool AudioFDK::ReadUntilTime(double timeSecs)
 		}
 		else if (res == INFO_FORMAT_CHANGED)
 		{
+			LOGI("Audio Stream Format Changed");
 		}
 		else if (res == ERROR_END_OF_STREAM)
 		{
@@ -598,8 +595,8 @@ int AudioFDK::Update()
 		{
 			LOGI("mPlayState == STOPPED. Ending audio update thread!");
 			return AUDIOTHREAD_FINISH; // We don't really want to add more stuff to the buffer
-							// and potentially run past the end of buffered source data
-							// if we're not actively playing
+			// and potentially run past the end of buffered source data
+			// if we're not actively playing
 		}
 	}
 
@@ -607,7 +604,7 @@ int AudioFDK::Update()
 	JNIEnv* env;
 	if (!gHLSPlayerSDK->GetEnv(&env))
 		return AUDIOTHREAD_FINISH; // If we don't have a java environment at this point, something has killed it,
-								   // so we better kill the thread.
+	// so we better kill the thread.
 
 	pthread_mutex_lock(&updateMutex);
 
@@ -794,13 +791,6 @@ int AudioFDK::Update()
 	return AUDIOTHREAD_CONTINUE;
 }
 
-void AudioFDK::shutdown()
-{
-	LOGTRACE("%s", __func__);
-	JNIEnv* env;
-	if (gHLSPlayerSDK->GetEnv(&env))
-		env->DeleteGlobalRef(buffer);
-}
 
 int AudioFDK::getBufferSize()
 {
