@@ -141,7 +141,7 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 	
 	public static String getNormalizedUrl( String baseUrl, String uri)
 	{
-		return ( uri.substring(0, 5).equals("http:") || uri.substring(0, 6).equals("https:") || uri.substring(0, 5).equals("file:")) ? uri : baseUrl + uri;
+		return ( uri.startsWith("http:") || uri.startsWith("https:") || uri.startsWith("file:")) ? uri : baseUrl + uri;
 	}
 	
 	public static <T> T as(Class<T> t, Object o) {

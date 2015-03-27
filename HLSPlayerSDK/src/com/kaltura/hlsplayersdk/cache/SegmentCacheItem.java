@@ -110,6 +110,7 @@ public class SegmentCacheItem {
 	{
 		if (retry())
 		{
+			if (statusCode == 0) HLSSegmentCache.expire();
 			Log.i("SegmentCacheItem.postOnSegmentFailed", "Segment download failed. Retrying: " + uri + " : " + statusCode);
 			cacheEntry.retry(this);
 		}

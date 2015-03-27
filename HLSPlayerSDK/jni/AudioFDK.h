@@ -83,6 +83,7 @@ private:
 
 	int mPlayState;
 	bool mWaiting;
+	bool mPlayingSilence;
 
 	double mTimeStampOffset;
 	bool mNeedsTimeStampOffset;

@@ -30,7 +30,8 @@ using namespace android_video_shim;
 AudioFDK::AudioFDK(JavaVM* jvm) : mJvm(jvm), mAudioTrack(NULL), mGetMinBufferSize(NULL), mPlay(NULL), mPause(NULL), mStop(NULL), mFlush(NULL), buffer(NULL),
 		mRelease(NULL), mGetTimestamp(NULL), mCAudioTrack(NULL), mWrite(NULL), mGetPlaybackHeadPosition(NULL), mSetPositionNotificationPeriod(NULL),
 		mSampleRate(0), mNumChannels(0), mBufferSizeInBytes(0), mChannelMask(0), mTrack(NULL), mPlayState(INITIALIZED),
-		mTimeStampOffset(0), samplesWritten(0), mWaiting(true), mNeedsTimeStampOffset(true), mAACDecoder(NULL), mESDSType(TT_UNKNOWN), mESDSData(NULL), mESDSSize(0)
+		mTimeStampOffset(0), samplesWritten(0), mWaiting(true), mNeedsTimeStampOffset(true), mAACDecoder(NULL), mESDSType(TT_UNKNOWN), mESDSData(NULL), mESDSSize(0),
+		mPlayingSilence(false)
 {
 	if (!mJvm)
 	{
@@ -78,7 +79,7 @@ void AudioFDK::Close()
 		mTrack = NULL;
 		mCAudioTrack = NULL;
 
-		aacDecoder_Close(mAACDecoder);
+		if (mAACDecoder) aacDecoder_Close(mAACDecoder);
 
 		sem_destroy(&semPause);
 	}
@@ -181,6 +182,7 @@ bool AudioFDK::UpdateFormatInfo()
 		mSampleRate=44100;
 		mNumChannels = 2;
 		mChannelMask = 0;
+		mPlayingSilence = true;
 		return true;
 	}
 
@@ -292,32 +294,35 @@ bool AudioFDK::Start()
 		return false;
 	}
 
-	mAACDecoder = aacDecoder_Open(TT_MP4_ADIF, 1); // This is what SoftAAC2 does in initDecoder()
-	if (mAACDecoder != NULL)
+	if (!mPlayingSilence)
 	{
-		ESDS esds((const char*)mESDSData, mESDSSize);
-		if (status_t ec = esds.InitCheck() != OK)
+		mAACDecoder = aacDecoder_Open(TT_MP4_ADIF, 1); // This is what SoftAAC2 does in initDecoder()
+		if (mAACDecoder != NULL)
 		{
-			LOGE("ESDS is not okay: 0x%4.4x", ec);
-			return false;
-		}
+			ESDS esds((const char*)mESDSData, mESDSSize);
+			if (status_t ec = esds.InitCheck() != OK)
+			{
+				LOGE("ESDS is not okay: 0x%4.4x", ec);
+				return false;
+			}
 
-		const void* codec_specific_data;
-		size_t codec_specific_data_size;
-		esds.getCodecSpecificInfo(&codec_specific_data, &codec_specific_data_size);
+			const void* codec_specific_data;
+			size_t codec_specific_data_size;
+			esds.getCodecSpecificInfo(&codec_specific_data, &codec_specific_data_size);
 
 
-		UCHAR* inBuffer[1] = { (UCHAR*)codec_specific_data };
-		UINT inBufferLength[1] = { codec_specific_data_size };
-		AAC_DECODER_ERROR decoderErr = aacDecoder_ConfigRaw(mAACDecoder, inBuffer, inBufferLength);
-		if (decoderErr != AAC_DEC_OK)
-		{
-			LOGE("aac ESDS length = %d, ptr=%p", mESDSSize, mESDSData);
-			UCHAR* d = (UCHAR*)mESDSData;
-			LogBytes("Begin ESDSData", "End ESDSData", (char*)d, mESDSSize);
+			UCHAR* inBuffer[1] = { (UCHAR*)codec_specific_data };
+			UINT inBufferLength[1] = { codec_specific_data_size };
+			AAC_DECODER_ERROR decoderErr = aacDecoder_ConfigRaw(mAACDecoder, inBuffer, inBufferLength);
+			if (decoderErr != AAC_DEC_OK)
+			{
+				LOGE("aac ESDS length = %d, ptr=%p", mESDSSize, mESDSData);
+				UCHAR* d = (UCHAR*)mESDSData;
+				LogBytes("Begin ESDSData", "End ESDSData", (char*)d, mESDSSize);
 
-			LOGE("aacDecoder_ConfigRaw decoderErr = 0x%4.4x", decoderErr );
-			return false;
+				LOGE("aacDecoder_ConfigRaw decoderErr = 0x%4.4x", decoderErr );
+				return false;
+			}
 		}
 	}
 
@@ -435,7 +440,7 @@ bool AudioFDK::Stop(bool seeking)
 
 	if(seeking)
 	{
-		aacDecoder_Close(mAACDecoder);
+		if (mAACDecoder) aacDecoder_Close(mAACDecoder);
 		mAACDecoder = NULL;
 	}
 
@@ -742,6 +747,13 @@ int AudioFDK::Update()
 		}
 		else
 		{
+			if (mNeedsTimeStampOffset)
+			{
+				LOGTIMING("Need to set mTimeStampOffset");
+				int64_t videoTimeUs = gHLSPlayerSDK->GetPlayer()->GetLastTimeUS();
+				if (videoTimeUs >= 0)
+					SetTimeStampOffset(((double) videoTimeUs / 1000000.0f));
+			}
 			void* pBuffer = env->GetPrimitiveArrayCritical(buffer, NULL);
 			if (pBuffer)
 			{

@@ -552,6 +552,7 @@ public static String bytesToHex(ByteBuffer bytes) {
 	
 	static public String cacheInfo()
 	{
+		initialize();
 		double size = (double)cacheSize() / 1024.0;
 		Runtime rt = Runtime.getRuntime();
 		return "Cache Size: " + String.format("%.2f", size) + " Entries: " + segmentCache.size() + " Max Heap: " + (rt.maxMemory() / 1024) + " Cur Heap: " + ((rt.totalMemory() - rt.freeMemory()) / 1024);
