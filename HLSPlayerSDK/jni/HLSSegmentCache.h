@@ -14,6 +14,7 @@ private:
 	static jmethodID mPrecache;
 	static jmethodID mRead;
 	static jmethodID mGetSize;
+	static jmethodID mTouch;
 	static jclass mClass;
 
 public:
@@ -21,6 +22,7 @@ public:
     static void precache(const char *uri, int cryptoId = -1);
     static int64_t read(const char *uri, int64_t offset, int64_t size, void *bytes);
     static int64_t getSize(const char *uri);
+    static void touch(const char* uri);
 };
 
 

@@ -181,6 +181,20 @@ public class SegmentCacheEntry
 		return size;
 	}
 	
+	public int dataSize(String uri)
+	{
+		for (SegmentCacheItem item : mItems)
+		{
+			if (item.uri.equals(uri))
+			{
+				if (item.data != null)
+					return item.data.length;
+				return 0;
+			}
+		}
+		return 0;
+	}
+	
 	public int dataSize()
 	{
 		int ds = 0;

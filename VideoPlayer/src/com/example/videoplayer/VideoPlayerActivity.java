@@ -21,6 +21,7 @@ import android.widget.Toast;
 import com.kaltura.hlsplayersdk.HLSPlayerViewController;
 import com.kaltura.hlsplayersdk.types.PlayerStates;
 import com.kaltura.hlsplayersdk.QualityTrack;
+import com.kaltura.hlsplayersdk.cache.HLSSegmentCache;
 import com.kaltura.hlsplayersdk.events.*;
 
 public class VideoPlayerActivity extends ActionBarActivity implements OnTextTracksListListener, OnTextTrackChangeListener,
@@ -191,6 +192,9 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
     	if (playerView != null)
 		{
     		playerView.setVideoUrl(url);
+    		mLastTimeMS = 0;
+    		curQualityLevel = 0;
+    		clearDebugInfo();
         	playerView.setVisibility(View.VISIBLE);
         	playerView.play();
 		}
@@ -336,10 +340,12 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
         	// Disney Alt Audio
         	input.setText("http://54.169.47.74/masterstitch.m3u8?entryId=126ae943&url=http%3A%2F%2F111.223.97.115%2Fhls%2Fnl%2Findex-timeshifting.m3u8&uid=1c2ef485_46.20.235.45");
 
+        	// Clock
+        	input.setText("http://apache-testing.dev.kaltura.com/p/1091/sp/109100/playManifest/entryId/0_ue0n7lmw/format/applehttp/protocol/http/uiConfId/15088771/a.m3u8?referrer=aHR0cDovL2V4dGVybmFsdGVzdHMuZGV2LmthbHR1cmEuY29t&responseFormat=m3u8&callback=jQuery111106298717719037086_1425418291289&_=1425418291290");
+
         	// Subtitles
         	input.setText("http://olive.fr.globecast.tv/live/disk4/sub/hls_sub/index.m3u8");
         	
-        	input.setText("http://apache-testing.dev.kaltura.com/p/1091/sp/109100/playManifest/entryId/0_ue0n7lmw/format/applehttp/protocol/http/uiConfId/15088771/a.m3u8?referrer=aHR0cDovL2V4dGVybmFsdGVzdHMuZGV2LmthbHR1cmEuY29t&responseFormat=m3u8&callback=jQuery111106298717719037086_1425418291289&_=1425418291290");
 
         	// set up a dialog window
         	alertDialogBuilder
@@ -374,13 +380,23 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
     String progressText = "";
     String quality = "";
     String altAudio = "";
+    String cacheInfo = "";
+    
+    private void clearDebugInfo()
+    {
+        subTitleText = "";
+        timeStampText = "";
+        progressText = "";
+        quality = "";
+        altAudio = "";
+    }
     
     int progressCount = 0;
     
     public void updateDebugText()
     {
     	TextView tv = (TextView)findViewById(R.id.subTitleView);
-    	tv.setText(quality + " " + altAudio + " " + timeStampText + progressText + subTitleText);
+    	tv.setText(quality + " " + altAudio + " " + timeStampText + HLSSegmentCache.cacheInfo() + "\n" + progressText + subTitleText);
     }
 
 	@Override
@@ -418,7 +434,7 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 	@Override
 	public void onAudioSwitchingEnd(int newTrackIndex) {
 		curAltAudioTrack = newTrackIndex;
-		altAudio = "AL:" + curAltAudioTrack + "/" + numAltAudioTracks;
+		altAudio = "AL:" + (curAltAudioTrack + 1) + "/" + numAltAudioTracks;
 		updateDebugText();
 		Log.i("VideoPlayer.onAudioSwitchingEnd", "Language Changed to " + newTrackIndex);
 

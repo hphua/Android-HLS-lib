@@ -2301,6 +2301,15 @@ namespace android_video_shim
             return res;
         }
 
+        void touch()
+        {
+            AutoLock locker(&lock, __func__);
+            for (int i = mSourceIdx; i < mSources.size(); ++i)
+            {
+            	HLSSegmentCache::touch(mSources[i]);
+            }
+        }
+
         status_t _initCheck()
         {
             AutoLock locker(&lock, __func__);
@@ -2354,6 +2363,13 @@ namespace android_video_shim
                 // Attempt a read. Blocking and tries VERY hard not to fail.
                 ssize_t lastReadSize = HLSSegmentCache::read(mSources[mSourceIdx], adjOffset + readSize, sizeLeft, ((unsigned char*)data) + readSize);
 
+                if (sizeLeft - lastReadSize < 0)
+                {
+                	LOGW("NEGATIVE SIZE LEFT: sizeLeft=%d lastReadSize=%d source=%s", sizeLeft, lastReadSize, mSources[mSourceIdx]); // Something happened to the segment - maybe it's 404
+                	assert (sizeLeft - lastReadSize >= 0);
+                }
+
+
                 // Account for read.
                 sizeLeft -= lastReadSize;
                 readSize += lastReadSize;
@@ -2361,7 +2377,6 @@ namespace android_video_shim
                 // If done reading, then we can break out.
                 if(sizeLeft == 0)
                     break;
-                assert(sizeLeft >= 0); // In case we ever get a negative lastReadSize.
 
                 // Otherwise, we need to move to the next source if we have one.
                 if(mSourceIdx + 1 < mSources.size())

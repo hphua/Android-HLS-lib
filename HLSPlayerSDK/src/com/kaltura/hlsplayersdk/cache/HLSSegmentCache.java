@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
 import android.content.Context;
+import android.os.Debug;
 import android.os.Handler;
 import android.os.Looper;
 import android.util.Log;
@@ -123,6 +124,17 @@ public class HLSSegmentCache
 			lastDownloadDataRate = (double)sce.dataSize() / (sce.downloadCompletedTime - sce.downloadStartTime);
 		
 		expire();
+	}
+	
+	static public void touch(String uri)
+	{
+		synchronized (segmentCache)
+		{
+			if (segmentCache.containsKey(uri))
+			{
+				segmentCache.get(uri).lastTouchedMillis = System.currentTimeMillis();
+			}
+		}
 	}
 	
 	static protected void initialize()
@@ -396,7 +408,7 @@ public static String bytesToHex(ByteBuffer bytes) {
 		
 		waitForLoad(sce);
 		
-		if (sce.dataSize() == 0)
+		if (sce.dataSize(segmentUri) == 0)
 		{
 			Log.e("HLS Cache", "Segment Data is nonexistant or empty");
 			return 0;
@@ -538,6 +550,27 @@ public static String bytesToHex(ByteBuffer bytes) {
 		}
 	}
 	
+	static public String cacheInfo()
+	{
+		double size = (double)cacheSize() / 1024.0;
+		Runtime rt = Runtime.getRuntime();
+		return "Cache Size: " + String.format("%.2f", size) + " Entries: " + segmentCache.size() + " Max Heap: " + (rt.maxMemory() / 1024) + " Cur Heap: " + ((rt.totalMemory() - rt.freeMemory()) / 1024);
+	}
+	
+	static public long cacheSize()
+	{
+		long totalSize = 0; 
+		synchronized (segmentCache)
+		{
+			for (String s : segmentCache.keySet())
+			{
+				SegmentCacheEntry sce = segmentCache.get(s);
+				totalSize += sce.dataSize(s);
+			}
+		}
+		return totalSize;
+	}
+	
 	/**
 	 * We only have finite memory; evict segments when we exceed a maximum size.
 	 */
@@ -547,11 +580,10 @@ public static String bytesToHex(ByteBuffer bytes) {
 		{
 			// Get all the values in the set.
 			Collection<SegmentCacheEntry> values = segmentCache.values();
-
+			Log.i("HLSSegmentCache.expire", "Value count = " + values.size());
+			
 			// First, determine total size.
-			long totalSize = 0;
-			for(SegmentCacheEntry v : values)
-				totalSize += v.dataSize();
+			long totalSize = cacheSize();
 			
 			Log.i("HLS Cache", "size=" + (totalSize/1024) + "kb  threshold=" + (targetSize/1024) + "kb");
 			
@@ -559,29 +591,33 @@ public static String bytesToHex(ByteBuffer bytes) {
 			if(totalSize <= targetSize)
 				return;
 			
-			// Otherwise, find the oldest segment.
-			long oldestTime = System.currentTimeMillis();
-			SegmentCacheEntry oldestSce = null;
-			for(SegmentCacheEntry v : values)
+			while (cacheSize() > targetSize)
 			{
-				if(v.lastTouchedMillis >= oldestTime)
-					continue;
+				// Otherwise, find the oldest segment.
+				long oldestTime = System.currentTimeMillis();
+				SegmentCacheEntry oldestSce = null;
+				for(SegmentCacheEntry v : values)
+				{
+					if(v.lastTouchedMillis >= oldestTime)
+						continue;
+					
+					oldestSce = v;
+					oldestTime = v.lastTouchedMillis;
+				}
 				
-				oldestSce = v;
-				oldestTime = v.lastTouchedMillis;
+				long entryAge = System.currentTimeMillis() - oldestTime;
+				if(entryAge < minimumExpireAge)
+				{
+					// There aren't any more segments that we can purge
+					Log.i("HLS Cache", "Tried to purge segment that is less than " + minimumExpireAge/1000 + " seconds old. Ignoring... (" + oldestSce.toString() + ", " + entryAge/1000 + ")");
+					break;
+				}
+				
+				// We're over cache target, delete that one.
+				Log.i("HLS Cache", "Purging " + oldestSce.toString() + ", freeing " + (oldestSce.dataSize()/1024) + "kb, age " + (entryAge/1000) + "sec");
+				oldestSce.clear();
+				oldestSce.removeMe(segmentCache);				
 			}
-			
-			long entryAge = System.currentTimeMillis() - oldestTime;
-			if(entryAge < minimumExpireAge)
-			{
-				Log.i("HLS Cache", "Tried to purge segment that is less than " + minimumExpireAge/1000 + " seconds old. Ignoring... (" + oldestSce.toString() + ", " + entryAge/1000 + ")");
-				return;
-			}
-			
-			// We're over cache target, delete that one.
-			Log.i("HLS Cache", "Purging " + oldestSce.toString() + ", freeing " + (oldestSce.dataSize()/1024) + "kb, age " + (entryAge/1000) + "sec");
-			oldestSce.clear();
-			oldestSce.removeMe(segmentCache);
 		}
 	}
 }
