@@ -211,6 +211,7 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
     public static final int MENU_KALTURA_STREAMER = MENU_START + 3;
     public static final int MENU_UPLYNK = MENU_START + 4;
     public static final int MENU_AD_STITCHING = MENU_START + 5;
+    public static final int MENU_NASA = MENU_START + 6;
     
     
     @Override
@@ -228,6 +229,7 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
     			subMenu.add(0, MENU_KALTURA_STREAMER, Menu.NONE, "Kaltura Streamer");
     			subMenu.add(0, MENU_UPLYNK, Menu.NONE, "Uplynk");
     			subMenu.add(0, MENU_AD_STITCHING, Menu.NONE, "Ad Stitching");
+    			subMenu.add(0, MENU_NASA, Menu.NONE, "Nasa");
     			menuPrepared = true;
     		}
     	}
@@ -288,7 +290,14 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
         	lastUrl = "http://lbd.kaltura.com/d2/new.m3u8";
             setVideoUrl(lastUrl);
         	return true;
-        }        
+        }
+        else if (id == MENU_NASA)
+        {
+        	setTitle(item.getTitle());
+        	lastUrl = "http://public.infozen.cshls.lldns.net/infozen/public/public.m3u8";
+            setVideoUrl(lastUrl);
+        	return true;
+        }
         else if (id == R.id.abc_dvr_item)
         {
         	setTitle(item.getTitle());
@@ -418,7 +427,8 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 
         	// Subtitles
         	input.setText("http://olive.fr.globecast.tv/live/disk4/sub/hls_sub/index.m3u8");
-        	
+
+        	playerView.SetSegmentCountToBuffer(0);
         	
 
         	// set up a dialog window
@@ -471,7 +481,10 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
     public void updateDebugText()
     {
     	TextView tv = (TextView)findViewById(R.id.subTitleView);
-    	tv.setText(quality + " " + altAudio + " " + timeStampText + HLSSegmentCache.cacheInfo() + "\n" + progressText + subTitleText);
+    	
+    	//tv.setBackgroundColor(0x44ffffff);
+    	tv.setTextSize(18);
+    	tv.setText(HLSPlayerViewController.getVersion() + "\n" + quality + " " + altAudio + " " + timeStampText + HLSSegmentCache.cacheInfo() + "\n" + progressText + subTitleText);
     }
 
 	@Override
@@ -482,8 +495,6 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 		updateDebugText();
 
 	}
-	
-	
 
 	@Override
 	public void OnTextTracksList(List<String> list, int defaultTrackIndex) {
@@ -491,8 +502,6 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 		Log.i("VideoPlayer.OnTextTracksList", "Default = " + defaultTrackIndex);
 		for (int i = 0; i < list.size(); ++i)
 			Log.i("VideoPlayer.OnTextTracksList", "Language[" + i + "] = " + list.get(i));
-
-
 	}
 
 	@Override

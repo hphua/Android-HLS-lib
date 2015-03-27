@@ -85,7 +85,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	private native void FeedSegment(String url, int quality, int continuityEra, String altAudioURL, int altAudioIndex, double startTime, int cryptoId, int altCryptoId);
 	private native void SeekTo(double timeInSeconds);
 	private native void ApplyFormatChange();
-	private native void SetSegmentCountToBuffer(int segmentCount);
+	public native void SetSegmentCountToBuffer(int segmentCount);
 	private native int DroppedFramesPerSecond();
 	public native boolean AllowAllProfiles();
 
@@ -99,6 +99,10 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	private static boolean noMoreSegments = false;
 	private static int videoPlayId = 0;
 
+	public static String getVersion()
+	{
+		return "v0.0.1";
+	}
 
 	/**
 	 * Get the next segment in the stream.
