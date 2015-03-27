@@ -643,7 +643,7 @@ int AudioFDK::Update()
 				timeUs = 0;
 
 			}
-			LOGI("Audiotrack timeUs=%lld | mNeedsTimeStampOffset=%s", timeUs, mNeedsTimeStampOffset ? "True":"False");
+			LOGTIMING("Audiotrack timeUs=%lld | mNeedsTimeStampOffset=%s", timeUs, mNeedsTimeStampOffset ? "True":"False");
 
 			// If we need the timestamp offset (our audio starts at 0, which is not quite accurate and won't match
 			// the video time), set it. This should only be the case when we first start a stream.
@@ -674,7 +674,7 @@ int AudioFDK::Update()
 					return AUDIOTHREAD_FINISH;
 				}
 
-				LOGI("Valid = %d", valid);
+				LOGV("Valid = %d", valid);
 				dataOffset = bufSize - valid;
 
 				INT_PCM tmpBuffer[2048];
@@ -697,7 +697,7 @@ int AudioFDK::Update()
 						if (err != AAC_DEC_OK)
 						{
 							if (err == AAC_DEC_NOT_ENOUGH_BITS)
-								LOGE("aacDecoder_DecodeFrame() NOT ENOUGH BITS");
+								LOGV("aacDecoder_DecodeFrame() NOT ENOUGH BITS");
 							else
 								LOGE("aacDecoder_DecodeFrame() failed: %x", err);
 						}
@@ -715,7 +715,7 @@ int AudioFDK::Update()
 
 							if (offset + copySize > mBufferSizeInBytes)
 							{
-								LOGI("offset (%d) + sizeof(tmpBuffer) (%d) > mBufferSizeinBytes (%d) -- Writing to java audio track and getting new java buffer.", offset, sizeof(tmpBuffer), mBufferSizeInBytes);
+								LOGV("offset (%d) + sizeof(tmpBuffer) (%d) > mBufferSizeinBytes (%d) -- Writing to java audio track and getting new java buffer.", offset, sizeof(tmpBuffer), mBufferSizeInBytes);
 								// We need to empty our buffer and make a new one!!!
 								env->ReleasePrimitiveArrayCritical(buffer, pBuffer, 0);
 								samplesWritten += env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mWrite, buffer, 0, offset  );
@@ -723,7 +723,7 @@ int AudioFDK::Update()
 								pBuffer = env->GetPrimitiveArrayCritical(buffer, NULL);
 								offset = 0;
 							}
-							LOGI("Copying %d bytes to buffer at offset %d", copySize, offset);
+							LOGV("Copying %d bytes to buffer at offset %d", copySize, offset);
 							memcpy(((char*)pBuffer) + offset, tmpBuffer, copySize);
 							offset += copySize;
 						}
@@ -736,7 +736,7 @@ int AudioFDK::Update()
 				}
 				else
 				{
-					LOGI("MediaBufferSize > mBufferSizeInBytes");
+					LOGV("MediaBufferSize > mBufferSizeInBytes");
 				}
 			}
 		}

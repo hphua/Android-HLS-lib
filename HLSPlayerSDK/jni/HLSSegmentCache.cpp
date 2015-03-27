@@ -6,6 +6,7 @@ JavaVM *HLSSegmentCache::mJVM = NULL;
 jmethodID HLSSegmentCache::mPrecache = 0;
 jmethodID HLSSegmentCache::mRead = 0;
 jmethodID HLSSegmentCache::mGetSize = 0;
+jmethodID HLSSegmentCache::mTouch = 0;
 jclass HLSSegmentCache::mClass = 0;
 
 void HLSSegmentCache::initialize(JavaVM *jvm)
@@ -50,7 +51,27 @@ void HLSSegmentCache::initialize(JavaVM *jvm)
 		return;
 	}
 
+	mTouch = env->GetStaticMethodID(mClass, "touch", "(Ljava/lang/String;)V" );
+	if (env->ExceptionCheck())
+	{
+		LOGE("Could not find method com/kaltura/hlsplayerskd/cache/HLSSegmentCache.touch" );
+	}
+
 	LOGI("DONE");
+}
+
+void HLSSegmentCache::touch(const char* uri)
+{
+	assert(mJVM);
+
+	// Set up environment for this thread.
+	JNIEnv *env = NULL;
+	mJVM->AttachCurrentThread(&env, NULL);
+
+	jstring juri = env->NewStringUTF(uri);
+	env->CallStaticVoidMethod(mClass, mTouch, juri);
+	env->DeleteLocalRef(juri); // Cleaning up, just in case we're called from a native thread
+
 }
 
 void HLSSegmentCache::precache(const char *uri, int cryptoId)

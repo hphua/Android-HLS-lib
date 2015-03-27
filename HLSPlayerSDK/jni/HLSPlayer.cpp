@@ -1045,6 +1045,7 @@ void HLSPlayer::ClearScreen()
 	}
 }
 
+long lastTouchTimeMS = 0;
 
 int HLSPlayer::Update()
 {
@@ -1123,6 +1124,28 @@ int HLSPlayer::Update()
 	{
 		LogState();
 		return -1;
+	}
+
+	// Touch stuff!
+	if (lastTouchTimeMS < GetCurrentTimeMS())
+	{
+		lastTouchTimeMS = GetCurrentTimeMS() + 1000;
+
+		if (mDataSource != NULL)
+		{
+			((HLSDataSource*)mDataSource.get())->touch();
+		}
+
+		if (mDataSourceCache.size() > 0)
+		{
+			DATASRC_CACHE::iterator cur = mDataSourceCache.begin();
+			DATASRC_CACHE::iterator end = mDataSourceCache.end();
+			while (cur != end)
+			{
+				(*cur).dataSource->touch();
+				++cur;
+			}
+		}
 	}
 
 	if (mDataSource != NULL)
