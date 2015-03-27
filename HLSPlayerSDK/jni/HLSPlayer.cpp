@@ -1045,6 +1045,11 @@ void HLSPlayer::ClearScreen()
 	}
 }
 
+int64_t HLSPlayer::GetLastTimeUS()
+{
+	return mLastVideoTimeUs;
+}
+
 long lastTouchTimeMS = 0;
 
 int HLSPlayer::Update()

@@ -13,6 +13,7 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.SubMenu;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -189,15 +190,48 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 
     void setVideoUrl(String url)
     {
+    	Log.i("VideoPlayer UI", " -----> Play " + url);
     	if (playerView != null)
 		{
+    		clearDebugInfo();
     		playerView.setVideoUrl(url);
     		mLastTimeMS = 0;
     		curQualityLevel = 0;
-    		clearDebugInfo();
         	playerView.setVisibility(View.VISIBLE);
         	playerView.play();
 		}
+    }
+    
+    boolean menuPrepared = false;
+    
+    public static final int MENU_START = Menu.FIRST;
+    public static final int MENU_AD_TV_GRAB = MENU_START;
+    public static final int MENU_OFFICE_SPORTS = MENU_START + 1;
+    public static final int MENU_EINAT = MENU_START + 2;
+    public static final int MENU_KALTURA_STREAMER = MENU_START + 3;
+    public static final int MENU_UPLYNK = MENU_START + 4;
+    public static final int MENU_AD_STITCHING = MENU_START + 5;
+    
+    
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu)
+    {
+    	if (!menuPrepared)
+    	{
+    		MenuItem item = menu.getItem(0);
+    		if (item.hasSubMenu())
+    		{
+    			SubMenu subMenu = item.getSubMenu();
+    			subMenu.add(0, MENU_AD_TV_GRAB, Menu.NONE, "AD/TV Grab" );
+    			subMenu.add(0, MENU_OFFICE_SPORTS, Menu.NONE, "Office Sports");
+    			subMenu.add(0, MENU_EINAT, Menu.NONE, "Einat");
+    			subMenu.add(0, MENU_KALTURA_STREAMER, Menu.NONE, "Kaltura Streamer");
+    			subMenu.add(0, MENU_UPLYNK, Menu.NONE, "Uplynk");
+    			subMenu.add(0, MENU_AD_STITCHING, Menu.NONE, "Ad Stitching");
+    			menuPrepared = true;
+    		}
+    	}
+    	return super.onPrepareOptionsMenu(menu);
     }
 
     @Override
@@ -208,50 +242,91 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
         int id = item.getItemId();
         runSoak = false;
         if (id == R.id.kaltura_vod) {
+        	setTitle(item.getTitle());
         	lastUrl = "http://www.kaltura.com/p/0/playManifest/entryId/1_0i2t7w0i/format/applehttp";
-        	Log.i("VideoPlayer UI", " -----> Play " + lastUrl);
             setVideoUrl(lastUrl);
-        	//playerView.setVideoUrl("http://kalturavod-vh.akamaihd.net/i/p/1281471/sp/128147100/serveFlavor/entryId/1_0i2t7w0i/v/1/flavorId/1_rncam6d3/index_0_av.m3u8");
-        	//playerView.play();
         	return true;
         }
+        else if (id == MENU_AD_TV_GRAB)
+        {
+        	setTitle(item.getTitle());
+        	lastUrl = "http://playertest.longtailvideo.com/adaptive/captions/playlist.m3u8";
+            setVideoUrl(lastUrl);
+        	return true;
+        }
+        else if (id == MENU_OFFICE_SPORTS)
+        {
+        	setTitle(item.getTitle());
+        	lastUrl = "http://www.kaltura.com/p/243342/sp/24334200/playManifest/entryId/1_23pqn2nu/flavorIds/1_vy4eeqwx/format/applehttp/protocol/http/a.m3u8";
+            setVideoUrl(lastUrl);
+        	return true;
+        }
+        else if (id == MENU_EINAT)
+        {
+        	setTitle(item.getTitle());
+        	lastUrl = "http://cdnapi.kaltura.com/p/1878761/sp/187876100/playManifest/entryId/0_8s3afdlb/format/applehttp/protocol/http/uiConfId/28013271/a.m3u8";
+            setVideoUrl(lastUrl);
+        	return true;
+        }
+        else if (id == MENU_KALTURA_STREAMER)
+        {
+        	setTitle(item.getTitle());
+        	lastUrl = "http://apache-testing.dev.kaltura.com/p/1091/sp/109100/playManifest/entryId/0_ue0n7lmw/format/applehttp/protocol/http/uiConfId/15088771/a.m3u8?referrer=aHR0cDovL2V4dGVybmFsdGVzdHMuZGV2LmthbHR1cmEuY29t&responseFormat=m3u8&callback=jQuery111106298717719037086_1425418291289&_=1425418291290";
+            setVideoUrl(lastUrl);
+        	return true;
+        }
+        else if (id == MENU_UPLYNK)
+        {
+        	setTitle(item.getTitle());
+        	lastUrl = "http://content.uplynk.com/2bc2287cdfc4429eb632f7f211eb25b9.m3u8";
+            setVideoUrl(lastUrl);
+        	return true;
+        }
+        else if (id == MENU_AD_STITCHING)
+        {
+        	setTitle(item.getTitle());
+        	lastUrl = "http://lbd.kaltura.com/d2/new.m3u8";
+            setVideoUrl(lastUrl);
+        	return true;
+        }        
         else if (id == R.id.abc_dvr_item)
         {
+        	setTitle(item.getTitle());
         	lastUrl = "http://abclive.abcnews.com/i/abc_live4@136330/master.m3u8";
-        	Log.i("VideoPlayer UI", " -----> Play " + lastUrl);
             setVideoUrl(lastUrl);
         	return true;
         }
         else if (id == R.id.folgers)
         {
+        	setTitle(item.getTitle());
         	lastUrl = "http://cdnbakmi.kaltura.com/p/243342/sp/24334200/playManifest/entryId/0_uka1msg4/flavorIds/1_vqhfu6uy,1_80sohj7p/format/applehttp/protocol/http/a.m3u8";
-        	Log.i("VideoPlayer UI", " -----> Play " + lastUrl);
             setVideoUrl(lastUrl);
         	return true;
         }
         else if (id == R.id.vod_alt_audio)
         {
+        	setTitle(item.getTitle());
         	lastUrl = "http://pa-www.kaltura.com/content/shared/erank/multi_audio.m3u8";
-        	Log.i("VideoPlayer UI", " -----> Play " + lastUrl);
             setVideoUrl(lastUrl);
         	return true;
         }
         else if (id == R.id.bipbop)
         {
+        	setTitle(item.getTitle());
         	lastUrl = "http://devimages.apple.com/iphone/samples/bipbop/bipbopall.m3u8";
-        	Log.i("VideoPlayer UI", " -----> Play " + lastUrl);
             setVideoUrl(lastUrl);
         	return true;
         }
         else if (id == R.id.aes_vod)
         {
+        	setTitle(item.getTitle());
         	lastUrl = "http://live.cdn.antel.net.uy/test/hls/teststream1.m3u8";
-        	Log.i("VideoPlayer UI", " -----> Play " + lastUrl);
             setVideoUrl(lastUrl);
         	return true;
         }
         else if (id == R.id.soak)
         {
+        	setTitle(item.getTitle());
         	runSoak = true;
         	Log.i("VideoPlayer UI", " -----> Soak");
         	mSoakThread = new Thread(soakRunnable);
@@ -284,8 +359,6 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
         else if (id == R.id.testUrl)
         {
         	lastUrl = "http://www.djing.com/tv/live.m3u8";
-        	//lastUrl = "http://kapxvideo-a.akamaihd.net/dc-1/m/ny-live-publish21/kLive/smil:0_5zs2oadx_all.smil/playlist.m3u8?DVR";
-        	Log.i("VideoPlayer UI", " -----> Play " + lastUrl);
         	setVideoUrl(lastUrl);
         	return true;
         }
@@ -346,6 +419,7 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
         	// Subtitles
         	input.setText("http://olive.fr.globecast.tv/live/disk4/sub/hls_sub/index.m3u8");
         	
+        	
 
         	// set up a dialog window
         	alertDialogBuilder
@@ -354,7 +428,7 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 					public void onClick(DialogInterface dialog, int id) {
 						// get user input and set it to result
 						lastUrl = input.getText().toString();
-						Log.i("VideoPlayer UI", " -----> Play (from input dialog) " + lastUrl);
+						setTitle(lastUrl);
 						setVideoUrl(lastUrl);
 					}
 				})
@@ -389,6 +463,7 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
         progressText = "";
         quality = "";
         altAudio = "";
+        updateDebugText();
     }
     
     int progressCount = 0;

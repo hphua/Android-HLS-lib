@@ -68,6 +68,8 @@ public:
 
 	void PostError(int error, bool fatal, const char* msg);
 
+	int64_t GetLastTimeUS();
+
 private:
 	bool EnsureJNI(JNIEnv** env);
 	void SetNativeWindow(ANativeWindow* window);
