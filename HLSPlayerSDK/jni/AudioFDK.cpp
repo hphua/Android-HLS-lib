@@ -687,7 +687,7 @@ int AudioFDK::Update()
 				INT_PCM tmpBuffer[2048];
 
 
-				LOGI("MediaBufferSize = %d, mBufferSizeInBytes = %d", mbufSize, mBufferSizeInBytes );
+				LOGV("MediaBufferSize = %d, mBufferSizeInBytes = %d", mbufSize, mBufferSizeInBytes );
 				if (mbufSize <= mBufferSizeInBytes)
 				{
 					err = AAC_DEC_OK;
@@ -696,7 +696,7 @@ int AudioFDK::Update()
 					int offset = 0;
 					while (err == AAC_DEC_OK)
 					{
-						LOGI("tmpBuffer size = %d", sizeof(tmpBuffer));
+						LOGV("tmpBuffer size = %d", sizeof(tmpBuffer));
 
 						memset(tmpBuffer, 0xCD, sizeof(tmpBuffer));
 
@@ -714,7 +714,7 @@ int AudioFDK::Update()
 							CStreamInfo* streamInfo = aacDecoder_GetStreamInfo(mAACDecoder);
 							frameSize = streamInfo->frameSize;
 							int channels = streamInfo->numChannels;
-							LOGI("offset = %d, frameSize = %d, tmpBufferSize=%d, channels=%d", offset, frameSize, sizeof(tmpBuffer), channels);
+							LOGV("offset = %d, frameSize = %d, tmpBufferSize=%d, channels=%d", offset, frameSize, sizeof(tmpBuffer), channels);
 
 							//LogBytes("Begin Frame", "End Frame", (char*)tmpBuffer, sizeof(tmpBuffer));
 

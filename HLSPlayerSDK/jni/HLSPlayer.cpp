@@ -1156,7 +1156,7 @@ int HLSPlayer::Update()
 	if (mDataSource != NULL)
 	{
 		int segCount = ((HLSDataSource*) mDataSource.get())->getPreloadedSegmentCount();
-		LOGI("Segment Count %d, checking buffers...", segCount);
+		LOGV("Segment Count %d, checking buffers...", segCount);
 		if (segCount < SEGMENTS_TO_BUFFER) // (current segment + 2)
 		{
 			if (mDataSourceCache.size() > 0)
@@ -1536,7 +1536,7 @@ bool checkI420Converter()
         (void (*)(I420ConverterFuncMap*)) searchSymbol("getI420ColorConverter");
     
     if (getI420ColorConverter == NULL) {
-        LOGW("I420ColorConverter: cannot load getI420ColorConverter");
+        LOGV("I420ColorConverter: cannot load getI420ColorConverter");
         return false;
     }
 
@@ -1544,7 +1544,7 @@ bool checkI420Converter()
     gICFM = new I420ConverterFuncMap();
     getI420ColorConverter(gICFM);
 
-    LOGI("I420ColorConverter: libI420colorconvert.so loaded");
+    LOGV("I420ColorConverter: libI420colorconvert.so loaded");
     return true;
 }
 
@@ -2196,7 +2196,7 @@ int32_t HLSPlayer::GetCurrentTimeMS()
 
 	if (mAudioPlayer != NULL)
 	{
-		LOGI("mSTartTimeMS=%d", mStartTimeMS);
+		LOGTIMING("mSTartTimeMS=%d", mStartTimeMS);
 		return (mAudioPlayer->GetTimeStamp() / 1000);
 	}
 	return 0;
