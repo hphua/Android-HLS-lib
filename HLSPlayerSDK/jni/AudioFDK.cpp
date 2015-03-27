@@ -172,6 +172,8 @@ bool AudioFDK::Set23(sp<MediaSource23> audioSource, bool alreadyStarted)
 bool AudioFDK::UpdateFormatInfo()
 {
 	sp<MetaData> format;
+
+	mPlayingSilence = false;
 	if(mAudioSource.get())
 		format = mAudioSource->getFormat();
 	else if(mAudioSource23.get())
