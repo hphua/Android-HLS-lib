@@ -429,13 +429,14 @@ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnitAAC_23() {
         bits.skipBits(11);  // adts_buffer_fullness
         unsigned number_of_raw_data_blocks_in_frame = bits.getBits(2);
         if (number_of_raw_data_blocks_in_frame != 0) {
-            // To be implemented.
+            // To be implemented.ad
             TRESPASS();
         }
         if (offset + aac_frame_length > mBuffer->size()) {
             break;
         }
         size_t headerSize = protection_absent ? 7 : 9;
+        LOGAUDIO("adts header size = %d", headerSize);
         frameOffsets.push(offset + headerSize);
         frameSizes.push(aac_frame_length - headerSize);
         auSize += aac_frame_length - headerSize;

@@ -26,7 +26,7 @@ sbrdec_sources := $(sbrdec_sources:$(LOCAL_PATH)/fdk-aac-master/libSBRdec/src/%=
 LOCAL_SRC_FILES += HLSPlayerSDK.cpp HLSSegment.cpp HLSPlayer.cpp AudioTrack.cpp  RefCounted.cpp 
 LOCAL_SRC_FILES += androidVideoShim.cpp androidVideoShim_ColorConverter.cpp androidVideoShim_ColorConverter444.cpp
 LOCAL_SRC_FILES += aes.c AudioPlayer.cpp AudioFDK.cpp ESDS.cpp
-LOCAL_SRC_FILES += HLSSegmentCache.cpp
+LOCAL_SRC_FILES += HLSSegmentCache.cpp debug.cpp
 
 # MPEG 2 TS Extractor
 LOCAL_SRC_FILES += mpeg2ts_parser/AAtomizer.cpp mpeg2ts_parser/ABitReader.cpp mpeg2ts_parser/ABuffer.cpp mpeg2ts_parser/AMessage.cpp

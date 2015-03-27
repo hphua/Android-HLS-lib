@@ -29,12 +29,14 @@
 //#define _DEBUG_THREAD
 //#define _TIMING
 //#define _RENDER_DETAILS
+#define _AUDIO_FDK
 
 //#define _BLITTEST
 //#define _FRAME_DUMP 25
 
 //#define _VERBOSE
 
+void LogBytes(const char* header, const char* footer, char* bytes, int size);
 
 #ifdef _DEBUG_E
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, __func__, __VA_ARGS__)
@@ -108,6 +110,11 @@
 #define LOGATS(...)
 #endif
 
+#ifdef _AUDIO_FDK
+#define LOGAUDIO(...)  __android_log_print(ANDROID_LOG_VERBOSE, __func__, __VA_ARGS__)
+#else
+#define LOGAUDIO(...)
+#endif
 #ifdef _DEBUG_REFBASE
 #define LOGREFBASE(...)  __android_log_print(ANDROID_LOG_VERBOSE, __func__, __VA_ARGS__)
 #else

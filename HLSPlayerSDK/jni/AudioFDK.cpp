@@ -236,40 +236,6 @@ bool AudioFDK::UpdateFormatInfo()
 	return true;
 }
 
-void LogBytes(const char* header, const char* footer, char* bytes, int size)
-{
-	int rowLen = 16;
-	int rowCount = size / rowLen;
-	int extraRow = size % rowLen;
-	int o = 0;
-
-	LOGE("%s: size = %d", header, size);
-
-	for (int i = 0; i < rowCount; ++i)
-	{
-		o = i * rowLen;
-		LOGE("%x: %x %x %x %x %x %x %x %x  %x %x %x %x %x %x %x %x", o ,*(bytes + (0 + o)),*(bytes + (1 + o)),*(bytes + (2 + o)),*(bytes + (3 + o)),
-																		*(bytes + (4 + o)),*(bytes + (5 + o)),*(bytes + (6 + o)),*(bytes + (7 + o)),
-																		*(bytes + (8 + o)),*(bytes + (9 + o)),*(bytes + (10 + o)),*(bytes + (11 + o)),
-																		*(bytes + (12 + o)),*(bytes + (13 + o)),*(bytes + (14 + o)),*(bytes + (15 + o))
-		);
-	}
-
-	if (extraRow > 0)
-	{
-		o += 16;
-		char xb[rowLen];
-		memset(xb, 0, rowLen);
-		memcpy(xb, bytes + o, extraRow);
-		LOGE("%x: %x %x %x %x %x %x %x %x  %x %x %x %x %x %x %x %x", o, *(xb + 0),*(xb + 1 ),*(xb + 2 ),*(xb + 3),
-																		*(xb + 4),*(xb + 5),*(xb + 6),*(xb + 7),
-																		*(xb + 8),*(xb + 9 ),*(xb + 10 ),*(xb + 11),
-																		*(xb + 12),*(xb + 13),*(xb + 14),*(xb + 15));
-	}
-
-	LOGE("%s", footer);
-}
-
 // TODO: Figure out the difference between start and play and document that!!!
 bool AudioFDK::Start()
 {
@@ -296,18 +262,19 @@ bool AudioFDK::Start()
 		return false;
 	}
 
+	ESDS esds((const char*)mESDSData, mESDSSize);
+	if (status_t ec = esds.InitCheck() != OK)
+	{
+		LOGE("ESDS is not okay: 0x%4.4x", ec);
+		mPlayingSilence = true;
+	}
+
+
 	if (!mPlayingSilence)
 	{
 		mAACDecoder = aacDecoder_Open(TT_MP4_ADIF, 1); // This is what SoftAAC2 does in initDecoder()
 		if (mAACDecoder != NULL)
 		{
-			ESDS esds((const char*)mESDSData, mESDSSize);
-			if (status_t ec = esds.InitCheck() != OK)
-			{
-				LOGE("ESDS is not okay: 0x%4.4x", ec);
-				return false;
-			}
-
 			const void* codec_specific_data;
 			size_t codec_specific_data_size;
 			esds.getCodecSpecificInfo(&codec_specific_data, &codec_specific_data_size);
@@ -325,6 +292,10 @@ bool AudioFDK::Start()
 				LOGE("aacDecoder_ConfigRaw decoderErr = 0x%4.4x", decoderErr );
 				return false;
 			}
+		}
+		else
+		{
+			LOGE("Could not open aac decoder");
 		}
 	}
 
@@ -641,7 +612,7 @@ int AudioFDK::Update()
 			buffer = (jarray)env->NewGlobalRef(buffer);
 		}
 
-		if (mediaBuffer)
+		if (mediaBuffer && mAACDecoder)
 		{
 			int64_t timeUs;
 			bool rval = mediaBuffer->meta_data()->findInt64(kKeyTime, &timeUs);
@@ -673,6 +644,10 @@ int AudioFDK::Update()
 			{
 				bufSize = bufSize - dataOffset;
 				unsigned char* dataBuffer = data + dataOffset;
+#ifdef _AUDIO_FDK
+				LogBytes("aac buffer", "aac buffer", (char*)dataBuffer, 30);
+#endif
+
 				err = aacDecoder_Fill(mAACDecoder, &dataBuffer, &bufSize , &valid);
 				if (err != AAC_DEC_OK)
 				{
@@ -684,10 +659,12 @@ int AudioFDK::Update()
 				LOGV("Valid = %d", valid);
 				dataOffset = bufSize - valid;
 
-				INT_PCM tmpBuffer[2048];
+#define BUFFER_SIZE (8192 * 2)
+
+				INT_PCM* tmpBuffer = new INT_PCM[BUFFER_SIZE / 2];
 
 
-				LOGV("MediaBufferSize = %d, mBufferSizeInBytes = %d", mbufSize, mBufferSizeInBytes );
+				LOGAUDIO("MediaBufferSize = %d, mBufferSizeInBytes = %d", mbufSize, mBufferSizeInBytes );
 				if (mbufSize <= mBufferSizeInBytes)
 				{
 					err = AAC_DEC_OK;
@@ -696,33 +673,42 @@ int AudioFDK::Update()
 					int offset = 0;
 					while (err == AAC_DEC_OK)
 					{
-						LOGV("tmpBuffer size = %d", sizeof(tmpBuffer));
+						LOGAUDIO("tmpBuffer size = %d", BUFFER_SIZE);
 
-						memset(tmpBuffer, 0xCD, sizeof(tmpBuffer));
+						memset(tmpBuffer, 0xCD, BUFFER_SIZE);
 
-						err = aacDecoder_DecodeFrame(mAACDecoder, (INT_PCM*)tmpBuffer, sizeof(tmpBuffer), 0 );
+						err = aacDecoder_DecodeFrame(mAACDecoder, (INT_PCM*)tmpBuffer, BUFFER_SIZE, 0 );
 						if (err != AAC_DEC_OK)
 						{
 							if (err == AAC_DEC_NOT_ENOUGH_BITS)
-								LOGV("aacDecoder_DecodeFrame() NOT ENOUGH BITS");
+								LOGAUDIO("aacDecoder_DecodeFrame() NOT ENOUGH BITS");
 							else
 								LOGE("aacDecoder_DecodeFrame() failed: %x", err);
 						}
 						else
 						{
+							LOGAUDIO("Decoded Frame");
 							int frameSize = 0;
 							CStreamInfo* streamInfo = aacDecoder_GetStreamInfo(mAACDecoder);
+							if (streamInfo->sampleRate != mSampleRate)
+							{
+								LOGAUDIO("Sample Rate changed from %d to %d", mSampleRate, streamInfo->sampleRate);
+							}
+							if (streamInfo->numChannels != mNumChannels)
+							{
+								LOGAUDIO("Num Channels changed from %d to %d", mNumChannels, streamInfo->numChannels);
+							}
 							frameSize = streamInfo->frameSize;
 							int channels = streamInfo->numChannels;
-							LOGV("offset = %d, frameSize = %d, tmpBufferSize=%d, channels=%d", offset, frameSize, sizeof(tmpBuffer), channels);
+							LOGAUDIO("offset = %d, frameSize = %d, tmpBufferSize=%d, channels=%d, sampleRate=%d", offset, frameSize, BUFFER_SIZE, channels, streamInfo->sampleRate);
 
 							//LogBytes("Begin Frame", "End Frame", (char*)tmpBuffer, sizeof(tmpBuffer));
 
-							int copySize = sizeof(tmpBuffer) / 2 * channels;
+							int copySize = frameSize * sizeof(INT_PCM) * channels;
 
 							if (offset + copySize > mBufferSizeInBytes)
 							{
-								LOGV("offset (%d) + sizeof(tmpBuffer) (%d) > mBufferSizeinBytes (%d) -- Writing to java audio track and getting new java buffer.", offset, sizeof(tmpBuffer), mBufferSizeInBytes);
+								LOGAUDIO("offset (%d) + sizeof(tmpBuffer) (%d) > mBufferSizeinBytes (%d) -- Writing to java audio track and getting new java buffer.", offset, BUFFER_SIZE, mBufferSizeInBytes);
 								// We need to empty our buffer and make a new one!!!
 								env->ReleasePrimitiveArrayCritical(buffer, pBuffer, 0);
 								samplesWritten += env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mWrite, buffer, 0, offset  );
@@ -730,7 +716,7 @@ int AudioFDK::Update()
 								pBuffer = env->GetPrimitiveArrayCritical(buffer, NULL);
 								offset = 0;
 							}
-							LOGV("Copying %d bytes to buffer at offset %d", copySize, offset);
+							LOGAUDIO("Copying %d bytes to buffer at offset %d", copySize, offset);
 							memcpy(((char*)pBuffer) + offset, tmpBuffer, copySize);
 							offset += copySize;
 						}
@@ -745,6 +731,8 @@ int AudioFDK::Update()
 				{
 					LOGV("MediaBufferSize > mBufferSizeInBytes");
 				}
+
+				delete [] tmpBuffer;
 			}
 		}
 		else
@@ -759,7 +747,7 @@ int AudioFDK::Update()
 			void* pBuffer = env->GetPrimitiveArrayCritical(buffer, NULL);
 			if (pBuffer)
 			{
-				LOGV("Writing zeros to the audio buffer");
+				LOGAUDIO("Writing zeros to the audio buffer");
 				memset(pBuffer, 0, mBufferSizeInBytes);
 				int len = mBufferSizeInBytes / 2;
 				env->ReleasePrimitiveArrayCritical(buffer, pBuffer, 0);
