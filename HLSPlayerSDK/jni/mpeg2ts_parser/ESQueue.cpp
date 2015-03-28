@@ -268,7 +268,7 @@ status_t ElementaryStreamQueue::appendData(
     if (mBuffer == NULL || neededSize > mBuffer->capacity()) {
         neededSize = (neededSize + 65535) & ~65535;
 
-        ALOGV("resizing buffer to size %d", neededSize);
+        LOGV("resizing buffer to size %d", neededSize);
 
         sp<ABuffer> buffer = new ABuffer(neededSize);
         if (mBuffer != NULL) {
@@ -592,7 +592,7 @@ int64_t ElementaryStreamQueue::fetchTimestamp(size_t size) {
     }
 
     if (timeUs == 0ll) {
-        ALOGV("Returning 0 timestamp");
+        LOGV("Returning 0 timestamp");
     }
 
     return timeUs;
@@ -676,7 +676,7 @@ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnitH264() {
                 dstOffset += pos.nalSize + 4;
             }
 
-            ALOGV("accessUnit contains nal types %s", out.c_str());
+            LOGV("accessUnit contains nal types %s", out.c_str());
 
             const NALPosition &pos = nals.itemAt(nals.size() - 1);
             size_t nextScan = pos.nalOffset + pos.nalSize;
@@ -908,7 +908,7 @@ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnitMPEGVideo() {
 
                 accessUnit->meta()->setInt64("timeUs", timeUs);
 
-                ALOGV("returning MPEG video access unit at time %lld us",
+                LOGV("returning MPEG video access unit at time %lld us",
                       timeUs);
 
                 // hexdump(accessUnit->data(), accessUnit->size());
@@ -1067,7 +1067,7 @@ sp<ABuffer> ElementaryStreamQueue::dequeueAccessUnitMPEG4Video() {
 
                     accessUnit->meta()->setInt64("timeUs", timeUs);
 
-                    ALOGV("returning MPEG4 video access unit at time %lld us",
+                    LOGV("returning MPEG4 video access unit at time %lld us",
                          timeUs);
 
                     // hexdump(accessUnit->data(), accessUnit->size());

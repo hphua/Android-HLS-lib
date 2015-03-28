@@ -242,18 +242,6 @@ bool AudioFDK::Start()
 	LOGTRACE("%s", __func__);
 	AutoLock locker(&lock);
 
-	LOGI("Attaching to current java thread");
-	JNIEnv* env;
-	if (!gHLSPlayerSDK->GetEnv(&env)) return false;
-
-	LOGI("Setting buffer = NULL");
-	if (buffer)
-	{
-		env->DeleteGlobalRef(buffer);
-		buffer = NULL;
-	}
-
-
 	LOGI("Updating Format Info");
 	// Refresh our format information.
 	if(!UpdateFormatInfo())
@@ -299,6 +287,38 @@ bool AudioFDK::Start()
 		}
 	}
 
+	if (!InitJavaTrack())
+		return false;
+
+
+	int lastPlayState = mPlayState;
+
+	mPlayState = PLAYING;
+
+	if (lastPlayState == PAUSED || lastPlayState == SEEKING || lastPlayState == INITIALIZED)
+	{
+		LOGI("Playing Audio Thread: state = %s | semPause.count = %d", lastPlayState==PAUSED?"PAUSED":(lastPlayState==SEEKING?"SEEKING":(lastPlayState==INITIALIZED?"INITIALIZED":"Not Possible!")), semPause.count );
+		sem_post(&semPause);
+	}
+	mWaiting = false;
+	samplesWritten = 0;
+	return true;
+}
+
+bool AudioFDK::InitJavaTrack()
+{
+
+	LOGI("Attaching to current java thread");
+	JNIEnv* env;
+	if (!gHLSPlayerSDK->GetEnv(&env)) return false;
+
+	LOGI("Setting buffer = NULL");
+	if (buffer)
+	{
+		env->DeleteGlobalRef(buffer);
+		buffer = NULL;
+	}
+
 	if(mSampleRate == 0)
 	{
 		LOGE("Zero sample rate");
@@ -335,6 +355,7 @@ bool AudioFDK::Start()
 	if(mTrack)
 	{
 		LOGI("Releasing old java AudioTrack");
+		env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mStop);
 		env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mRelease);
 		env->DeleteGlobalRef(mTrack);
 		mTrack = NULL;
@@ -345,19 +366,15 @@ bool AudioFDK::Start()
 
 	LOGI("Calling java AudioTrack Play");
 	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mPlay);
-	int lastPlayState = mPlayState;
 
-	mPlayState = PLAYING;
-
-	if (lastPlayState == PAUSED || lastPlayState == SEEKING || lastPlayState == INITIALIZED)
+	if(!buffer)
 	{
-		LOGI("Playing Audio Thread: state = %s | semPause.count = %d", lastPlayState==PAUSED?"PAUSED":(lastPlayState==SEEKING?"SEEKING":(lastPlayState==INITIALIZED?"INITIALIZED":"Not Possible!")), semPause.count );
-		sem_post(&semPause);
+		buffer = env->NewByteArray(mBufferSizeInBytes);
+		buffer = (jarray)env->NewGlobalRef(buffer);
 	}
-	mWaiting = false;
-	samplesWritten = 0;
-	return true;
 
+
+	return mTrack != NULL;
 }
 
 
@@ -606,11 +623,7 @@ int AudioFDK::Update()
 		RUNDEBUG( {if (mediaBuffer) mediaBuffer->meta_data()->dumpToLog();} );
 		env->PushLocalFrame(2);
 
-		if(!buffer)
-		{
-			buffer = env->NewByteArray(mBufferSizeInBytes);
-			buffer = (jarray)env->NewGlobalRef(buffer);
-		}
+
 
 		if (mediaBuffer && mAACDecoder)
 		{
@@ -690,14 +703,31 @@ int AudioFDK::Update()
 							LOGAUDIO("Decoded Frame");
 							int frameSize = 0;
 							CStreamInfo* streamInfo = aacDecoder_GetStreamInfo(mAACDecoder);
+							bool reinitJava = false;
 							if (streamInfo->sampleRate != mSampleRate)
 							{
-								LOGAUDIO("Sample Rate changed from %d to %d", mSampleRate, streamInfo->sampleRate);
+								if (streamInfo->sampleRate > mSampleRate)
+								{
+									LOGAUDIO("Sample Rate changed from %d to %d", mSampleRate, streamInfo->sampleRate);
+									mSampleRate = streamInfo->sampleRate;
+									reinitJava = true;
+								}
 							}
 							if (streamInfo->numChannels != mNumChannels)
 							{
 								LOGAUDIO("Num Channels changed from %d to %d", mNumChannels, streamInfo->numChannels);
+								mNumChannels = streamInfo->numChannels;
+								reinitJava = true;
 							}
+
+							if (reinitJava)
+							{
+								env->ReleasePrimitiveArrayCritical(buffer, pBuffer, 0);
+								InitJavaTrack();
+								pBuffer = env->GetPrimitiveArrayCritical(buffer, NULL);
+								mNeedsTimeStampOffset = true;
+							}
+
 							frameSize = streamInfo->frameSize;
 							int channels = streamInfo->numChannels;
 							LOGAUDIO("offset = %d, frameSize = %d, tmpBufferSize=%d, channels=%d, sampleRate=%d", offset, frameSize, BUFFER_SIZE, channels, streamInfo->sampleRate);

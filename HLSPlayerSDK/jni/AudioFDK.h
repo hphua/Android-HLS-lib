@@ -49,6 +49,8 @@ public:
 private:
 	void SetTimeStampOffset(double offsetSecs);
 
+	bool InitJavaTrack();
+
 	HANDLE_AACDECODER mAACDecoder;
 
 	uint32_t mESDSType;
