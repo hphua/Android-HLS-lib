@@ -101,7 +101,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 
 	public static String getVersion()
 	{
-		return "v0.0.1";
+		return "v0.0.4";
 	}
 
 	/**
@@ -662,7 +662,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 	{
 		double startTime = StreamHandler.USE_DEFAULT_START; // This is a trigger to let getFileForTime know to start a live stream 
 		int subtitleIndex = 0;
-		int qualityLevel = 0;
+		int qualityLevel = mQualityLevel = 0;
 		int textTrackIndex = mSubtitleHandler.hasSubtitles() ? mSubtitleHandler.getDefaultLanguageIndex() : 0;
 		if (mRestoringState)
 		{

@@ -448,9 +448,7 @@ void AudioFDK::Pause()
 	LOGTRACE("%s", __func__);
 	if (mPlayState == PAUSED) return;
 	mPlayState = PAUSED;
-	JNIEnv* env;
-	if (gHLSPlayerSDK->GetEnv(&env))
-		env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mPause);
+
 }
 
 void AudioFDK::Flush()
@@ -576,6 +574,9 @@ int AudioFDK::Update()
 		while (mPlayState == PAUSED)
 		{
 			LOGI("Pausing Audio Thread: state = PAUSED | semPause.count = %d", semPause.count );
+			JNIEnv* env;
+			if (gHLSPlayerSDK->GetEnv(&env))
+				env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mPause);
 			sem_wait(&semPause);
 		}
 
