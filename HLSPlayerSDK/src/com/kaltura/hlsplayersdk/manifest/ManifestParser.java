@@ -654,6 +654,12 @@ public class ManifestParser implements OnParseCompleteListener, URLLoader.Downlo
 	}
 	
 	
+	public void logSegments()
+	{
+		for (ManifestSegment s : segments)
+			Log.i("Manifest[" + instance() + "]", "Segment: " + s);
+	}
+	
 	
 	public ManifestSegment findSegmentByID(int id)
 	{

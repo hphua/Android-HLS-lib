@@ -33,7 +33,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 	// part of the stream. It's only for testing purposes.
 	private static final boolean SKIP_TO_END_OF_LIVE = true;
 	
-	private static final int EDGE_BUFFER_SEGMENT_COUNT = 3;	// The number of segments to keep between playback and live edge.
+	public static int EDGE_BUFFER_SEGMENT_COUNT = 3;	// The number of segments to keep between playback and live edge.
 	
 	private KnowledgePrepHandler mKnowledgePrepHandler = null;
 	public interface KnowledgePrepHandler
@@ -583,6 +583,7 @@ public class StreamHandler implements ManifestParser.ReloadEventListener, Manife
 		else
 		{
 			Log.i("StreamHandler.onReloadComplete", "Setting quality to " + newManifest.quality);
+			newManifest.logSegments();
 			if (baseManifest.streams.size() > 0)
 			{
 				baseManifest.streams.get(newManifest.quality).manifest = newManifest;
