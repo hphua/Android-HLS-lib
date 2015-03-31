@@ -212,6 +212,7 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
     public static final int MENU_UPLYNK = MENU_START + 4;
     public static final int MENU_AD_STITCHING = MENU_START + 5;
     public static final int MENU_NASA = MENU_START + 6;
+    public static final int MENU_SHORT = MENU_START + 7;
     
     
     @Override
@@ -230,6 +231,7 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
     			subMenu.add(0, MENU_UPLYNK, Menu.NONE, "Uplynk");
     			subMenu.add(0, MENU_AD_STITCHING, Menu.NONE, "Ad Stitching");
     			subMenu.add(0, MENU_NASA, Menu.NONE, "Nasa");
+    			subMenu.add(0, MENU_SHORT, Menu.NONE, "Short");
     			menuPrepared = true;
     		}
     	}
@@ -281,6 +283,13 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
         {
         	setTitle(item.getTitle());
         	lastUrl = "http://content.uplynk.com/2bc2287cdfc4429eb632f7f211eb25b9.m3u8";
+            setVideoUrl(lastUrl);
+        	return true;
+        }
+        else if (id == MENU_SHORT)
+        {
+        	setTitle(item.getTitle());
+        	lastUrl = "http://apache-testing.dev.kaltura.com/p/1091/sp/109100/playManifest/entryId/0_0fq66zlh/flavorIds/0_3dsewp08,0_hxydxtc8,0_1tqp0z5y/format/applehttp/protocol/http/a.m3u8%3C/url%3E";
             setVideoUrl(lastUrl);
         	return true;
         }
