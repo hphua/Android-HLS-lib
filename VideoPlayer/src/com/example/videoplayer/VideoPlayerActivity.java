@@ -268,7 +268,7 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
         else if (id == MENU_EINAT)
         {
         	setTitle(item.getTitle());
-        	lastUrl = "http://cdnapi.kaltura.com/p/1878761/sp/187876100/playManifest/entryId/0_8s3afdlb/format/applehttp/protocol/http/uiConfId/28013271/a.m3u8";
+        	lastUrl = "http://apache-testing.dev.kaltura.com/p/1091/sp/109100/playManifest/entryId/0_f8re4ujs/format/applehttp/protocol/http/uiConfId/15088771/a.m3u8?referrer=aHR0cDovL2V4dGVybmFsdGVzdHMuZGV2LmthbHR1cmEuY29t";
             setVideoUrl(lastUrl);
         	return true;
         }
