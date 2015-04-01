@@ -497,6 +497,8 @@ status_t HLSPlayer::FeedSegment(const char* path, int32_t quality, int continuit
 
 	status_t err;
 
+	bool noCurrentSegments = GetBufferedSegmentCount() == 0;
+
 	if (sameEra)
 	{
 		LOGI("Same Era!");
@@ -516,7 +518,7 @@ status_t HLSPlayer::FeedSegment(const char* path, int32_t quality, int continuit
 			}
 		}
 
-		if (GetState() == WAITING_ON_DATA && GetBufferedSegmentCount() > 0)
+		if (GetState() == WAITING_ON_DATA && noCurrentSegments)
 		{
 			Seek((double)GetCurrentTimeMS() / 1000.0f);
 		}

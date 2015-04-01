@@ -103,7 +103,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 
 	public static String getVersion()
 	{
-		return "v0.0.4";
+		return "v0.0.6";
 	}
 
 	/**
