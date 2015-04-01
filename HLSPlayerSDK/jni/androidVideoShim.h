@@ -2297,7 +2297,7 @@ namespace android_video_shim
         int getPreloadedSegmentCount()
         {
             AutoLock locker(&lock, __func__);
-            int res = mSources.size() - mSourceIdx;
+            int res = (mSources.size() - mSourceIdx) - 1;
             return res;
         }
 

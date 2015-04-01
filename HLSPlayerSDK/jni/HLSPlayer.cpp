@@ -34,7 +34,9 @@ extern HLSPlayerSDK* gHLSPlayerSDK;
 
 using namespace android_video_shim;
 
-int SEGMENTS_TO_BUFFER = 2;
+
+
+int SEGMENTS_TO_BUFFER = 2; // The number of segments to buffer in addition to the currently playing segment
 
 // I did not add this to a class or a header because I don't expect it to be used in any other file
 // All the other timing is based off the audio
@@ -187,10 +189,16 @@ void HLSPlayer::Reset()
 
 }
 
-void HLSPlayer::SetSegmentCountTobuffer(int segmentCount)
+
+void HLSPlayer::SetSegmentCountToBuffer(int segmentCount)
 {
 	LOGI("Setting segment buffer count to %d", segmentCount);
-	SEGMENTS_TO_BUFFER = segmentCount + 1; // The +1 is the segment we're playing
+	SEGMENTS_TO_BUFFER = segmentCount;
+}
+
+int HLSPlayer::GetSegmentCountToBuffer()
+{
+	return SEGMENTS_TO_BUFFER;
 }
 
 ///
@@ -450,12 +458,16 @@ status_t HLSPlayer::FeedSegment(const char* path, int32_t quality, int continuit
 			return NO_MEMORY;
 	}
 
+
 	if (altAudioPath != NULL && mAlternateAudioDataSource == NULL)
 	{
 		mAlternateAudioDataSource = MakeHLSDataSource();
 		if (!mAlternateAudioDataSource.get())
 			return NO_MEMORY;
 	}
+
+	int segCount = GetBufferedSegmentCount();
+
 
 	sameEra = mDataSource->isSameEra(quality, continuityEra);
 
@@ -1050,6 +1062,27 @@ int64_t HLSPlayer::GetLastTimeUS()
 	return mLastVideoTimeUs;
 }
 
+int HLSPlayer::GetBufferedSegmentCount()
+{
+	int segCount = 0;
+	if (mDataSource != NULL)
+	{
+		segCount = ((HLSDataSource*) mDataSource.get())->getPreloadedSegmentCount();
+	}
+
+	if (mDataSourceCache.size() > 0)
+	{
+		DATASRC_CACHE::iterator cur = mDataSourceCache.begin();
+		DATASRC_CACHE::iterator end = mDataSourceCache.end();
+		while (cur != end)
+		{
+			segCount += (*cur).dataSource->getPreloadedSegmentCount();
+			++cur;
+		}
+	}
+	return segCount;
+}
+
 long lastTouchTimeMS = 0;
 
 int HLSPlayer::Update()
@@ -1096,20 +1129,7 @@ int HLSPlayer::Update()
 	{
 		if (mDataSource != NULL)
 		{
-			int segCount = ((HLSDataSource*) mDataSource.get())->getPreloadedSegmentCount();
-			if (segCount < SEGMENTS_TO_BUFFER) // (current segment + 2)
-			{
-				if (mDataSourceCache.size() > 0)
-				{
-					DATASRC_CACHE::iterator cur = mDataSourceCache.begin();
-					DATASRC_CACHE::iterator end = mDataSourceCache.end();
-					while (cur != end)
-					{
-						segCount += (*cur).dataSource->getPreloadedSegmentCount();
-						++cur;
-					}
-				}
-			}
+			int segCount = GetBufferedSegmentCount();
 
 			if (segCount < SEGMENTS_TO_BUFFER)
 			{
@@ -1155,25 +1175,11 @@ int HLSPlayer::Update()
 
 	if (mDataSource != NULL)
 	{
-		int segCount = ((HLSDataSource*) mDataSource.get())->getPreloadedSegmentCount();
+		int segCount = GetBufferedSegmentCount();
 		LOGV("Segment Count %d, checking buffers...", segCount);
-		if (segCount < SEGMENTS_TO_BUFFER) // (current segment + 2)
+		if (segCount < SEGMENTS_TO_BUFFER)
 		{
-			if (mDataSourceCache.size() > 0)
-			{
-				DATASRC_CACHE::iterator cur = mDataSourceCache.begin();
-				DATASRC_CACHE::iterator end = mDataSourceCache.end();
-				while (cur != end)
-				{
-					segCount += (*cur).dataSource->getPreloadedSegmentCount();
-					++cur;
-				}
-			}
-
-			if (segCount < SEGMENTS_TO_BUFFER)
-			{
-				RequestNextSegment();
-			}
+			RequestNextSegment();
 		}
 	}
 
@@ -1236,6 +1242,7 @@ int HLSPlayer::Update()
 					LOGI("End Of Stream: Detected additional sources.");
 					return INFO_DISCONTINUITY;
 				}
+				LOGI("End Of Stream: No additional sources detected");
 				SetState(WAITING_ON_DATA);
 				return -1;
 				break;

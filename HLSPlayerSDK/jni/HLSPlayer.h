@@ -42,7 +42,8 @@ public:
 
 	void SetSurface(JNIEnv* env, jobject surface);
 	android_video_shim::status_t FeedSegment(const char* path, int32_t quality, int continuityEra, const char* altAudioPath, int audioIndex, double time, int cryptoId, int altCryptoId );
-	void SetSegmentCountTobuffer(int segmentCount);
+	void SetSegmentCountToBuffer(int segmentCount);
+	int GetSegmentCountToBuffer();
 
 	bool Play(double time);
 	void Stop();
@@ -69,6 +70,8 @@ public:
 	void PostError(int error, bool fatal, const char* msg);
 
 	int64_t GetLastTimeUS();
+
+	int GetBufferedSegmentCount();
 
 private:
 	bool EnsureJNI(JNIEnv** env);
