@@ -48,6 +48,25 @@ uint32_t getTimeMS()
 	return (uint32_t)((now.tv_sec*1000000000LL + now.tv_nsec) / NANOSEC_PER_MS);
 }
 
+void* aligned_malloc(size_t required_bytes, size_t alignment)
+{
+    void* p1; // original block
+    void** p2; // aligned block
+    int offset = alignment - 1 + sizeof(void*);
+    if ((p1 = (void*)malloc(required_bytes + offset)) == NULL)
+    {
+       return NULL;
+    }
+    p2 = (void**)(((size_t)(p1) + offset) & ~(alignment - 1));
+    p2[-1] = p1;
+    return p2;
+}
+
+void aligned_free(void *p)
+{
+    free(((void**)p)[-1]);
+}
+
 //////////
 //
 // Thread stuff
@@ -478,8 +497,15 @@ status_t HLSPlayer::FeedSegment(const char* path, int32_t quality, int continuit
 
 	status_t err;
 
+	bool noCurrentSegments = GetBufferedSegmentCount() == 0;
+
 	if (sameEra)
 	{
+		if (GetState() == WAITING_ON_DATA && noCurrentSegments)
+		{
+			RestartPlayer(path, quality, continuityEra, altAudioPath, audioIndex, time, cryptoId, altAudioCryptoId);
+			return OK;
+		}
 		LOGI("Same Era!");
 		// Yay! We can just append!
 		err = mDataSource->append(path, quality, continuityEra, time, cryptoId);
@@ -496,6 +522,8 @@ status_t HLSPlayer::FeedSegment(const char* path, int32_t quality, int continuit
 				LOGE("Could not append to alternate audio data source! This shouldn't happen as we already checked the validity of the append.");
 			}
 		}
+
+
 	}
 	else
 	{
@@ -1133,10 +1161,9 @@ int HLSPlayer::Update()
 
 			if (segCount < SEGMENTS_TO_BUFFER)
 			{
-				//LOGI("**** WAITING_ON_DATA: Requesting next segment...");
+				//LOGI("**** WAITING_ON_DATA: Requesting next segment... bufferedSegments: %d", segCount);
 				RequestNextSegment();
 			}
-
 		}
 		else
 		{
@@ -1176,7 +1203,7 @@ int HLSPlayer::Update()
 	if (mDataSource != NULL)
 	{
 		int segCount = GetBufferedSegmentCount();
-		LOGV("Segment Count %d, checking buffers...", segCount);
+		LOGI("Segment Count %d, checking buffers...", segCount);
 		if (segCount < SEGMENTS_TO_BUFFER)
 		{
 			RequestNextSegment();
@@ -1852,6 +1879,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 #ifdef _FRAME_DUMP
 	if (frameCount == _FRAME_DUMP)
 	{
+		LOGI("Dumping Frame");
 		FrameHeader f = { videoBufferWidth, videoBufferHeight, stride, internalColf, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom, tmpBuffSize, isi420 };
 		dumpFrame(f, tmpBuff);
 	}
@@ -2372,6 +2400,84 @@ void HLSPlayer::NotifyFormatChange(int curQuality, int newQuality, int curAudio,
 		}
 	}
 
+}
+
+void HLSPlayer::RestartPlayer(const char* path, int32_t quality, int continuityEra, const char* altAudioPath, int audioIndex, double time, int cryptoId, int altAudioCryptoId)
+{
+	LOGTRACE("%s", __func__);
+	AutoLock locker(&lock, __func__);
+
+	LOGI("Restarting");
+
+
+	SetState(SEEKING);
+
+	StopEverything();
+
+	mDataSource.clear();
+	mAlternateAudioDataSource.clear();
+	mDataSourceCache.clear();
+	LOGI("Data sources cleared");
+
+	FeedSegment(path, quality, continuityEra, altAudioPath, audioIndex, time, cryptoId, altAudioCryptoId);
+
+	if (!mDataSource.get())
+	{
+		SetState(CUE_STOP);
+		LOGI("No data source - stopping");
+		return;
+	}
+	mDataSource->logContinuityInfo();
+
+	// Retrieve the new quality markers
+	int newQuality = mDataSource->getQualityLevel();
+	LOGI("newQuality=%d", newQuality);
+	int newAudioTrack = -1;
+	if (mAlternateAudioDataSource.get()) newAudioTrack = mAlternateAudioDataSource->getQualityLevel();
+	LOGI("newAudioTrack=%d", newAudioTrack);
+
+	LOGI("Requesting Next Segment");
+	RequestNextSegment();
+	LOGI("RequestNextSegment completed");
+
+	mStartTimeMS = (mDataSource->getStartTime() * 1000);
+	LOGI("mStartTimeMS = %d", mStartTimeMS);
+
+	int segCount = ((HLSDataSource*) mDataSource.get())->getPreloadedSegmentCount();
+	LOGI("segCount=%d", segCount);
+	if (!InitSources())
+	{
+		LOGE("InitSources failed!");
+		return;
+	}
+
+	status_t err;
+	if(mVideoSource.get())
+		err = mVideoSource->start();
+	else
+		err = mVideoSource23->start();
+
+	if (err == OK)
+	{
+		LOGI("Video source started - Ensuring audio player is created and set up");
+		if (!EnsureAudioPlayerCreatedAndSourcesSet())
+		{
+			LOGE("Setting Audio Tracks failed!");
+		}
+	}
+	else
+	{
+		LOGI("Video Track failed to start: %s : %d", strerror(-err), __LINE__);
+	}
+
+	if (mAudioPlayer) mAudioPlayer->forceTimeStampUpdate();
+
+
+	ApplyFormatChange();
+
+	LOGI("Calling NoteHWRendererMode( %s, %d, %d, 4)", mUseOMXRenderer ? "True":"False", mWidth, mHeight );
+	NoteHWRendererMode(mUseOMXRenderer, mWidth, mHeight, 4);
+	SetState(PLAYING);
 }
 
 #define USE_DEFAULT_START -999

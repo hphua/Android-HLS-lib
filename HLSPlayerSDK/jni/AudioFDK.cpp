@@ -574,6 +574,8 @@ int AudioFDK::Update()
 		while (mPlayState == PAUSED)
 		{
 			LOGI("Pausing Audio Thread: state = PAUSED | semPause.count = %d", semPause.count );
+
+			// Pause the java track here so that we aren't in the middle of feeding it data when we pause.
 			JNIEnv* env;
 			if (gHLSPlayerSDK->GetEnv(&env))
 				env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mPause);

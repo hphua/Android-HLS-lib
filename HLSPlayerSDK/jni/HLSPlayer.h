@@ -83,6 +83,7 @@ private:
 	bool CreateVideoPlayer();
 	bool RenderBuffer(android_video_shim::MediaBuffer* buffer);
 	void LogState();
+	void RestartPlayer(const char* path, int32_t quality, int continuityEra, const char* altAudioPath, int audioIndex, double time, int cryptoId, int altAudioCryptoId);
 
 	bool InitTracks();
 
