@@ -437,7 +437,7 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
         	// Subtitles
         	input.setText("http://olive.fr.globecast.tv/live/disk4/sub/hls_sub/index.m3u8");
 
-        	playerView.SetSegmentCountToBuffer(0);
+        	playerView.setBufferTime(30);
         	
 
         	// set up a dialog window

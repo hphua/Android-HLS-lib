@@ -48,6 +48,25 @@ uint32_t getTimeMS()
 	return (uint32_t)((now.tv_sec*1000000000LL + now.tv_nsec) / NANOSEC_PER_MS);
 }
 
+void* aligned_malloc(size_t required_bytes, size_t alignment)
+{
+    void* p1; // original block
+    void** p2; // aligned block
+    int offset = alignment - 1 + sizeof(void*);
+    if ((p1 = (void*)malloc(required_bytes + offset)) == NULL)
+    {
+       return NULL;
+    }
+    p2 = (void**)(((size_t)(p1) + offset) & ~(alignment - 1));
+    p2[-1] = p1;
+    return p2;
+}
+
+void aligned_free(void *p)
+{
+    free(((void**)p)[-1]);
+}
+
 //////////
 //
 // Thread stuff
@@ -495,6 +514,11 @@ status_t HLSPlayer::FeedSegment(const char* path, int32_t quality, int continuit
 			{
 				LOGE("Could not append to alternate audio data source! This shouldn't happen as we already checked the validity of the append.");
 			}
+		}
+
+		if (GetState() == WAITING_ON_DATA && GetBufferedSegmentCount() > 0)
+		{
+			Seek((double)GetCurrentTimeMS() / 1000.0f);
 		}
 	}
 	else
@@ -1133,10 +1157,9 @@ int HLSPlayer::Update()
 
 			if (segCount < SEGMENTS_TO_BUFFER)
 			{
-				//LOGI("**** WAITING_ON_DATA: Requesting next segment...");
+				//LOGI("**** WAITING_ON_DATA: Requesting next segment... bufferedSegments: %d", segCount);
 				RequestNextSegment();
 			}
-
 		}
 		else
 		{
@@ -1176,7 +1199,7 @@ int HLSPlayer::Update()
 	if (mDataSource != NULL)
 	{
 		int segCount = GetBufferedSegmentCount();
-		LOGV("Segment Count %d, checking buffers...", segCount);
+		LOGI("Segment Count %d, checking buffers...", segCount);
 		if (segCount < SEGMENTS_TO_BUFFER)
 		{
 			RequestNextSegment();
@@ -1852,6 +1875,7 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 #ifdef _FRAME_DUMP
 	if (frameCount == _FRAME_DUMP)
 	{
+		LOGI("Dumping Frame");
 		FrameHeader f = { videoBufferWidth, videoBufferHeight, stride, internalColf, vbCropLeft, vbCropTop, vbCropRight, vbCropBottom, tmpBuffSize, isi420 };
 		dumpFrame(f, tmpBuff);
 	}
