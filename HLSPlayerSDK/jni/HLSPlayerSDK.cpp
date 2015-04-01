@@ -368,8 +368,17 @@ extern "C"
 	{
 		if (gHLSPlayerSDK != NULL && gHLSPlayerSDK->GetPlayer())
 		{
-			gHLSPlayerSDK->GetPlayer()->SetSegmentCountTobuffer(segCount);
+			gHLSPlayerSDK->GetPlayer()->SetSegmentCountToBuffer(segCount);
 		}
+	}
+
+	jint Java_com_kaltura_hlsplayersdk_HLSPlayerViewController_GetSegmentCountToBuffer(JNIEnv* env, jobject jcaller)
+	{
+		if (gHLSPlayerSDK != NULL && gHLSPlayerSDK->GetPlayer())
+		{
+			return gHLSPlayerSDK->GetPlayer()->GetSegmentCountToBuffer();
+		}
+		return 0;
 	}
 
 	jboolean Java_com_kaltura_hlsplayersdk_HLSPlayerViewController_AllowAllProfiles(JNIEnv* env, jobject jcaller )
