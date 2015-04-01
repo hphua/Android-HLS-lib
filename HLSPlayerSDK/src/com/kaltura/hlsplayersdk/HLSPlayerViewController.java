@@ -642,7 +642,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 		noMoreSegments = false;
 		Log.i(this.getClass().getName() + ".onParserComplete", "Entered");
 		mStreamHandler = new StreamHandler(parser);
-		mStreamHandler.EDGE_BUFFER_SEGMENT_COUNT = parser.segments.size() - edgeBufferSegmentCount >= 0 ? edgeBufferSegmentCount : parser.segments.size(); // prevent this from being larger than the number of available segments
+		StreamHandler.EDGE_BUFFER_SEGMENT_COUNT = parser.segments.size() - edgeBufferSegmentCount > 0 ? edgeBufferSegmentCount : parser.segments.size() - 1; // prevent this from being larger than the number of available segments
 		mSubtitleHandler = new SubtitleHandler(parser);
 		
 		final HLSPlayerViewController self = this;
