@@ -58,7 +58,7 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
         	if (playerView.AllowAllProfiles())
         	{
             	urls.add("http://pa-www.kaltura.com/content/shared/erank/multi_audio.m3u8");
-        		urls.add("http://live.cdn.antel.net.uy/test/hls/teststream1.m3u8");
+        		urls.add("http://public.infozen.cshls.lldns.net/infozen/public/public.m3u8");
         	}
 
 			while (runSoak) {
@@ -66,18 +66,66 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 				runOnUiThread(new Runnable()
 					{
 						public void run() {
-							int i = (int)( Math.random() * urls.size() );
-							Log.i("VideoPlayer Soak", "Playing Index (" + i + ") ");
-
-				        	lastUrl = urls.get(i);
-				        	Log.i("VideoPlayer UI", " -----> Play " + lastUrl);
-				            setVideoUrl(lastUrl);
+							int option = (int) (Math.random() * 9);
+							switch (option)
+							{
+							case 0:
+								int i = (int)( Math.random() * urls.size() );
+								Log.i("VideoPlayer Soak", "Playing Index (" + i + ") ");
+	
+					        	lastUrl = urls.get(i);
+					        	setTitle(" -----> Play " + lastUrl);
+					        	Log.i("VideoPlayer UI", (String)getTitle());
+					            setVideoUrl(lastUrl);
+								break;
+							case 1:
+								setTitle(" -----> Seek Fwd");
+					        	Log.i("VideoPlayer UI", (String)getTitle());
+					            playerView.setVisibility(View.VISIBLE);
+					            playerView.seek(mLastTimeMS + (int)(Math.random() * 15000));
+					            break;
+							case 2:
+								setTitle(" -----> Seek Bwd");
+					        	Log.i("VideoPlayer UI", (String)getTitle());
+					            playerView.setVisibility(View.VISIBLE);
+					            playerView.seek(mLastTimeMS - (int)(Math.random() * 15000));
+					            break;
+							case 3:
+								setTitle(" -----> Pause");
+					        	Log.i("VideoPlayer UI", (String)getTitle());
+					        	playerView.pause();
+					        	break;
+							case 4:
+								setTitle(" -----> Play");
+					        	Log.i("VideoPlayer UI", (String)getTitle());
+					        	playerView.play();
+					        	break;
+							case 5:
+								setTitle(" -----> Quality Up");
+					        	Log.i("VideoPlayer UI", (String)getTitle());
+					        	playerView.incrementQuality();
+					        	break;
+							case 6:
+								setTitle(" -----> Quality Down");
+					        	Log.i("VideoPlayer UI", (String)getTitle());
+					        	playerView.decrementQuality();
+							case 7:
+								setTitle(" -----> Audio Track Up");
+					        	Log.i("VideoPlayer UI", (String)getTitle());
+					        	playerView.hardSwitchAudioTrack(curAltAudioTrack + 1);
+					        	break;
+							case 8:
+								setTitle(" -----> Audio Track Down");
+					        	Log.i("VideoPlayer UI", (String)getTitle());
+					        	playerView.softSwitchAudioTrack(curAltAudioTrack - 1);
+					        	break;
+							}
 						}
 					}
 				);
 
 				try {
-					Thread.sleep((long)(Math.random() * 15000.0) + 5000);
+					Thread.sleep((long)(Math.random() * 5000.0));
 				} catch (InterruptedException ie) {
 					Log.i("video run", "Video thread sleep interrupted!");
 				}
@@ -446,9 +494,16 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
         		.setPositiveButton("OK", new DialogInterface.OnClickListener() {
 					public void onClick(DialogInterface dialog, int id) {
 						// get user input and set it to result
+						
 						lastUrl = input.getText().toString();
-						setTitle(lastUrl);
-						setVideoUrl(lastUrl);
+						if (lastUrl.startsWith("http://") || lastUrl.startsWith("https://"))
+						{
+							setTitle(lastUrl);
+							setVideoUrl(lastUrl);
+						}
+						else
+							setTitle("Not a URL: " + lastUrl);
+						
 					}
 				})
 				.setNegativeButton("Cancel",
