@@ -40,7 +40,7 @@ AudioFDK::AudioFDK(JavaVM* jvm) : mJvm(jvm), mAudioTrack(NULL), mGetMinBufferSiz
 
 	int err = pthread_mutex_init(&updateMutex, NULL);
 	LOGI(" AudioTrack mutex err = %d", err);
-	err = pthread_mutex_init(&lock, NULL);
+	err = initRecursivePthreadMutex(&lock);
 }
 
 AudioFDK::~AudioFDK()
@@ -63,8 +63,10 @@ void AudioFDK::unload()
 void AudioFDK::Close()
 {
 	Stop();
+
 	if (mJvm)
 	{
+		AutoLock locker(&lock, __func__);
 		JNIEnv* env = NULL;
 		gHLSPlayerSDK->GetEnv(&env);
 		if (env)
@@ -240,7 +242,7 @@ bool AudioFDK::UpdateFormatInfo()
 bool AudioFDK::Start()
 {
 	LOGTRACE("%s", __func__);
-	AutoLock locker(&lock);
+	AutoLock locker(&lock, __func__);
 
 	LOGI("Updating Format Info");
 	// Refresh our format information.
@@ -311,6 +313,8 @@ bool AudioFDK::InitJavaTrack()
 	LOGI("Attaching to current java thread");
 	JNIEnv* env;
 	if (!gHLSPlayerSDK->GetEnv(&env)) return false;
+
+	AutoLock locker(&lock, __func__);
 
 	LOGI("Setting buffer = NULL");
 	if (buffer)
@@ -396,9 +400,13 @@ void AudioFDK::Play()
 
 	LOGI("Audio State = PLAYING: semPause.count = %d", semPause.count);
 
-	JNIEnv* env;
-	if (gHLSPlayerSDK->GetEnv(&env))
-		env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mPlay);
+	AutoLock locker(&lock, __func__);
+	if (mTrack)
+	{
+		JNIEnv* env;
+		if (gHLSPlayerSDK->GetEnv(&env))
+			env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mPlay);
+	}
 
 	samplesWritten = 0;
 }
@@ -426,17 +434,34 @@ bool AudioFDK::Stop(bool seeking)
 		sem_post(&semPause);
 	}
 
+
+	JNIEnv* env;
+	if (!gHLSPlayerSDK->GetEnv(&env))
+	{
+		LOGE("Could not get Java Environment in order to stop the track");
+		return false;
+	}
+
+	AutoLock locker(&lock, __func__);
 	pthread_mutex_lock(&updateMutex);
+
+	if (mTrack == NULL)
+	{
+			pthread_mutex_unlock(&updateMutex);
+			return true; // We're already stopped since we don't have a track
+	}
+
+	env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mStop);
 
 	if(seeking)
 	{
 		if (mAACDecoder) aacDecoder_Close(mAACDecoder);
 		mAACDecoder = NULL;
+		env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mRelease);
+		env->DeleteGlobalRef(mTrack);
+		mTrack = NULL;
 	}
 
-	JNIEnv* env;
-	if (gHLSPlayerSDK->GetEnv(&env))
-		env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mStop);
 
 	pthread_mutex_unlock(&updateMutex);
 
@@ -455,6 +480,7 @@ void AudioFDK::Flush()
 {
 	LOGTRACE("%s", __func__);
 	if (mPlayState == PLAYING) return;
+
 	JNIEnv* env;
 	if (gHLSPlayerSDK->GetEnv(&env))
 		env->CallNonvirtualVoidMethod(mTrack, mCAudioTrack, mFlush);
@@ -484,13 +510,15 @@ int64_t AudioFDK::GetTimeStamp()
 	LOGTRACE("%s", __func__);
 	JNIEnv* env;
 	if (!gHLSPlayerSDK->GetEnv(&env)) return 0;
-	if(!mTrack)
+
+	AutoLock locker(&lock, __func__);
+
+	if(!mTrack || !mCAudioTrack)
 	{
 		LOGI("No track! aborting...");
-		return mTimeStampOffset;
+		return mTimeStampOffset * 1000000;
 	}
 
-	AutoLock locker(&lock);
 	double frames = env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mGetPlaybackHeadPosition);
 	double secs = frames / (double)mSampleRate;
 	LOGTIMING("TIMESTAMP: secs = %f | mTimeStampOffset = %f | timeStampUS = %lld", secs, mTimeStampOffset, (int64_t)((secs + mTimeStampOffset) * 1000000));
@@ -625,8 +653,6 @@ int AudioFDK::Update()
 		//LOGI("Finished reading from the media buffer");
 		RUNDEBUG( {if (mediaBuffer) mediaBuffer->meta_data()->dumpToLog();} );
 		env->PushLocalFrame(2);
-
-
 
 		if (mediaBuffer && mAACDecoder)
 		{
@@ -832,6 +858,8 @@ int AudioFDK::getBufferSize()
 	LOGTRACE("%s", __func__);
 	JNIEnv* env;
 	if (!gHLSPlayerSDK->GetEnv(&env)) return 0;
+
+	AutoLock locker(&lock, __func__);
 
 	if(!mTrack)
 	{

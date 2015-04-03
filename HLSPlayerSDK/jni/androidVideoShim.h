@@ -2339,7 +2339,7 @@ namespace android_video_shim
 
             // Read chunks from the segment cache until we've fulfilled the request.
             ssize_t sizeLeft = size;
-            ssize_t lastReadSize = 0, readSize = 0;
+            ssize_t readSize = 0;
             int safety = 10;
             while(sizeLeft > 0 && safety--)
             {

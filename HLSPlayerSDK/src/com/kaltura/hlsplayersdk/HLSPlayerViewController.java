@@ -103,7 +103,7 @@ public class HLSPlayerViewController extends RelativeLayout implements
 
 	public static String getVersion()
 	{
-		return "v0.0.8";
+		return "v0.0.9";
 	}
 
 	/**
@@ -418,7 +418,16 @@ public class HLSPlayerViewController extends RelativeLayout implements
 				}
 				int state = GetState();
 				if (state == STATE_PLAYING || state == STATE_FOUND_DISCONTINUITY || state == STATE_WAITING_FOR_DATA) {
-					int rval = NextFrame();
+					int rval = 0;
+					try
+					{
+						rval = NextFrame();
+					}
+					catch (Exception e)
+					{
+						Log.i("NextFrame", e.getMessage());
+						rval = mTimeMS; // Just going to set it to the last known timestamp
+					}
 					if (rval >= 0) { mTimeMS = rval; /* Log.i("RunThread", "mTimeMS = " + mTimeMS); */ }
 					if (rval < 0 && state != lastState)
 					{
@@ -1438,7 +1447,14 @@ public class HLSPlayerViewController extends RelativeLayout implements
 			{
 				postQualityTrackSwitchingStart(mQualityLevel, newIndex);
 				mQualityLevel = newIndex;
-				mStreamHandler.initiateQualityChange(mQualityLevel);
+				
+				postToInterfaceThread(new Runnable() {
+					public void run()
+					{
+						mStreamHandler.initiateQualityChange(mQualityLevel);
+					}
+				});
+				
 			}
 			else
 			{
