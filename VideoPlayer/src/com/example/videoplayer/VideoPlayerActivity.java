@@ -1,6 +1,7 @@
 package com.example.videoplayer;
 
 import java.util.List;
+import java.util.Random;
 import java.util.Vector;
 
 import android.app.AlertDialog;
@@ -49,6 +50,10 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 	private Runnable soakRunnable = new Runnable() {
 		public Vector<String> urls = null;
 		public void run() {
+			
+			final long seed = System.currentTimeMillis();
+			Log.i("Soak", "Seed="+seed);
+			final Random rand = new Random(seed);
 
         	urls = new Vector<String>();
         	urls.add("http://www.kaltura.com/p/0/playManifest/entryId/1_0i2t7w0i/format/applehttp");
@@ -66,11 +71,12 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 				runOnUiThread(new Runnable()
 					{
 						public void run() {
-							int option = (int) (Math.random() * 9);
+							int option = (int) (rand.nextDouble() * 9);
+							Log.i("Soak", "Seed=" + seed);
 							switch (option)
 							{
 							case 0:
-								int i = (int)( Math.random() * urls.size() );
+								int i = (int)(rand.nextDouble() * urls.size() );
 								Log.i("VideoPlayer Soak", "Playing Index (" + i + ") ");
 	
 					        	lastUrl = urls.get(i);
@@ -82,13 +88,13 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 								setTitle(" -----> Seek Fwd");
 					        	Log.i("VideoPlayer UI", (String)getTitle());
 					            playerView.setVisibility(View.VISIBLE);
-					            playerView.seek(mLastTimeMS + (int)(Math.random() * 15000));
+					            playerView.seek(mLastTimeMS + (int)(rand.nextDouble() * 15000));
 					            break;
 							case 2:
 								setTitle(" -----> Seek Bwd");
 					        	Log.i("VideoPlayer UI", (String)getTitle());
 					            playerView.setVisibility(View.VISIBLE);
-					            playerView.seek(mLastTimeMS - (int)(Math.random() * 15000));
+					            playerView.seek(mLastTimeMS - (int)(rand.nextDouble() * 15000));
 					            break;
 							case 3:
 								setTitle(" -----> Pause");
@@ -125,7 +131,7 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 				);
 
 				try {
-					Thread.sleep((long)(Math.random() * 5000.0));
+					Thread.sleep((long)(rand.nextDouble() * 5000.0));
 				} catch (InterruptedException ie) {
 					Log.i("video run", "Video thread sleep interrupted!");
 				}
