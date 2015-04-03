@@ -10,6 +10,7 @@
 
 #define APP_NAME "HLSPlayerSDK"
 #define USE_OMX_AUDIO false
+#define NANOSEC_PER_MS 1000000
 
 enum ErrorCode
 {

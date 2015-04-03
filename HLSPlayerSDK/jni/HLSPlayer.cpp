@@ -28,7 +28,7 @@
 #endif
 
 
-#define NANOSEC_PER_MS 1000000
+
 
 extern HLSPlayerSDK* gHLSPlayerSDK;
 
@@ -2486,6 +2486,11 @@ void HLSPlayer::Seek(double time)
 {
 	LOGTRACE("%s", __func__);
 	AutoLock locker(&lock, __func__);
+	if (GetState() == SEEKING)
+	{
+		LOGI("Already seeking. Ignoring additional seek.");
+		return;
+	}
 
 	LOGI("Seeking To: %f", time);
 	if (time < 0)
