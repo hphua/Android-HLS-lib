@@ -45,6 +45,8 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 
 	boolean runSoak = false;
 
+	private int mNextSoakDelay = 5000;
+	private boolean m10pctSoakDelay = false;
 
 	private Thread mSoakThread = null;
 	private Runnable soakRunnable = new Runnable() {
@@ -65,7 +67,7 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
             	urls.add("http://pa-www.kaltura.com/content/shared/erank/multi_audio.m3u8");
         		urls.add("http://public.infozen.cshls.lldns.net/infozen/public/public.m3u8");
         	}
-
+        	
 			while (runSoak) {
 
 				runOnUiThread(new Runnable()
@@ -83,56 +85,71 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 					        	setTitle(" -----> Play " + lastUrl);
 					        	Log.i("VideoPlayer Soak", (String)getTitle());
 					            setVideoUrl(lastUrl);
+					            mNextSoakDelay = 5000;
 								break;
 							case 1:
 								setTitle(" -----> Seek Fwd");
 					        	Log.i("VideoPlayer Soak", (String)getTitle());
 					            playerView.setVisibility(View.VISIBLE);
 					            playerView.seek(mLastTimeMS + (int)(rand.nextDouble() * 15000));
+					            mNextSoakDelay = 3000;
 					            break;
 							case 2:
 								setTitle(" -----> Seek Bwd");
 					        	Log.i("VideoPlayer Soak", (String)getTitle());
 					            playerView.setVisibility(View.VISIBLE);
 					            playerView.seek(mLastTimeMS - (int)(rand.nextDouble() * 15000));
+					            mNextSoakDelay = 3000;
 					            break;
 							case 3:
 								setTitle(" -----> Pause");
 					        	Log.i("VideoPlayer Soak", (String)getTitle());
 					        	playerView.pause();
+					        	mNextSoakDelay = 1000;
 					        	break;
 							case 4:
 								setTitle(" -----> Play");
 					        	Log.i("VideoPlayer Soak", (String)getTitle());
 					        	playerView.play();
+					        	mNextSoakDelay = 1000;
 					        	break;
 							case 5:
 								setTitle(" -----> Quality Up");
 					        	Log.i("VideoPlayer Soak", (String)getTitle());
 					        	playerView.incrementQuality();
+					        	mNextSoakDelay = 5000;
 					        	break;
 							case 6:
 								setTitle(" -----> Quality Down");
 					        	Log.i("VideoPlayer Soak", (String)getTitle());
 					        	playerView.decrementQuality();
+					        	mNextSoakDelay = 5000;
 					        	break;
 							case 7:
 								setTitle(" -----> Audio Track Up");
 					        	Log.i("VideoPlayer Soak", (String)getTitle());
 					        	playerView.hardSwitchAudioTrack(curAltAudioTrack + 1);
+					        	mNextSoakDelay = 5000;
 					        	break;
 							case 8:
 								setTitle(" -----> Audio Track Down");
 					        	Log.i("VideoPlayer Soak", (String)getTitle());
 					        	playerView.softSwitchAudioTrack(curAltAudioTrack - 1);
+					        	mNextSoakDelay = 5000;
 					        	break;
 							}
 						}
 					}
 				);
+				
+				if (rand.nextDouble() < .1)
+					m10pctSoakDelay = !m10pctSoakDelay;
+				
+				if (m10pctSoakDelay)
+					mNextSoakDelay *= .1;
 
 				try {
-					Thread.sleep((long)(rand.nextDouble() * 5000.0));
+					Thread.sleep((long)(rand.nextDouble() * (double)mNextSoakDelay));
 				} catch (InterruptedException ie) {
 					Log.i("video run", "Video thread sleep interrupted!");
 				}
