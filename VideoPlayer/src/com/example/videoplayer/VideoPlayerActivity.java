@@ -81,48 +81,49 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 	
 					        	lastUrl = urls.get(i);
 					        	setTitle(" -----> Play " + lastUrl);
-					        	Log.i("VideoPlayer UI", (String)getTitle());
+					        	Log.i("VideoPlayer Soak", (String)getTitle());
 					            setVideoUrl(lastUrl);
 								break;
 							case 1:
 								setTitle(" -----> Seek Fwd");
-					        	Log.i("VideoPlayer UI", (String)getTitle());
+					        	Log.i("VideoPlayer Soak", (String)getTitle());
 					            playerView.setVisibility(View.VISIBLE);
 					            playerView.seek(mLastTimeMS + (int)(rand.nextDouble() * 15000));
 					            break;
 							case 2:
 								setTitle(" -----> Seek Bwd");
-					        	Log.i("VideoPlayer UI", (String)getTitle());
+					        	Log.i("VideoPlayer Soak", (String)getTitle());
 					            playerView.setVisibility(View.VISIBLE);
 					            playerView.seek(mLastTimeMS - (int)(rand.nextDouble() * 15000));
 					            break;
 							case 3:
 								setTitle(" -----> Pause");
-					        	Log.i("VideoPlayer UI", (String)getTitle());
+					        	Log.i("VideoPlayer Soak", (String)getTitle());
 					        	playerView.pause();
 					        	break;
 							case 4:
 								setTitle(" -----> Play");
-					        	Log.i("VideoPlayer UI", (String)getTitle());
+					        	Log.i("VideoPlayer Soak", (String)getTitle());
 					        	playerView.play();
 					        	break;
 							case 5:
 								setTitle(" -----> Quality Up");
-					        	Log.i("VideoPlayer UI", (String)getTitle());
+					        	Log.i("VideoPlayer Soak", (String)getTitle());
 					        	playerView.incrementQuality();
 					        	break;
 							case 6:
 								setTitle(" -----> Quality Down");
-					        	Log.i("VideoPlayer UI", (String)getTitle());
+					        	Log.i("VideoPlayer Soak", (String)getTitle());
 					        	playerView.decrementQuality();
+					        	break;
 							case 7:
 								setTitle(" -----> Audio Track Up");
-					        	Log.i("VideoPlayer UI", (String)getTitle());
+					        	Log.i("VideoPlayer Soak", (String)getTitle());
 					        	playerView.hardSwitchAudioTrack(curAltAudioTrack + 1);
 					        	break;
 							case 8:
 								setTitle(" -----> Audio Track Down");
-					        	Log.i("VideoPlayer UI", (String)getTitle());
+					        	Log.i("VideoPlayer Soak", (String)getTitle());
 					        	playerView.softSwitchAudioTrack(curAltAudioTrack - 1);
 					        	break;
 							}
