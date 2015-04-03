@@ -516,13 +516,13 @@ int64_t AudioFDK::GetTimeStamp()
 	if(!mTrack || !mCAudioTrack)
 	{
 		LOGI("No track! aborting...");
-		return mTimeStampOffset * 1000000;
+		return mTimeStampOffset * NANOSEC_PER_MS;
 	}
 
 	double frames = env->CallNonvirtualIntMethod(mTrack, mCAudioTrack, mGetPlaybackHeadPosition);
 	double secs = frames / (double)mSampleRate;
 	LOGTIMING("TIMESTAMP: secs = %f | mTimeStampOffset = %f | timeStampUS = %lld", secs, mTimeStampOffset, (int64_t)((secs + mTimeStampOffset) * 1000000));
-	return ((secs + mTimeStampOffset) * 1000000);
+	return ((secs + mTimeStampOffset) * NANOSEC_PER_MS);
 }
 
 bool AudioFDK::ReadUntilTime(double timeSecs)
@@ -801,7 +801,7 @@ int AudioFDK::Update()
 				LOGTIMING("Need to set mTimeStampOffset");
 				int64_t videoTimeUs = gHLSPlayerSDK->GetPlayer()->GetLastTimeUS();
 				if (videoTimeUs >= 0)
-					SetTimeStampOffset(((double) videoTimeUs / 1000000.0f));
+					SetTimeStampOffset(((double) videoTimeUs / (double)NANOSEC_PER_MS));
 			}
 			void* pBuffer = env->GetPrimitiveArrayCritical(buffer, NULL);
 			if (pBuffer)

@@ -28,7 +28,7 @@
 #endif
 
 
-#define NANOSEC_PER_MS 1000000
+
 
 extern HLSPlayerSDK* gHLSPlayerSDK;
 
