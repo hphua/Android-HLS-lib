@@ -7,6 +7,10 @@ This project is part of Kaltura's Android Player SDK which allows the playback a
 The purpose of this project is to support native HLS streams playback on Android devices.
 For more information regarding the Kaltura Android Player SDK go to: https://github.com/kaltura/player-sdk-native-android
 
+Technical Overview
+------------------
+For a technical overview of the project go to: https://github.com/kaltura/Android-HLS-lib/wiki/Technical-Overview
+
 Installation Notes
 ------------------
 In order to add a new drop of the HLS library into the Android Player SDK one should take the following steps:
