@@ -142,6 +142,9 @@ public:
 
         // First look up and make a copy of the official vtable.
         // This leaks a bit of RAM per source but we can deal with that later.
+        // Update - we can't resolve this symbol on some x86 devices, and it turns
+        // out we don't need it - we can just set stuff to 0s and it works OK.
+        // This is obviously a bit finicky but adequate for now.
         //void *officialVtable = searchSymbol("_ZTTN7android11MediaSourceE");
         //assert(officialVtable); // Gotta have a vtable!
         void *newVtable = malloc(1024); // Arbitrary size... As base class
@@ -268,6 +271,9 @@ public:
 
         // First look up and make a copy of the official vtable.
         // This leaks a bit of RAM per source but we can deal with that later.
+        // Update - we can't resolve this symbol on some x86 devices, and it turns
+        // out we don't need it - we can just set stuff to 0s and it works OK.
+        // This is obviously a bit finicky but adequate for now.
         //void *officialVtable = searchSymbol("_ZTVN7android11MediaSourceE");
         //assert(officialVtable); // Gotta have a vtable!
         void *newVtable = malloc(1024); // Arbitrary size... As base class
