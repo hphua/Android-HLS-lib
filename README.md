@@ -3,9 +3,8 @@ Kaltura Android HLS Library
 
 General Notes
 -------------
-This project is part of the Kaltura Android Player SDK which allows the playback and integration of Kaltura player video player
-into native Android apps.
-The purpose of this project is to add the feature of native HLS streams playback inside that video player on Android devices.
+This project is part of Kaltura's Android Player SDK which allows the playback and integration of Kaltura's video player into native Android apps.
+The purpose of this project is to support native HLS streams playback on Android devices.
 For more information regarding the Kaltura Android Player SDK go to: https://github.com/kaltura/player-sdk-native-android
 
 Installation Notes
