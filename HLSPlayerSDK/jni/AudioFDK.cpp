@@ -703,7 +703,7 @@ int AudioFDK::Update()
 
 #define BUFFER_SIZE (8192 * 2)
 
-				INT_PCM* tmpBuffer = new INT_PCM[BUFFER_SIZE / 2];
+				INT_PCM* tmpBuffer = (INT_PCM*)malloc(BUFFER_SIZE);
 
 
 				LOGAUDIO("MediaBufferSize = %d, mBufferSizeInBytes = %d", mbufSize, mBufferSizeInBytes );
@@ -791,7 +791,7 @@ int AudioFDK::Update()
 					LOGV("MediaBufferSize > mBufferSizeInBytes");
 				}
 
-				delete [] tmpBuffer;
+				free(tmpBuffer);
 			}
 		}
 		else

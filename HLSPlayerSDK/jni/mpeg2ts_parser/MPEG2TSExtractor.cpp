@@ -128,6 +128,11 @@ public:
     virtual void __pause() { LOGI("Calling dummy."); }; // Make sure we have SOME virtual to avoid any issues.
     virtual void __setBuffer() { LOGI("Calling dummy."); }; // Make sure we have SOME virtual to avoid any issues.
 
+    void dummyDtor()
+    {
+
+    }
+
     void patchTable()
     {
         LOGV2("this = %p", (void*)this);
@@ -180,6 +185,9 @@ public:
         // You can derive it by calculating this - the this that the RefBase ctor
         // sees.
         fakeObj[0][-3] = (void*)8; 
+
+        for(int i=0; i<18; i++)
+            fakeObj[0][i] = (void*)&MPEG2TSTrackProxy::dummyDtor;
 
         // 4.x entry points
         fakeObj[0][0] = (void*)&MPEG2TSTrackProxy::_start;
@@ -246,6 +254,11 @@ public:
         LOGI("Dtor of track proxy! %p", this);
     }
 
+    void dummyDtor()
+    {
+
+    }
+
     void patchTable()
     {
         LOGV2("this = %p", (void*)this);
@@ -292,6 +305,9 @@ public:
         LOGV2(" _read=%p", (void*)&MPEG2TSTrackProxy23::_read);
         LOGV2(" _pause=%p", (void*)&MPEG2TSTrackProxy23::_pause);
         LOGV2(" _setBuffers=%p", (void*)&MPEG2TSTrackProxy23::_setBuffers);
+
+        for(int i=0; i<18; i++)
+            fakeObj[0][i] = (void*)&MPEG2TSTrackProxy23::dummyDtor;
 
         // 2.x entry points
         fakeObj[0][6] = (void*)&MPEG2TSTrackProxy23::_start;

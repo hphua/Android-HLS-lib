@@ -1,10 +1,9 @@
 package com.example.videoplayer;
 
 import java.util.List;
-import java.util.Random;
-import java.util.Vector;
 
 import android.app.AlertDialog;
+import android.app.Activity;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.os.Bundle;
@@ -45,117 +44,8 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 
 	boolean runSoak = false;
 
-	private int mNextSoakDelay = 5000;
-	private boolean m10pctSoakDelay = false;
-
 	private Thread mSoakThread = null;
-	private Runnable soakRunnable = new Runnable() {
-		public Vector<String> urls = null;
-		public void run() {
-			
-			final long seed = System.currentTimeMillis();
-			Log.i("Soak", "Seed="+seed);
-			final Random rand = new Random(seed);
-
-        	urls = new Vector<String>();
-        	urls.add("http://www.kaltura.com/p/0/playManifest/entryId/1_0i2t7w0i/format/applehttp");
-        	urls.add("http://abclive.abcnews.com/i/abc_live4@136330/master.m3u8");
-        	urls.add("http://cdnbakmi.kaltura.com/p/243342/sp/24334200/playManifest/entryId/0_uka1msg4/flavorIds/1_vqhfu6uy,1_80sohj7p/format/applehttp/protocol/http/a.m3u8");
-        	urls.add("http://devimages.apple.com/iphone/samples/bipbop/bipbopall.m3u8");
-        	if (playerView.AllowAllProfiles())
-        	{
-            	urls.add("http://pa-www.kaltura.com/content/shared/erank/multi_audio.m3u8");
-        		urls.add("http://public.infozen.cshls.lldns.net/infozen/public/public.m3u8");
-        	}
-        	
-			while (runSoak) {
-
-				runOnUiThread(new Runnable()
-					{
-						public void run() {
-							int option = (int) (rand.nextDouble() * 9);
-							Log.i("Soak", "Seed=" + seed);
-							switch (option)
-							{
-							case 0:
-								int i = (int)(rand.nextDouble() * urls.size() );
-								Log.i("VideoPlayer Soak", "Playing Index (" + i + ") ");
-	
-					        	lastUrl = urls.get(i);
-					        	setTitle(" -----> Play " + lastUrl);
-					        	Log.i("VideoPlayer Soak", (String)getTitle());
-					            setVideoUrl(lastUrl);
-					            mNextSoakDelay = 5000;
-								break;
-							case 1:
-								setTitle(" -----> Seek Fwd");
-					        	Log.i("VideoPlayer Soak", (String)getTitle());
-					            playerView.setVisibility(View.VISIBLE);
-					            playerView.seek(mLastTimeMS + (int)(rand.nextDouble() * 15000));
-					            mNextSoakDelay = 3000;
-					            break;
-							case 2:
-								setTitle(" -----> Seek Bwd");
-					        	Log.i("VideoPlayer Soak", (String)getTitle());
-					            playerView.setVisibility(View.VISIBLE);
-					            playerView.seek(mLastTimeMS - (int)(rand.nextDouble() * 15000));
-					            mNextSoakDelay = 3000;
-					            break;
-							case 3:
-								setTitle(" -----> Pause");
-					        	Log.i("VideoPlayer Soak", (String)getTitle());
-					        	playerView.pause();
-					        	mNextSoakDelay = 1000;
-					        	break;
-							case 4:
-								setTitle(" -----> Play");
-					        	Log.i("VideoPlayer Soak", (String)getTitle());
-					        	playerView.play();
-					        	mNextSoakDelay = 1000;
-					        	break;
-							case 5:
-								setTitle(" -----> Quality Up");
-					        	Log.i("VideoPlayer Soak", (String)getTitle());
-					        	playerView.incrementQuality();
-					        	mNextSoakDelay = 5000;
-					        	break;
-							case 6:
-								setTitle(" -----> Quality Down");
-					        	Log.i("VideoPlayer Soak", (String)getTitle());
-					        	playerView.decrementQuality();
-					        	mNextSoakDelay = 5000;
-					        	break;
-							case 7:
-								setTitle(" -----> Audio Track Up");
-					        	Log.i("VideoPlayer Soak", (String)getTitle());
-					        	playerView.hardSwitchAudioTrack(curAltAudioTrack + 1);
-					        	mNextSoakDelay = 5000;
-					        	break;
-							case 8:
-								setTitle(" -----> Audio Track Down");
-					        	Log.i("VideoPlayer Soak", (String)getTitle());
-					        	playerView.softSwitchAudioTrack(curAltAudioTrack - 1);
-					        	mNextSoakDelay = 5000;
-					        	break;
-							}
-						}
-					}
-				);
-				
-				if (rand.nextDouble() < .1)
-					m10pctSoakDelay = !m10pctSoakDelay;
-				
-				if (m10pctSoakDelay)
-					mNextSoakDelay *= .1;
-
-				try {
-					Thread.sleep((long)(rand.nextDouble() * (double)mNextSoakDelay));
-				} catch (InterruptedException ie) {
-					Log.i("video run", "Video thread sleep interrupted!");
-				}
-			}
-		}
-	};
+	private Runnable soakRunnable = new SoakerRunnable(this);
 
     @SuppressWarnings("unused")
 	@Override
@@ -705,4 +595,5 @@ OnProgressListener, OnErrorListener, OnDurationChangedListener  {
 	{
 		Log.i("VideoPlayerActivity.onDurationChanged", "Duration = " + msec);
 	}
+
 }
