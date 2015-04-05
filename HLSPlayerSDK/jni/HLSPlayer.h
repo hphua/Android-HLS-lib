@@ -176,6 +176,7 @@ private:
 	int32_t mCropHeight;
 	int32_t mActiveAudioTrackIndex;
 	uint32_t mExtractorFlags;
+	bool mPadWidth;
 
 	int64_t mLastVideoTimeUs;
 	int64_t mSegmentTimeOffset;

@@ -114,7 +114,7 @@ mSegmentTimeOffset(0), mVideoFrameDelta(0), mLastVideoTimeUs(-1), mVideoStartDel
 mSegmentForTimeMethodID(NULL), mFrameCount(0), mDataSource(NULL), audioThread(0),
 mScreenHeight(0), mScreenWidth(0), mAudioPlayer(NULL), mStartTimeMS(0), mUseOMXRenderer(true),
 mNotifyFormatChangeComplete(NULL), mNotifyAudioTrackChangeComplete(NULL),
-mDroppedFrameIndex(0), mDroppedFrameLastSecond(0), mPostErrorID(NULL)
+mDroppedFrameIndex(0), mDroppedFrameLastSecond(0), mPostErrorID(NULL), mPadWidth(false)
 {
 	LOGTRACE("%s", __func__);
 	status_t status = mClient.connect();
@@ -869,6 +869,13 @@ bool HLSPlayer::InitSources()
 		LOGI("OMXCodec::Create - format=%p track=%p videoSource=%p", vidFormat.get(), mVideoTrack.get(), mVideoSource.get());
 		mVideoSource = OMXCodec::Create(iomx, vidFormat, false, mVideoTrack, NULL, 0);
 		LOGI("   - got %p back", mVideoSource.get());
+		const char* decoder;
+		mVideoSource->getFormat()->findCString(kKeyDecoderComponent, &decoder);
+		if (!strcasecmp(decoder, "OMX.qcom.video.decoder.avc"))
+		{
+			mPadWidth = true;
+		}
+
 	}
 	else
 	{
@@ -1761,6 +1768,11 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 		internalColf = OMX_QCOM_COLOR_FormatYVU420SemiPlanar;
 	else
 		internalColf = colf;
+
+	if (mPadWidth && (videoBufferWidth % 64 != 0))
+	{
+		videoBufferWidth = ((videoBufferWidth + 63)&~63);
+	}
 
 #ifdef _FRAME_DUMP
 	static int frameCount = 0;
