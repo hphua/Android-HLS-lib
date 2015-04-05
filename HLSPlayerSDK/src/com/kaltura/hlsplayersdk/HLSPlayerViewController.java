@@ -1346,6 +1346,11 @@ public class HLSPlayerViewController extends RelativeLayout implements
 				postToInterfaceThread(new Runnable() {
 					public void run()
 					{
+                        if(mStreamHandler == null)
+                        {
+                            Log.i("HLSPlayerViewController.switchQualityTrack", "Went to initiate quality change but got null stream handler, aborting...");
+                            return;
+                        }
 						mStreamHandler.initiateQualityChange(mQualityLevel);
 					}
 				});
