@@ -874,6 +874,8 @@ bool HLSPlayer::InitSources()
 		if (!strcasecmp(decoder, "OMX.qcom.video.decoder.avc"))
 		{
 			mPadWidth = 64;
+			LOGI("Padding width to %d for decoder %s", mPadWidth, decoder);
+
 		}
 
 	}
