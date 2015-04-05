@@ -42,74 +42,75 @@ public class SoakerRunnable implements Runnable {
 
         while (videoPlayerActivity.runSoak) {
 
-            videoPlayerActivity.runOnUiThread(new Runnable() {
-                                                  public void run() {
-                                                      int option = (int) (rand.nextDouble() * 9);
-                                                      Log.i("Soak", "Seed=" + seed);
-                                                      switch (option) {
-                                                          case 0:
-                                                              int i = (int) (rand.nextDouble() * urls.size());
-                                                              Log.i("VideoPlayer Soak", "Playing Index (" + i + ") ");
+            videoPlayerActivity.runOnUiThread(
+                    new Runnable() {
+                          public void run() {
+                              int option = (int) (rand.nextDouble() * 9);
+                              Log.i("Soak", "Seed=" + seed);
+                              switch (option) {
+                                  case 0:
+                                      int i = (int) (rand.nextDouble() * urls.size());
+                                      Log.i("VideoPlayer Soak", "Playing Index (" + i + ") ");
 
-                                                              videoPlayerActivity.lastUrl = urls.get(i);
-                                                              videoPlayerActivity.setTitle(" -----> Play " + videoPlayerActivity.lastUrl);
-                                                              Log.i("VideoPlayer Soak", (String) videoPlayerActivity.getTitle());
-                                                              videoPlayerActivity.setVideoUrl(videoPlayerActivity.lastUrl);
-                                                              mNextSoakDelay = 5000;
-                                                              break;
-                                                          case 1:
-                                                              videoPlayerActivity.setTitle(" -----> Seek Fwd");
-                                                              Log.i("VideoPlayer Soak", (String) videoPlayerActivity.getTitle());
-                                                              videoPlayerActivity.playerView.setVisibility(View.VISIBLE);
-                                                              videoPlayerActivity.playerView.seek(videoPlayerActivity.mLastTimeMS + (int) (rand.nextDouble() * 15000));
-                                                              mNextSoakDelay = 3000;
-                                                              break;
-                                                          case 2:
-                                                              videoPlayerActivity.setTitle(" -----> Seek Bwd");
-                                                              Log.i("VideoPlayer Soak", (String) videoPlayerActivity.getTitle());
-                                                              videoPlayerActivity.playerView.setVisibility(View.VISIBLE);
-                                                              videoPlayerActivity.playerView.seek(videoPlayerActivity.mLastTimeMS - (int) (rand.nextDouble() * 15000));
-                                                              mNextSoakDelay = 3000;
-                                                              break;
-                                                          case 3:
-                                                              videoPlayerActivity.setTitle(" -----> Pause");
-                                                              Log.i("VideoPlayer Soak", (String) videoPlayerActivity.getTitle());
-                                                              videoPlayerActivity.playerView.pause();
-                                                              mNextSoakDelay = 1000;
-                                                              break;
-                                                          case 4:
-                                                              videoPlayerActivity.setTitle(" -----> Play");
-                                                              Log.i("VideoPlayer Soak", (String) videoPlayerActivity.getTitle());
-                                                              videoPlayerActivity.playerView.play();
-                                                              mNextSoakDelay = 1000;
-                                                              break;
-                                                          case 5:
-                                                              videoPlayerActivity.setTitle(" -----> Quality Up");
-                                                              Log.i("VideoPlayer Soak", (String) videoPlayerActivity.getTitle());
-                                                              videoPlayerActivity.playerView.incrementQuality();
-                                                              mNextSoakDelay = 5000;
-                                                              break;
-                                                          case 6:
-                                                              videoPlayerActivity.setTitle(" -----> Quality Down");
-                                                              Log.i("VideoPlayer Soak", (String) videoPlayerActivity.getTitle());
-                                                              videoPlayerActivity.playerView.decrementQuality();
-                                                              mNextSoakDelay = 5000;
-                                                              break;
-                                                          case 7:
-                                                              videoPlayerActivity.setTitle(" -----> Audio Track Up");
-                                                              Log.i("VideoPlayer Soak", (String) videoPlayerActivity.getTitle());
-                                                              videoPlayerActivity.playerView.hardSwitchAudioTrack(videoPlayerActivity.curAltAudioTrack + 1);
-                                                              mNextSoakDelay = 5000;
-                                                              break;
-                                                          case 8:
-                                                              videoPlayerActivity.setTitle(" -----> Audio Track Down");
-                                                              Log.i("VideoPlayer Soak", (String) videoPlayerActivity.getTitle());
-                                                              videoPlayerActivity.playerView.softSwitchAudioTrack(videoPlayerActivity.curAltAudioTrack - 1);
-                                                              mNextSoakDelay = 5000;
-                                                              break;
-                                                      }
-                                                  }
-                                              }
+                                      videoPlayerActivity.lastUrl = urls.get(i);
+                                      videoPlayerActivity.setTitle(" -----> Play " + videoPlayerActivity.lastUrl);
+                                      Log.i("VideoPlayer Soak", (String) videoPlayerActivity.getTitle());
+                                      videoPlayerActivity.setVideoUrl(videoPlayerActivity.lastUrl);
+                                      mNextSoakDelay = 5000;
+                                      break;
+                                  case 1:
+                                      videoPlayerActivity.setTitle(" -----> Seek Fwd");
+                                      Log.i("VideoPlayer Soak", (String) videoPlayerActivity.getTitle());
+                                      videoPlayerActivity.playerView.setVisibility(View.VISIBLE);
+                                      videoPlayerActivity.playerView.seek(videoPlayerActivity.mLastTimeMS + (int) (rand.nextDouble() * 15000));
+                                      mNextSoakDelay = 3000;
+                                      break;
+                                  case 2:
+                                      videoPlayerActivity.setTitle(" -----> Seek Bwd");
+                                      Log.i("VideoPlayer Soak", (String) videoPlayerActivity.getTitle());
+                                      videoPlayerActivity.playerView.setVisibility(View.VISIBLE);
+                                      videoPlayerActivity.playerView.seek(videoPlayerActivity.mLastTimeMS - (int) (rand.nextDouble() * 15000));
+                                      mNextSoakDelay = 3000;
+                                      break;
+                                  case 3:
+                                      videoPlayerActivity.setTitle(" -----> Pause");
+                                      Log.i("VideoPlayer Soak", (String) videoPlayerActivity.getTitle());
+                                      videoPlayerActivity.playerView.pause();
+                                      mNextSoakDelay = 1000;
+                                      break;
+                                  case 4:
+                                      videoPlayerActivity.setTitle(" -----> Play");
+                                      Log.i("VideoPlayer Soak", (String) videoPlayerActivity.getTitle());
+                                      videoPlayerActivity.playerView.play();
+                                      mNextSoakDelay = 1000;
+                                      break;
+                                  case 5:
+                                      videoPlayerActivity.setTitle(" -----> Quality Up");
+                                      Log.i("VideoPlayer Soak", (String) videoPlayerActivity.getTitle());
+                                      videoPlayerActivity.playerView.incrementQuality();
+                                      mNextSoakDelay = 5000;
+                                      break;
+                                  case 6:
+                                      videoPlayerActivity.setTitle(" -----> Quality Down");
+                                      Log.i("VideoPlayer Soak", (String) videoPlayerActivity.getTitle());
+                                      videoPlayerActivity.playerView.decrementQuality();
+                                      mNextSoakDelay = 5000;
+                                      break;
+                                  case 7:
+                                      videoPlayerActivity.setTitle(" -----> Audio Track Up");
+                                      Log.i("VideoPlayer Soak", (String) videoPlayerActivity.getTitle());
+                                      videoPlayerActivity.playerView.hardSwitchAudioTrack(videoPlayerActivity.curAltAudioTrack + 1);
+                                      mNextSoakDelay = 5000;
+                                      break;
+                                  case 8:
+                                      videoPlayerActivity.setTitle(" -----> Audio Track Down");
+                                      Log.i("VideoPlayer Soak", (String) videoPlayerActivity.getTitle());
+                                      videoPlayerActivity.playerView.softSwitchAudioTrack(videoPlayerActivity.curAltAudioTrack - 1);
+                                      mNextSoakDelay = 5000;
+                                      break;
+                              }
+                          }
+                      }
             );
 
             if (rand.nextDouble() < .1)
