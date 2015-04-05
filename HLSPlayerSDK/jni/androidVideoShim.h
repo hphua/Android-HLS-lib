@@ -2171,11 +2171,12 @@ namespace android_video_shim
 
             // First look up and make a copy of the official vtable.
             // This leaks a bit of RAM per source but we can deal with that later.
-            void *officialVtable = searchSymbol("_ZTVN7android10DataSourceE");
-            assert(officialVtable); // Gotta have a vtable!
+            //void *officialVtable = searchSymbol("_ZTVN7android10DataSourceE");
+            //assert(officialVtable); // Gotta have a vtable!
             void *newVtable = malloc(1024); // Arbitrary size... As base class we
                                             // we always get ptr to start of vtable.
-            memcpy(newVtable, officialVtable, 1024);
+            //memcpy(newVtable, officialVtable, 1024);
+            memset(newVtable, 0, 1024);
 
             // Now we can patch the vtable...
             void ***fakeObj = (void***)this;
