@@ -114,7 +114,7 @@ mSegmentTimeOffset(0), mVideoFrameDelta(0), mLastVideoTimeUs(-1), mVideoStartDel
 mSegmentForTimeMethodID(NULL), mFrameCount(0), mDataSource(NULL), audioThread(0),
 mScreenHeight(0), mScreenWidth(0), mAudioPlayer(NULL), mStartTimeMS(0), mUseOMXRenderer(true),
 mNotifyFormatChangeComplete(NULL), mNotifyAudioTrackChangeComplete(NULL),
-mDroppedFrameIndex(0), mDroppedFrameLastSecond(0), mPostErrorID(NULL), mPadWidth(false)
+mDroppedFrameIndex(0), mDroppedFrameLastSecond(0), mPostErrorID(NULL), mPadWidth(0)
 {
 	LOGTRACE("%s", __func__);
 	status_t status = mClient.connect();
@@ -873,7 +873,7 @@ bool HLSPlayer::InitSources()
 		mVideoSource->getFormat()->findCString(kKeyDecoderComponent, &decoder);
 		if (!strcasecmp(decoder, "OMX.qcom.video.decoder.avc"))
 		{
-			mPadWidth = true;
+			mPadWidth = 64;
 		}
 
 	}
@@ -1769,9 +1769,9 @@ bool HLSPlayer::RenderBuffer(MediaBuffer* buffer)
 	else
 		internalColf = colf;
 
-	if (mPadWidth && (videoBufferWidth % 64 != 0))
+	if (mPadWidth != 0 && (videoBufferWidth % mPadWidth != 0))
 	{
-		videoBufferWidth = ((videoBufferWidth + 63)&~63);
+		videoBufferWidth = ((videoBufferWidth + (mPadWidth - 1))&~(mPadWidth - 1));
 	}
 
 #ifdef _FRAME_DUMP
