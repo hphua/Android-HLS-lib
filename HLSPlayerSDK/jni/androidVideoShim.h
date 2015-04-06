@@ -2165,17 +2165,26 @@ namespace android_video_shim
             LOGI(" HLSDataSource mutex err = %d", err);
         }
 
+        void dummyDtor()
+        {
+
+        }
+
         void patchTable()
         {
             // Fake up the right vtable.
 
             // First look up and make a copy of the official vtable.
             // This leaks a bit of RAM per source but we can deal with that later.
-            void *officialVtable = searchSymbol("_ZTVN7android10DataSourceE");
-            assert(officialVtable); // Gotta have a vtable!
+            // Update - we can't resolve this symbol on some x86 devices, and it turns
+            // out we don't need it - we can just set stuff to 0s and it works OK.
+            // This is obviously a bit finicky but adequate for now.
+            //void *officialVtable = searchSymbol("_ZTVN7android10DataSourceE");
+            //assert(officialVtable); // Gotta have a vtable!
             void *newVtable = malloc(1024); // Arbitrary size... As base class we
                                             // we always get ptr to start of vtable.
-            memcpy(newVtable, officialVtable, 1024);
+            //memcpy(newVtable, officialVtable, 1024);
+            memset(newVtable, 0, 1024);
 
             // Now we can patch the vtable...
             void ***fakeObj = (void***)this;
@@ -2215,6 +2224,11 @@ namespace android_video_shim
             // And override the pointers as appropriate.
             if(AVSHIM_USE_NEWDATASOURCEVTABLE)
             {
+                // Stub in a dummy function for the other entries so that if
+                // e.g. someone tries to call a destructor it won't segfault.
+                for(int i=0; i<18; i++)
+                    fakeObj[0][i] = (void*)&HLSDataSource::dummyDtor;
+
                 // 4.x entry points
                 fakeObj[0][6] = (void*)&HLSDataSource::_initCheck;
                 fakeObj[0][7] = (void*)&HLSDataSource::_readAt;
@@ -2226,6 +2240,11 @@ namespace android_video_shim
                 void *oldGetSize = searchSymbol("_ZN7android10DataSource7getSizeEPl");
                 void *oldGetSize2 = searchSymbol("_ZN7android10DataSource7getSizeEPx");
                 LOGI("  oldGetSize_l=%p oldGetSize_x=%p fakeObj[0][8]=%p", oldGetSize, oldGetSize2, fakeObj[0][8]);
+
+                // Stub in a dummy function for the other entries so that if
+                // e.g. someone tries to call a destructor it won't segfault.
+                for(int i=0; i<18; i++)
+                    fakeObj[0][i] = (void*)&HLSDataSource::dummyDtor;
 
                 // 2.3 entry points
                 fakeObj[0][6] = (void*)&HLSDataSource::_initCheck;

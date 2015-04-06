@@ -128,6 +128,11 @@ public:
     virtual void __pause() { LOGI("Calling dummy."); }; // Make sure we have SOME virtual to avoid any issues.
     virtual void __setBuffer() { LOGI("Calling dummy."); }; // Make sure we have SOME virtual to avoid any issues.
 
+    void dummyDtor()
+    {
+
+    }
+
     void patchTable()
     {
         LOGV2("this = %p", (void*)this);
@@ -137,11 +142,15 @@ public:
 
         // First look up and make a copy of the official vtable.
         // This leaks a bit of RAM per source but we can deal with that later.
-        void *officialVtable = searchSymbol("_ZTTN7android11MediaSourceE");
-        assert(officialVtable); // Gotta have a vtable!
+        // Update - we can't resolve this symbol on some x86 devices, and it turns
+        // out we don't need it - we can just set stuff to 0s and it works OK.
+        // This is obviously a bit finicky but adequate for now.
+        //void *officialVtable = searchSymbol("_ZTTN7android11MediaSourceE");
+        //assert(officialVtable); // Gotta have a vtable!
         void *newVtable = malloc(1024); // Arbitrary size... As base class
                                         // we always get ptr to start of vtable.
-        memcpy(newVtable, officialVtable, 1024);
+        //memcpy(newVtable, officialVtable, 1024);
+        memset(newVtable, 0, 1024);
 
         // Now we can patch the vtable...
         void ***fakeObj = (void***)this;
@@ -179,6 +188,11 @@ public:
         // You can derive it by calculating this - the this that the RefBase ctor
         // sees.
         fakeObj[0][-3] = (void*)8; 
+
+        // Stub in a dummy function for the other entries so that if
+        // e.g. someone tries to call a destructor it won't segfault.
+        for(int i=0; i<18; i++)
+            fakeObj[0][i] = (void*)&MPEG2TSTrackProxy::dummyDtor;
 
         // 4.x entry points
         fakeObj[0][0] = (void*)&MPEG2TSTrackProxy::_start;
@@ -245,6 +259,11 @@ public:
         LOGI("Dtor of track proxy! %p", this);
     }
 
+    void dummyDtor()
+    {
+
+    }
+
     void patchTable()
     {
         LOGV2("this = %p", (void*)this);
@@ -254,11 +273,15 @@ public:
 
         // First look up and make a copy of the official vtable.
         // This leaks a bit of RAM per source but we can deal with that later.
-        void *officialVtable = searchSymbol("_ZTVN7android11MediaSourceE");
-        assert(officialVtable); // Gotta have a vtable!
+        // Update - we can't resolve this symbol on some x86 devices, and it turns
+        // out we don't need it - we can just set stuff to 0s and it works OK.
+        // This is obviously a bit finicky but adequate for now.
+        //void *officialVtable = searchSymbol("_ZTVN7android11MediaSourceE");
+        //assert(officialVtable); // Gotta have a vtable!
         void *newVtable = malloc(1024); // Arbitrary size... As base class
                                         // we always get ptr to start of vtable.
-        memcpy(newVtable, officialVtable, 1024);
+        //memcpy(newVtable, officialVtable, 1024);
+        memset(newVtable, 0, 1024);
 
         // Now we can patch the vtable...
         void ***fakeObj = (void***)this;
@@ -290,6 +313,11 @@ public:
         LOGV2(" _read=%p", (void*)&MPEG2TSTrackProxy23::_read);
         LOGV2(" _pause=%p", (void*)&MPEG2TSTrackProxy23::_pause);
         LOGV2(" _setBuffers=%p", (void*)&MPEG2TSTrackProxy23::_setBuffers);
+
+        // Stub in a dummy function for the other entries so that if
+        // e.g. someone tries to call a destructor it won't segfault.
+        for(int i=0; i<18; i++)
+            fakeObj[0][i] = (void*)&MPEG2TSTrackProxy23::dummyDtor;
 
         // 2.x entry points
         fakeObj[0][6] = (void*)&MPEG2TSTrackProxy23::_start;
