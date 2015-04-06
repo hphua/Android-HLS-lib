@@ -21,7 +21,7 @@ In order to add a new drop of the HLS library into the Android Player SDK one sh
 3. Navigate to HLSPlayerSDK/libs
 4. Create a new folder consisting of all the folders in the libs folder and name it "lib"
 5. Zip that folder into an archive and rename the archive to "lib.jar"
-6. Copy the jar file into the Android player SDK project: player-sdk-native-android/HLSPlayerSDK/libs/
+6. Copy the jar file into the Android player SDK project: player-sdk-native-android/hLSPlayerSDK/libs/
 7. Copy the "com" folder inside the HLSPlayerSDK
 8. Paste the "com" folder into the Android Player SDK project: player-sdk-native-android/hLSPlayerSDK/src/main/java
 9. Overwrite if needed
