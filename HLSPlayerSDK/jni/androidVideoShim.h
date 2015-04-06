@@ -2224,9 +2224,12 @@ namespace android_video_shim
             // And override the pointers as appropriate.
             if(AVSHIM_USE_NEWDATASOURCEVTABLE)
             {
-                // 4.x entry points
+                // Stub in a dummy function for the other entries so that if
+                // e.g. someone tries to call a destructor it won't segfault.
                 for(int i=0; i<18; i++)
                     fakeObj[0][i] = (void*)&HLSDataSource::dummyDtor;
+
+                // 4.x entry points
                 fakeObj[0][6] = (void*)&HLSDataSource::_initCheck;
                 fakeObj[0][7] = (void*)&HLSDataSource::_readAt;
                 fakeObj[0][8] = (void*)&HLSDataSource::_getSize;
@@ -2238,9 +2241,12 @@ namespace android_video_shim
                 void *oldGetSize2 = searchSymbol("_ZN7android10DataSource7getSizeEPx");
                 LOGI("  oldGetSize_l=%p oldGetSize_x=%p fakeObj[0][8]=%p", oldGetSize, oldGetSize2, fakeObj[0][8]);
 
-                // 2.3 entry points
+                // Stub in a dummy function for the other entries so that if
+                // e.g. someone tries to call a destructor it won't segfault.
                 for(int i=0; i<18; i++)
                     fakeObj[0][i] = (void*)&HLSDataSource::dummyDtor;
+
+                // 2.3 entry points
                 fakeObj[0][6] = (void*)&HLSDataSource::_initCheck;
                 fakeObj[0][7] = (void*)&HLSDataSource::_readAt_23;
                 fakeObj[0][8] = (void*)&HLSDataSource::_getSize_23;

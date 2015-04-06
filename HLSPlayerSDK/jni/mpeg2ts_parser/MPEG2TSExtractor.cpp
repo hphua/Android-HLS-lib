@@ -189,6 +189,8 @@ public:
         // sees.
         fakeObj[0][-3] = (void*)8; 
 
+        // Stub in a dummy function for the other entries so that if
+        // e.g. someone tries to call a destructor it won't segfault.
         for(int i=0; i<18; i++)
             fakeObj[0][i] = (void*)&MPEG2TSTrackProxy::dummyDtor;
 
@@ -312,6 +314,8 @@ public:
         LOGV2(" _pause=%p", (void*)&MPEG2TSTrackProxy23::_pause);
         LOGV2(" _setBuffers=%p", (void*)&MPEG2TSTrackProxy23::_setBuffers);
 
+        // Stub in a dummy function for the other entries so that if
+        // e.g. someone tries to call a destructor it won't segfault.
         for(int i=0; i<18; i++)
             fakeObj[0][i] = (void*)&MPEG2TSTrackProxy23::dummyDtor;
 
